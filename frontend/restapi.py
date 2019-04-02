@@ -102,7 +102,7 @@ def workflows(username, group):
             active = False
         if 'num' in request.args:
             num = request.args.get('num')
-    constraint = 'True'
+    constraint = (None, None)
     if 'constraint' in request.args:
         cons = request.args.get('constraint')
         key = cons.split('=')[0]
