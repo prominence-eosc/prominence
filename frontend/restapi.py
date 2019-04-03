@@ -6,13 +6,15 @@ import os
 import requests
 from flask import Flask, jsonify, request
 
-import backend
-from CreateSwiftURL import create_swift_url
+from backend import ProminenceBackend
 
 app = Flask(__name__)
 
 # Configuration
 app.config.from_pyfile('/etc/prominence/prominence-rest.cfg')
+
+# Create backend
+backend = ProminenceBackend(app.config)
 
 # Logging
 logging.basicConfig(filename=app.config['LOG_FILE'], level=logging.INFO, format='%(asctime)s %(levelname)s %(message)s')
@@ -82,7 +84,7 @@ def upload_file(username, group):
     """
     Return Swift URL to allow users to upload data to Swift
     """
-    url = create_swift_url('PUT', '/v1/prominence-jobs/%s/%s' % (username, request.get_json()['filename']))
+    url = backend.create_swift_url('PUT', '/v1/prominence-jobs/%s/%s' % (username, request.get_json()['filename']))
     return jsonify({'url':url}), 201
 
 @app.route("/prominence/v1/workflows", methods=['GET'])
