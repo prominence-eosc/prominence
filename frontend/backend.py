@@ -105,6 +105,9 @@ class ProminenceBackend(object):
         self._config = config
 
     def create_swift_url(self, method, path, duration_in_seconds=600):
+        """
+        Create a Swift temporary URL
+        """        
         expires = int(time.time() + duration_in_seconds)
         hmac_body = '%s\n%s\n%s' % (method, expires, path)
         sig = hmac.new(self._config['SWIFT_KEY'], hmac_body, sha1).hexdigest()
