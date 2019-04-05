@@ -1,0 +1,475 @@
+#!/usr/bin/python
+from __future__ import print_function
+import getpass
+import json
+import os
+import re
+import subprocess
+import sys
+import time
+import shutil
+import logging
+import requests
+
+def mount_storage():
+    """
+    Mount user-specified storage
+    """
+    try:
+        with open('.job.json', 'r') as json_file:
+            job = json.load(json_file)
+    except Exception as ex:
+        logging.critical('Unable to read .job.json due to %s', ex)
+        return False
+
+    if 'storage' in job:
+        storage_type = job['storage']['type']
+        storage_mountpoint = job['storage']['mountpoint']
+        storage_provider = None
+        storage_token = None
+        if storage_type == 'onedata':
+            logging.info('Mounting OneData provider at %s', storage_mountpoint)
+            storage_provider = job['storage']['onedata']['provider']
+            storage_token = job['storage']['onedata']['token']
+
+            process = subprocess.Popen('/usr/bin/oneclient -t %s -H %s %s' % (storage_token,
+                                                                              storage_provider,
+                                                                              storage_mountpoint),
+                                       shell=True,
+                                       stdout=subprocess.PIPE,
+                                       stderr=subprocess.PIPE)
+            process.wait()
+    return True
+
+def get_storage_mountpoint():
+    """
+    Get mount point for fuse filesystem from job JSON
+    """
+    try:
+        with open('.job.json', 'r') as json_file:
+            job = json.load(json_file)
+    except Exception as ex:
+        logging.critical('Unable to read .job.json due to %s', ex)
+        return None
+
+    if 'storage' in job:
+        return job['storage']['mountpoint']
+
+    return None
+
+def eprint(*args, **kwargs):
+    """
+    Print to stderr
+    """
+    print(*args, file=sys.stderr, **kwargs)
+
+def update_classad(attr, value):
+    """
+    Update the job's ClassAd if possible
+    """
+    # condor_chirp is installed in different places on CentOS & Ubuntu
+    cmds = ['/usr/libexec/condor/condor_chirp', '/usr/lib/condor/libexec/condor_chirp']
+    for cmd in cmds:
+        if os.path.isfile(cmd):
+            process = subprocess.Popen("%s set_job_attr '%s' '%d'" % (cmd, attr, value),
+                                       shell=True,
+                                       stdout=subprocess.PIPE,
+                                       stderr=subprocess.PIPE)
+            process.wait()
+            return
+    return
+
+def download_singularity(image, image_new, location):
+    """
+    Download a Singularity image from a URL or pull an image from Docker Hub
+    """
+    start = time.time()
+    if re.match(r'^http', image):
+        try:
+            response = requests.get(image, allow_redirects=True, stream=True)
+            if response.status_code == 200:
+                with open(image_new, 'wb') as file_image:
+                    for chunk in response.iter_content(chunk_size=1024*1024):
+                        if chunk:
+                            file_image.write(chunk)
+            else:
+                logging.error('Unable to download Singularity image')
+                return 1
+        except requests.exceptions.RequestException as ex:
+            logging.error('Unable to download Singularity image due to a RequestException: %s', ex)
+            return 1
+        except IOError as ex:
+            logging.error('Unable to download Singularity image due to an IOError: %s', ex)
+            return 1
+    else:
+        # We set SINGULARITY_LOCALCACHEDIR & SINGULARITY_TMPDIR in order to avoid Singularity errors
+        if not os.path.isdir('/home/user/.singularity'):
+            try:
+                os.mkdir('/home/user/.singularity')
+            except Exception as ex:
+                logging.error('Unable to create .singularity directory due to: %s', ex)
+                return 1
+        if not os.path.isdir('/home/user/.tmp'):
+            try:
+                os.mkdir('/home/user/.tmp')
+            except Exception as ex:
+                logging.error('Unable to create .tmp directory due to: %s', ex)
+                return 1
+
+        cmd = 'singularity pull --name "image.simg" docker://%s' % image
+        process = subprocess.Popen(cmd,
+                                   cwd=os.path.dirname(image_new),
+                                   shell=True,
+                                   env=dict(os.environ,
+                                            SINGULARITY_LOCALCACHEDIR='/home/user/.singularity',
+                                            SINGULARITY_TMPDIR='/home/user/.tmp'),
+                                   stdout=subprocess.PIPE,
+                                   stderr=subprocess.PIPE)
+        stdout, stderr = process.communicate()
+        return_code = process.returncode
+
+        logging.info('singularity pull stdout: "%s"', stdout)
+        logging.info('singularity pull stderr: "%s"', stderr)
+
+        if return_code != 0:
+            return 1
+
+    update_classad('ProminenceImagePullTime', time.time() - start)
+
+    return 0
+
+def download_udocker(image, location, label, base_dir):
+    """
+    Download an image from a URL and create a udocker container named 'image'
+    """
+    start = time.time()
+    if re.match(r'^http', image):
+        # Download tarball
+        try:
+            response = requests.get(image, allow_redirects=True, stream=True)
+            if response.status_code == 200:
+                with open('%s/image.tar' % location, 'wb') as tar_file:
+                    for chunk in response.iter_content(chunk_size=1024*1024):
+                        if chunk:
+                            tar_file.write(chunk)
+            else:
+                logging.error('Unable to download udocker image')
+                return 1
+        except requests.exceptions.RequestException as e:
+            logging.error('Unable to download udocker image due to: %s', e)
+            return 1
+        except IOError as e:
+            logging.error('Unable to download udocker image due to: %s', e)
+            return 1
+
+        # Load image
+        process = subprocess.Popen('udocker load -i %s/image.tar' % location,
+                                   env=dict(os.environ,
+                                            UDOCKER_DIR='%s/.udocker' % base_dir),
+                                   shell=True,
+                                   stdout=subprocess.PIPE)
+        stdout, stderr = process.communicate()
+        return_code = process.returncode
+
+        logging.info('udocker load stdout: "%s"', stdout)
+        logging.info('udocker load stderr: "%s"', stderr)
+
+        if return_code != 0:
+            logging.error('Unable to load udocker tarball')
+            return 1
+
+        # Determine image name
+        process = subprocess.Popen('udocker images',
+                                   env=dict(os.environ,
+                                            UDOCKER_DIR='%s/.udocker' % base_dir),
+                                   shell=True,
+                                   stdout=subprocess.PIPE)
+        stdout, stderr = process.communicate()
+        return_code = process.returncode
+
+        if return_code != 0:
+            logging.error('Unable to determine container image name')
+            return 1
+
+        image = None
+        for line in stdout.split('\n'):
+            match_obj_name = re.search(r'([\w\/\.\-\_\:]+)', line)
+            if match_obj_name and 'REPOSITORY' not in line:
+                image = match_obj_name.group(1)
+
+        if image is None:
+            logging.error('No image found')
+            return 1
+
+        # Delete tarball
+        os.unlink('%s/image.tar' % location)
+    else:
+        # Pull image
+        process = subprocess.Popen('udocker pull %s' % image,
+                                   env=dict(os.environ,
+                                            UDOCKER_DIR='%s/.udocker' % base_dir),
+                                   shell=True,
+                                   stdout=subprocess.PIPE,
+                                   stderr=subprocess.PIPE)
+        stdout, stderr = process.communicate()
+        return_code = process.returncode
+
+        logging.info('udocker pull stdout: "%s"', stdout)
+        logging.info('udocker pull stderr: "%s"', stderr)
+
+        if return_code != 0:
+            return 1
+
+    # Create container
+    process = subprocess.Popen('udocker create --name=image%d %s' % (label, image),
+                               env=dict(os.environ,
+                                        UDOCKER_DIR='%s/.udocker' % base_dir),
+                               shell=True,
+                               stdout=subprocess.PIPE,
+                               stderr=subprocess.PIPE)
+    stdout, stderr = process.communicate()
+    return_code = process.returncode
+
+    logging.info('udocker create stdout: "%s"', stdout)
+    logging.info('udocker create stderr: "%s"', stderr)
+
+    if return_code != 0:
+        return 1
+
+    update_classad('ProminenceImagePullTime', time.time() - start)
+
+    return 0
+
+def run_udocker(image, cmd, workdir, env, path, base_dir, mpi, mpi_processes):
+    """
+    Execute a task using udocker
+    """
+    extras = ''
+    if cmd is None:
+        cmd = ''
+#    else:
+#        extras = '--nometa '
+
+    extras += " ".join('--env=%s=%s' % (key, env[key]) for key in env)
+
+    if mpi == 'openmpi':
+        cmd = ("mpirun --hostfile /home/user/.hosts-openmpi"
+               " -np %d"
+               " -x PROMINENCE_PWD"
+               " -x UDOCKER_DIR"
+               " -mca plm_rsh_agent /home/prominence/ssh_container %s") % (mpi_processes, cmd)
+    elif mpi == 'mpich':
+        cmd = ("mpirun -f /home/user/.hosts-mpich"
+               " -np %d"
+               " -envlist PROMINENCE_PWD,UDOCKER_DIR"
+               " -launcher ssh"
+               " -launcher-exec /home/prominence/ssh_container %s") % (mpi_processes, cmd)
+
+    # Get storage mountpoint
+    mountpoint = get_storage_mountpoint()
+    mounts = ''
+    if mountpoint is not None:
+        logging.info('Mount point is %s', mountpoint)
+        mounts = '-v %s ' % mountpoint
+
+    if base_dir == '/home/prominence':
+        # Used on clouds
+        run_command = ("udocker -q run %s"
+                       " --env=HOME=%s"
+                       " --env=PROMINENCE_PWD=%s"
+                       " --env=UDOCKER_DIR=/home/prominence/.udocker"
+                       " --hostauth"
+                       " --user=user"
+                       " --bindhome"
+                       " -v /home/prominence"
+                       " %s"
+                       " --workdir=%s"
+                       " -v /tmp"
+                       " -v /var/tmp"
+                       " %s %s") % (extras, path, workdir, mounts, workdir, image, cmd)
+    else:
+        # Used on existing HPC systems
+        run_command = ("udocker -q run %s"
+                       " --env=HOME=%s"
+                       " --hostauth"
+                       " --user=%s"
+                       " --bindhome"
+                       " -v %s"
+                       " --workdir=%s"
+                       " -v /tmp"
+                       " -v /var/tmp"
+                       " %s %s") % (extras, path, getpass.getuser(), path, workdir, image, cmd)
+
+    logging.info('Running: "%s"', run_command)
+
+    start = time.time()
+    process = subprocess.Popen(run_command,
+                               env=dict(os.environ,
+                                        UDOCKER_DIR='%s/.udocker' % base_dir),
+                               shell=True,
+                               stdout=subprocess.PIPE)
+    stdout, stderr = process.communicate()
+    return_code = process.returncode
+    logging.info('Task had exit code %d', return_code)
+
+    update_classad('ProminenceExecuteTime', time.time() - start)
+    update_classad('ProminenceExitCode', return_code)
+
+    if stdout is not None:
+        print(stdout)
+    if stderr is not None:
+        eprint(stderr)
+
+    return return_code
+
+def run_singularity(image, cmd, workdir, env, path, base_dir, mpi, mpi_processes):
+    """
+    Execute a task using Singularity
+    """
+    if mpi == 'openmpi':
+        cmd = ("mpirun --hostfile /home/user/.hosts-openmpi"
+               " -np %d"
+               " -x PROMINENCE_CONTAINER_LOCATION"
+               " -x PROMINENCE_PWD"
+               " -x HOME"
+               " -mca plm_rsh_agent /home/prominence/ssh_container %s") % (mpi_processes, cmd)
+    elif mpi == 'mpich':
+        cmd = ("mpirun -f /home/user/.hosts-mpich"
+               " -np %d"
+               " -envlist PROMINENCE_CONTAINER_LOCATION,PROMINENCE_PWD,HOME"
+               " -launcher ssh"
+               " -launcher-exec /home/prominence/ssh_container %s") % (mpi_processes, cmd)
+
+    command = 'exec'
+    if cmd is None:
+        cmd = ''
+        command = 'run'
+
+    if base_dir == '/home/prominence':
+        run_command = ("singularity %s"
+                       " --no-home"
+                       " --bind /home"
+                       " --home %s"
+                       " --pwd %s %s %s") % (command, path, workdir, image, cmd)
+    else:
+        run_command = 'singularity %s --home %s --pwd %s %s %s' % (command, path, workdir, image, cmd)
+
+    logging.info('Running: "%s"', run_command)
+
+    start = time.time()
+    process = subprocess.Popen(run_command,
+                               env=dict(env,
+                                        PATH='/usr/local/bin:/usr/bin:/usr/local/sbin:/usr/sbin',
+                                        PROMINENCE_CONTAINER_LOCATION='%s' % os.path.dirname(image),
+                                        PROMINENCE_PWD='%s' % workdir),
+                               shell=True,
+                               stdout=subprocess.PIPE)
+    stdout, stderr = process.communicate()
+    return_code = process.returncode
+
+    logging.info('Task had exit code %d', return_code)
+
+    update_classad('ProminenceExecuteTime', time.time() - start)
+    update_classad('ProminenceExitCode', return_code)
+
+    if stdout is not None:
+        print(stdout)
+    if stderr is not None:
+        eprint(stderr)
+
+    return return_code
+
+def run_tasks(path, base_dir, mpi_processes):
+    """
+    Execute sequential tasks
+    """
+    with open('.job.json') as json_file:
+        job = json.load(json_file)
+
+    count = 0
+    for task in job['tasks']:
+        image = task['image']
+
+        cmd = None
+        if 'cmd' in task:
+            cmd = task['cmd']
+
+        workdir = None
+        if 'workdir' in task:
+            workdir = task['workdir']
+
+        if workdir is None:
+            workdir = path
+        elif not workdir.startswith('/'):
+            workdir = path + '/' + workdir
+
+        env = {}
+        if 'env' in task:
+            env = task['env']
+
+        location = '%s/%d' % (base_dir, count)
+        os.mkdir(location)
+
+        mpi = None
+        if 'type' in task:
+            if task['type'] == 'openmpi':
+                mpi = 'openmpi'
+            elif task['type'] == 'mpich':
+                mpi = 'mpich'
+
+        exit_code = 1
+        if task['runtime'] == 'udocker':
+            download_exit_code = download_udocker(image, location, count, base_dir)
+            if download_exit_code != 0:
+                update_classad('ProminenceImagePullSuccess', 1)
+            else:
+                image = 'image%d' % count
+                exit_code = run_udocker(image, cmd, workdir, env, path, base_dir, mpi, mpi_processes)
+        else:
+            image_new = '%s/image.simg' % location
+            download_exit_code = download_singularity(image, image_new, location)
+            if download_exit_code != 0:
+                update_classad('ProminenceImagePullSuccess', 1)
+            else:
+                exit_code = run_singularity(image_new, cmd, workdir, env, path, base_dir, mpi, mpi_processes)
+
+        shutil.rmtree(location)
+
+        count += 1
+
+        if exit_code != 0:
+            break
+
+def run_cwl(cwl, inputs):
+    """
+    Run a CWL workflow
+    """
+    process = subprocess.Popen('cwltool --user-space-docker-cmd=udocker %s %s' % (cwl, inputs), env=dict(os.environ), shell=True, stdout=subprocess.PIPE)
+    stdout, stderr = process.communicate()
+    if stdout is not None:
+        print(stdout)
+    if stderr is not None:
+        eprint(stderr)
+
+if __name__ == "__main__":
+    path = os.getcwd()
+
+    logging.basicConfig(filename='%s/promlet.log' % path, level=logging.INFO, format='%(asctime)s %(message)s')
+    logging.info('Started promlet')
+
+    base_dir = '/home/prominence'
+
+    # Handle HPC systems
+    if not os.path.isdir(base_dir):
+        base_dir = os.path.join(path, 'prominence')
+        os.mkdir(base_dir)
+
+    # Mount user-specified storage if necessary
+    mount_storage()
+
+    if sys.argv[1] == 'cwl':
+        run_cwl(sys.argv[2], sys.argv[3])
+    else:
+        run_tasks(path, base_dir, int(sys.argv[2]))
+
+    logging.info('Exiting promlet')
