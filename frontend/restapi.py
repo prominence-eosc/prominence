@@ -1,9 +1,11 @@
 #!/usr/bin/python
+from __future__ import print_function
 from functools import wraps
 import logging
 import uuid
 import os
 import requests
+import sys
 from flask import Flask, jsonify, request
 
 from backend import ProminenceBackend
@@ -11,13 +13,17 @@ from backend import ProminenceBackend
 app = Flask(__name__)
 
 # Configuration
-app.config.from_pyfile('/etc/prominence/prominence-rest.cfg')
+if 'PROMINENCE_RESTAPI_CONFIG_FILE' in os.environ:
+    app.config.from_pyfile(os.environ['PROMINENCE_RESTAPI_CONFIG_FILE'])
+else:
+    print('ERROR: Environment variable PROMINENCE_RESTAPI_CONFIG_FILE has not been defined')
+    exit(1)
 
 # Create backend
 backend = ProminenceBackend(app.config)
 
 # Logging
-logging.basicConfig(filename=app.config['LOG_FILE'], level=logging.INFO, format='%(asctime)s %(levelname)s %(message)s')
+logging.basicConfig(stream=sys.stdout, level=logging.INFO, format='%(asctime)s %(levelname)s %(message)s')
 
 def get_user_details(token):
     """
