@@ -1,6 +1,5 @@
 FROM alahiff/htcondor:8.7.10
 
-# Dependencies
 RUN yum -y install epel-release && \
     yum -y install python-pip \
                    python-devel \
