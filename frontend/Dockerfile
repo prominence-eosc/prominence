@@ -19,6 +19,7 @@ ENTRYPOINT ["uwsgi", \
             "--http-socket", ":8080", \
             "--threads", "2", \
             "--uid", "prominence", \
+            "--gid", "prominence", \
             "--manage-script-name", \
             "--master", \
             "--chdir", "/usr/local/bin", \
