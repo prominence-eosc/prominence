@@ -167,7 +167,7 @@ def get_stdout_wf(username, group, workflow_id, job):
         return jsonify({'error':'Job does not exist'}), 400
     if username != identity:
         return jsonify({'error':'Not authorized to access this job'}), 403
-    filename = app.config['SANDBOX_PATH'] + '/%s/%s/job.%s.out' % (uid, job, job)
+    filename = app.config['SANDBOX_PATH'] + '/%s/%s/job.%s.0.out' % (uid, job, job)
     if os.path.isfile(filename):
         with open(filename) as fd:
             return fd.read()
@@ -189,7 +189,7 @@ def get_stderr_wf(username, group, workflow_id, job):
         return jsonify({'error':'Job does not exist'}), 400
     if username != identity:
         return jsonify({'error':'Not authorized to access this job'}), 403
-    filename = app.config['SANDBOX_PATH'] + '/%s/%s/job.%s.err' % (uid, job, job)
+    filename = app.config['SANDBOX_PATH'] + '/%s/%s/job.%s.0.err' % (uid, job, job)
     if os.path.isfile(filename):
         with open(filename) as fd:
             return fd.read()
