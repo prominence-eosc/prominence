@@ -107,7 +107,7 @@ class ProminenceBackend(object):
     def create_swift_url(self, method, path, duration_in_seconds=600):
         """
         Create a Swift temporary URL
-        """        
+        """
         expires = int(time.time() + duration_in_seconds)
         hmac_body = '%s\n%s\n%s' % (method, expires, path)
         sig = hmac.new(self._config['SWIFT_KEY'], hmac_body, sha1).hexdigest()
@@ -178,6 +178,8 @@ class ProminenceBackend(object):
                         task['runtime'] = 'udocker'
                     elif '.simg' in task['image']:
                         task['runtime'] = 'singularity'
+                elif 'shub://' in task['image']:
+                    task['runtime'] = 'singularity'
                 tasks_new.append(task)
 
             jjob_new = jjob
@@ -511,22 +513,22 @@ class ProminenceBackend(object):
                     fd.write(JOB_SUBMIT % info)
                 dag.append('JOB ' + job['name'] + ' job.jdl DIR ' + job['name'])
 
-                # Write .tasks.json
-                json_tasks = job['tasks']
-                filename = job_sandbox + '/' + job['name'] + '/.tasks.json'
+                # Write .job.json
+                filename = job_sandbox + '/' + job['name'] + '/.job.json'
                 with open(filename, 'w') as file:
-                    json.dump(json_tasks, file)
+                    json.dump(job, file)
 
-            # Copy executable
-            copyfile(self._config['PROMLET_FILE'], os.path.join(job_sandbox, job['name'], 'promlet.py'))
-            os.chmod(job_sandbox + '/' + job['name'] + '/promlet.py', 0775)
+                # Copy executable
+                copyfile(self._config['PROMLET_FILE'], os.path.join(job_sandbox, job['name'], 'promlet.py'))
+                os.chmod(job_sandbox + '/' + job['name'] + '/promlet.py', 0775)
 
         # Create dag
         if 'dependencies' in jjob:
-            for relationship in jjob['dependencies']:
-                parents = " ".join(relationship['parents'])
-                children = " ".join(relationship['children'])
-                dag.append('PARENT ' + parents + ' CHILD ' + children)
+            for parent in jjob['dependencies']:
+                children = " ".join(jjob['dependencies'][parent])
+                #parents = " ".join(relationship['parents'])
+                #children = " ".join(relationship['children'])
+                dag.append('PARENT ' + parent + ' CHILD ' + children)
             dag.append('NODE_STATUS_FILE workflow.dag.status')
         with open(job_sandbox + '/job.dag', 'w') as fd:
             fd.write('\n'.join(dag))
@@ -540,6 +542,8 @@ class ProminenceBackend(object):
             # Submit dag
         cmd = "condor_submit_dag -batch-name %s -append '+ProminenceType=\"workflow\"' -append '+ProminenceIdentity=\"%s\"' -append '+ProminenceJobUniqueIdentifier=\"%s\"' job.dag" % (wf_name, username, uid)
         (return_code, stdout, stderr, timedout) = run(cmd, job_sandbox, 30)
+        print 'condor_submit stdout=', stdout
+        print 'condor_submit stderr=', stderr
         m = re.search(r'submitted to cluster\s(\d+)', stdout)
         if m:
             retval = 201
@@ -657,8 +661,12 @@ class ProminenceBackend(object):
                     jobj['status'] = 'deploying'
 
             # Get json
-            with open(job['Iwd'] + '/.job.json') as json_file:
-                tasks = json.load(json_file)['tasks']
+            try:
+                with open(job['Iwd'] + '/.job.json') as json_file:
+                    tasks = json.load(json_file)['tasks']
+            except:
+                return []
+
             jobj['tasks'] = tasks
 
             # Return status as failed if container image pull failed
@@ -870,7 +878,7 @@ class ProminenceBackend(object):
             try:
                 class_ads = classad.parseAds(open(file, 'r'))
                 for class_ad in class_ads:
-                    if ['Type'] == 'DagStatus':
+                    if class_ad['Type'] == 'DagStatus':
                         nodes_total = class_ad['NodesTotal']
                         nodes_done = class_ad['NodesDone']
                         nodes_failed = class_ad['NodesFailed']
