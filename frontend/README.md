@@ -1,5 +1,5 @@
 # PROMINENCE REST API
-The container image can be built by runnng:
+The container image can be built by running:
 ```
 curl https://codeload.github.com/prominence-eosc/prominence/zip/master > master.zip
 unzip master.zip
