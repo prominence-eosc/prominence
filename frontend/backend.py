@@ -104,6 +104,18 @@ class ProminenceBackend(object):
     def __init__(self, config):
         self._config = config
 
+    def create_sandbox(self, uid):
+    """
+    Create job sandbox
+    """
+    job_sandbox = self._config['SANDBOX_PATH'] + '/' + uid
+    try:
+        os.makedirs(job_sandbox)
+        os.makedirs(job_sandbox + '/input')
+    except:
+        return job_sandbox
+    return None
+
     def create_swift_url(self, method, path, duration_in_seconds=600):
         """
         Create a Swift temporary URL
@@ -136,10 +148,15 @@ class ProminenceBackend(object):
                     identity = job['ProminenceIdentity']
         return (uid, identity)
 
-    def create_job(self, username, group, uid, job_sandbox, jjob):
+    def create_job(self, username, group, uid, jjob):
         """
         Create a job
         """
+        # Firstly, create the job sandbox
+        job_sandbox = self.create_sandbox(uid)
+        if job_sandbox is None:
+            return (1, {"error":"Unable to create job sandbox"})
+
         cjob = {}
 
         # Copy executable to sandbox, change current working directory to the sandbox
@@ -361,16 +378,21 @@ class ProminenceBackend(object):
 
         return (retval, data)
 
-    def create_workflow(self, username, group, uid, job_sandbox, jjob):
+    def create_workflow(self, username, group, uid, jjob):
         """
         Create a workflow
         """
+        # Firstly, create the job sandbox
+        job_sandbox = self.create_sandbox(uid)
+        if job_sandbox is None:
+            return (1, {"error":"Unable to create job sandbox"})
+
         dag = []
         if 'jobs' in jjob:
             with open(job_sandbox + '/workflow.json', 'w') as fd:
                 json.dump(jjob, fd)
 
-            # Firstly, generate unique Swift temporary URLs for output/input files
+            # Generate unique Swift temporary URLs for output/input files
             file_maps = {}
             for job in jjob['jobs']:
                 if 'outputFiles' in job:
@@ -905,3 +927,29 @@ class ProminenceBackend(object):
             wfs.append(wfj)
 
         return wfs
+
+    def get_stdout(self, uid, job_id, job_name=None):
+        """
+        Return the stdout from the specified job
+        """
+        if job_name is None:
+            filename = self._config['SANDBOX_PATH'] + '/%s/job.%d.0.out' % (uid, job_id)
+        else:
+            filename = self._config['SANDBOX_PATH'] + '/%s/%s/job.%s.0.out' % (uid, job_name, job_name)
+        if os.path.isfile(filename):
+            with open(filename) as fd:
+                return fd.read()
+        return None
+
+    def get_stderr(self, uid, job_id, job_name=None):
+        """
+        Return the stdout from the specified job
+        """
+        if job_name is None:
+            filename = self._config['SANDBOX_PATH'] + '/%s/job.%d.0.err' % (uid, job_id)
+        else:
+            filename = self._config['SANDBOX_PATH'] + '/%s/%s/job.%s.0.err' % (uid, job_name, job_name)
+        if os.path.isfile(filename):
+            with open(filename) as fd:
+                return fd.read()
+        return None
