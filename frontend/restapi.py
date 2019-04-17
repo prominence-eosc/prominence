@@ -167,12 +167,12 @@ def get_stdout_wf(username, group, workflow_id, job):
         return jsonify({'error':'Job does not exist'}), 400
     if username != identity:
         return jsonify({'error':'Not authorized to access this job'}), 403
-    filename = app.config['SANDBOX_PATH'] + '/%s/%s/job.%s.0.out' % (uid, job, job)
-    if os.path.isfile(filename):
-        with open(filename) as fd:
-            return fd.read()
-    else:
+
+    stdout = backend.get_stdout(uid, job_id, job)
+    if stdout is None:
         return jsonify({'error':'stdout does not exist'}), 404
+    else:
+        return stdout
 
 @app.route("/prominence/v1/workflows/<int:workflow_id>/<string:job>/stderr", methods=['GET'])
 @requires_auth
@@ -189,12 +189,12 @@ def get_stderr_wf(username, group, workflow_id, job):
         return jsonify({'error':'Job does not exist'}), 400
     if username != identity:
         return jsonify({'error':'Not authorized to access this job'}), 403
-    filename = app.config['SANDBOX_PATH'] + '/%s/%s/job.%s.0.err' % (uid, job, job)
-    if os.path.isfile(filename):
-        with open(filename) as fd:
-            return fd.read()
+
+    stderr = backend.get_stderr(uid, job_id, job)
+    if stderr is None:
+        return jsonify({'error':'stderr does not exist'}), 404
     else:
-        return jsonify({'error':'stdout does not exist'}), 404
+        return stderr
 
 @app.route("/prominence/v1/workflows/<int:workflow_id>", methods=['DELETE'])
 @requires_auth
@@ -216,20 +216,13 @@ def submit_job_new(username, group):
     """
     Create a new workflow
     """
-    # Job unique identifier
+    # Create job unique identifier
     uid = str(uuid.uuid4())
 
     app.logger.info('%s WorkflowSubmission user:%s group:%s uid:%s' % (get_remote_addr(request), username, group, uid))
 
-    # Create sandbox
-    job_sandbox = app.config['SANDBOX_PATH'] + '/' + uid
-    try:
-        os.makedirs(job_sandbox)
-    except:
-        return jsonify({'error':'Unable to create job sandbox'}), 400
-
     # Create workflow
-    (return_code, data) = backend.create_workflow(username, group, uid, job_sandbox, request.get_json())
+    (return_code, data) = backend.create_workflow(username, group, uid, request.get_json())
 
     retval = 201
     if return_code == 1:
@@ -248,16 +241,8 @@ def submit_job(username, group):
 
     app.logger.info('%s JobSubmission user:%s group:%s uid:%s' % (get_remote_addr(request), username, group, uid))
 
-    # Create sandbox
-    job_sandbox = app.config['SANDBOX_PATH'] + '/' + uid
-    try:
-        os.makedirs(job_sandbox)
-        os.makedirs(job_sandbox + '/input')
-    except:
-        return jsonify({"error":"Unable to create job sandbox"}), 400
-
     # Create job
-    (return_code, data) = backend.create_job(username, group, uid, job_sandbox, request.get_json())
+    (return_code, data) = backend.create_job(username, group, uid, request.get_json())
 
     retval = 201
     if return_code == 1:
@@ -354,12 +339,12 @@ def get_stdout(username, group, job_id, task):
         return jsonify({'error':'Job does not exist'}), 400
     if username != identity:
         return jsonify({'error':'Not authorized to access this job'}), 403
-    filename = app.config['SANDBOX_PATH'] + '/%s/job.%d.%d.out' % (uid, job_id, task)
-    if os.path.isfile(filename):
-        with open(filename) as fd:
-            return fd.read()
-    else:
+
+    stdout = backend.get_stdout(uid, job_id)
+    if stdout is None:
         return jsonify({'error':'stdout does not exist'}), 404
+    else:
+        return stdout
 
 @app.route("/prominence/v1/jobs/<int:job_id>/<int:task>/stderr", methods=['GET'])
 @requires_auth
@@ -376,12 +361,12 @@ def get_stderr(username, group, job_id, task):
         return jsonify({'error':'Job does not exist'}), 400
     if username != identity:
         return jsonify({'error':'Not authorized to access this job'}), 403
-    filename = app.config['SANDBOX_PATH'] + '/%s/job.%d.%d.err' % (uid, job_id, task)
-    if os.path.isfile(filename):
-        with open(filename) as fd:
-            return fd.read()
-    else:
+
+    stderr = backend.get_stderr(uid, job_id)
+    if stderr is None:
         return jsonify({'error':'stderr does not exist'}), 404
+    else:
+        return stderr
 
 if __name__ == "__main__":
     app.run(host='0.0.0.0', port=8080)
