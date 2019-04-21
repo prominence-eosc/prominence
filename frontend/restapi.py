@@ -90,8 +90,12 @@ def upload_file(username, group):
     """
     Return Swift URL to allow users to upload data to Swift
     """
-    url = backend.create_swift_url('PUT', '/v1/prominence-jobs/%s/%s' % (username, request.get_json()['filename']))
-    return jsonify({'url':url}), 201
+    app.logger.info('%s UploadData user:%s group:%s' % (get_remote_addr(request), username, group))
+
+    if 'filename' in request.get_json():
+        url = backend.create_swift_url('PUT', '/v1/prominence-jobs/%s/%s' % (username, request.get_json()['filename']))
+        return jsonify({'url':url}), 201
+    return jsonify({'error':'invalid JSON content supplied'}), 400
 
 @app.route("/prominence/v1/workflows", methods=['GET'])
 @requires_auth
@@ -324,17 +328,15 @@ def delete_job(username, group, job_id):
         return jsonify(data), 200
     return jsonify(data), 400
 
-@app.route("/prominence/v1/jobs/<int:job_id>/<int:task>/stdout", methods=['GET'])
+@app.route("/prominence/v1/jobs/<int:job_id>/stdout", methods=['GET'])
 @requires_auth
-def get_stdout(username, group, job_id, task):
+def get_stdout(username, group, job_id):
     """
     Return the standard output from the specified job
     """
     app.logger.info('%s GetStdOut user:%s group:%s id:%d' % (get_remote_addr(request), username, group, job_id))
 
     (uid, identity) = backend.get_job_unique_id(job_id)
-    if task is None:
-        task = 0
     if identity is None:
         return jsonify({'error':'Job does not exist'}), 400
     if username != identity:
@@ -346,17 +348,15 @@ def get_stdout(username, group, job_id, task):
     else:
         return stdout
 
-@app.route("/prominence/v1/jobs/<int:job_id>/<int:task>/stderr", methods=['GET'])
+@app.route("/prominence/v1/jobs/<int:job_id>/stderr", methods=['GET'])
 @requires_auth
-def get_stderr(username, group, job_id, task):
+def get_stderr(username, group, job_id):
     """
     Return the standard error from the specified job
     """
     app.logger.info('%s GetStdErr user:%s group:%s id:%d' % (get_remote_addr(request), username, group, job_id))
 
     (uid, identity) = backend.get_job_unique_id(job_id)
-    if task is None:
-        task = 0
     if identity is None:
         return jsonify({'error':'Job does not exist'}), 400
     if username != identity:
