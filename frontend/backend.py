@@ -105,16 +105,16 @@ class ProminenceBackend(object):
         self._config = config
 
     def create_sandbox(self, uid):
-    """
-    Create job sandbox
-    """
-    job_sandbox = self._config['SANDBOX_PATH'] + '/' + uid
-    try:
-        os.makedirs(job_sandbox)
-        os.makedirs(job_sandbox + '/input')
-    except:
+        """
+        Create job sandbox
+        """
+        job_sandbox = self._config['SANDBOX_PATH'] + '/' + uid
+        try:
+            os.makedirs(job_sandbox)
+            os.makedirs(job_sandbox + '/input')
+        except:
+            return None
         return job_sandbox
-    return None
 
     def create_swift_url(self, method, path, duration_in_seconds=600):
         """
@@ -183,14 +183,32 @@ class ProminenceBackend(object):
 
         # Write tasks definition to file
         if 'tasks' in jjob:
-            filename = os.path.join(job_sandbox, '.job.json')
+            # Write original job.json
+            with open(os.path.join(job_sandbox, '.job.json'), 'w') as file:
+                json.dump(jjob, file)
 
             # Replace image identifiers with Swift temporary URLs
             tasks_new = []
+            count_task = 0
             for task in jjob['tasks']:
                 if 'http' not in task['image'] and ('.tar' in task['image'] or '.simg' in task['image']):
                     image = task['image']
-                    task['image'] = self.create_swift_url('GET', '/v1/prominence-jobs/%s/%s' % (username, image), 6000)
+
+                    # Check if image is the same as a previous task
+                    count_task_check = 0
+                    found = False
+                    for task_check in jjob['tasks']:
+                        if image == task_check['image'] and count_task_check < count_task:
+                            found = True
+                            break
+                        count_task_check += 1
+
+                    # Replace image name as necessary
+                    if found and count_task_check < count_task:
+                        task['image'] = tasks_new[count_task_check]
+                    else:
+                        task['image'] = self.create_swift_url('GET', '/v1/prominence-jobs/%s/%s' % (username, image), 6000)
+
                     if '.tar' in task['image']:
                         task['runtime'] = 'udocker'
                     elif '.simg' in task['image']:
@@ -198,12 +216,16 @@ class ProminenceBackend(object):
                 elif 'shub://' in task['image']:
                     task['runtime'] = 'singularity'
                 tasks_new.append(task)
+                count_task += 1
 
             jjob_new = jjob
             jjob_new['tasks'] = tasks_new
-            with open(filename, 'w') as file:
+
+            # Write mapped job.json
+            with open(os.path.join(job_sandbox, '.job.mapped.json'), 'w') as file:
                 json.dump(jjob_new, file)
-            input_files.append(filename)
+
+            input_files.append(os.path.join(job_sandbox, '.job.mapped.json'))
             mpi_processes = int(jjob['resources']['cpus'])*int(jjob['resources']['nodes'])
             cjob['arguments'] = str('tasks %d 0' % mpi_processes)
         elif 'workflow' in jjob:
@@ -487,7 +509,7 @@ class ProminenceBackend(object):
                 info['maxidle'] = 0
 
                 cjob = {}
-                input_files = ['.job.json']
+                input_files = ['.job.mapped.json']
 
                 instances = 1
                 if 'instances' in job:
