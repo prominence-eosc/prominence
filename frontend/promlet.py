@@ -16,10 +16,10 @@ def mount_storage():
     Mount user-specified storage
     """
     try:
-        with open('.job.json', 'r') as json_file:
+        with open('.job.mapped.json', 'r') as json_file:
             job = json.load(json_file)
     except Exception as ex:
-        logging.critical('Unable to read .job.json due to %s', ex)
+        logging.critical('Unable to read .job.mapped.json due to %s', ex)
         return False
 
     if 'storage' in job:
@@ -46,10 +46,10 @@ def get_storage_mountpoint():
     Get mount point for fuse filesystem from job JSON
     """
     try:
-        with open('.job.json', 'r') as json_file:
+        with open('.job.mapped.json', 'r') as json_file:
             job = json.load(json_file)
     except Exception as ex:
-        logging.critical('Unable to read .job.json due to %s', ex)
+        logging.critical('Unable to read .job.mapped.json due to %s', ex)
         return None
 
     if 'storage' in job:
@@ -79,7 +79,7 @@ def update_classad(attr, value):
             return
     return
 
-def download_singularity(image, image_new, location):
+def download_singularity(image, image_new, location, base_dir):
     """
     Download a Singularity image from a URL or pull an image from Docker Hub
     """
@@ -103,15 +103,15 @@ def download_singularity(image, image_new, location):
             return 1
     else:
         # We set SINGULARITY_LOCALCACHEDIR & SINGULARITY_TMPDIR in order to avoid Singularity errors
-        if not os.path.isdir('/home/user/.singularity'):
+        if not os.path.isdir(base_dir + '/.singularity'):
             try:
-                os.mkdir('/home/user/.singularity')
+                os.mkdir(base_dir + '/.singularity')
             except Exception as ex:
                 logging.error('Unable to create .singularity directory due to: %s', ex)
                 return 1
-        if not os.path.isdir('/home/user/.tmp'):
+        if not os.path.isdir(base_dir + '/.tmp'):
             try:
-                os.mkdir('/home/user/.tmp')
+                os.mkdir(base_dir + '/.tmp')
             except Exception as ex:
                 logging.error('Unable to create .tmp directory due to: %s', ex)
                 return 1
@@ -126,8 +126,8 @@ def download_singularity(image, image_new, location):
                                    cwd=os.path.dirname(image_new),
                                    shell=True,
                                    env=dict(os.environ,
-                                            SINGULARITY_LOCALCACHEDIR='/home/user/.singularity',
-                                            SINGULARITY_TMPDIR='/home/user/.tmp'),
+                                            SINGULARITY_LOCALCACHEDIR='%s/.singularity' % base_dir,
+                                            SINGULARITY_TMPDIR='%s/.tmp' % base_dir),
                                    stdout=subprocess.PIPE,
                                    stderr=subprocess.PIPE)
         stdout, stderr = process.communicate()
@@ -147,6 +147,14 @@ def download_udocker(image, location, label, base_dir):
     """
     Download an image from a URL and create a udocker container named 'image'
     """
+    # Firstly setup the .udocker directory
+    if not os.path.isdir(base_dir + '/.udocker'):
+        try:
+            os.mkdir(base_dir + '/.udocker')
+        except Exception as ex:
+            logging.error('Unable to create .udocker directory due to: %s', ex)
+            return 1
+
     start = time.time()
     if re.match(r'^http', image):
         # Download tarball
@@ -257,27 +265,33 @@ def run_udocker(image, cmd, workdir, env, path, base_dir, mpi, mpi_processes, mp
 
     extras += " ".join('--env=%s=%s' % (key, env[key]) for key in env)
 
+    if base_dir == '/mnt/beeond/prominence':
+        extras += " -v /mnt/beeond "
+    elif base_dir == '/home/prominence':
+        extras += " -v /home/prominence "
+
     mpi_per_node = ''
     if mpi_procs_per_node > 0:
         mpi_per_node = '-N %d' % mpi_procs_per_node
 
     if mpi == 'openmpi':
-        mpi_env = " -x UDOCKER_DIR -x PROMINENCE_PWD -x TMP -x TEMP "
+        mpi_env = " -x UDOCKER_DIR -x PROMINENCE_PWD -x TMP -x TEMP -x TMPDIR "
         mpi_env += " ".join('-x %s' % key for key in env)
         cmd = ("mpirun --hostfile /home/user/.hosts-openmpi"
                " -np %d"
                " %s"
                " %s"
-               " -mca plm_rsh_agent /home/prominence/ssh_container %s") % (mpi_processes, mpi_per_node, mpi_env, cmd)
+               " -mca btl_base_warn_component_unused 0"
+               " -mca plm_rsh_agent /mnt/beeond/prominence/ssh_container %s") % (mpi_processes, mpi_per_node, mpi_env, cmd)
     elif mpi == 'mpich':
-        env_list = ['PROMINENCE_PWD', 'UDOCKER_DIR', 'TMP', 'TEMP']
+        env_list = ['PROMINENCE_PWD', 'UDOCKER_DIR', 'TMP', 'TEMP', 'TMPDIR']
         env_list.extend(env.keys())
         mpi_env = ",".join('%s' % item for item in env_list)
         cmd = ("mpirun -f /home/user/.hosts-mpich"
                " -np %d"
                " -envlist %s"
                " -launcher ssh"
-               " -launcher-exec /home/prominence/ssh_container %s") % (mpi_processes, mpi_env, cmd)
+               " -launcher-exec /mnt/beeond/prominence/ssh_container %s") % (mpi_processes, mpi_env, cmd)
 
     # Get storage mountpoint
     mountpoint = get_storage_mountpoint()
@@ -286,29 +300,30 @@ def run_udocker(image, cmd, workdir, env, path, base_dir, mpi, mpi_processes, mp
         logging.info('Mount point is %s', mountpoint)
         mounts = '-v %s ' % mountpoint
 
-    if base_dir == '/home/prominence':
+    if base_dir == '/home/prominence' or base_dir == '/mnt/beeond/prominence':
         # Used on clouds
         run_command = ("udocker -q run %s"
                        " --env=HOME=%s"
                        " --env=TMP=%s"
                        " --env=TEMP=%s"
+                       " --env=TMPDIR=%s"
                        " --env=PROMINENCE_PWD=%s"
-                       " --env=UDOCKER_DIR=/home/prominence/.udocker"
+                       " --env=UDOCKER_DIR=%s/.udocker"
                        " --hostauth"
                        " --user=user"
                        " --bindhome"
-                       " -v /home/prominence"
                        " %s"
                        " --workdir=%s"
                        " -v /tmp"
                        " -v /var/tmp"
-                       " %s %s") % (extras, path, path, path, workdir, mounts, workdir, image, cmd)
+                       " %s %s") % (extras, path, path, path, path, workdir, base_dir, mounts, workdir, image, cmd)
     else:
         # Used on existing HPC systems
         run_command = ("udocker -q run %s"
                        " --env=HOME=%s"
                        " --env=TMP=%s"
                        " --env=TEMP=%s"
+                       " --env=TMPDIR=%s"
                        " --hostauth"
                        " --user=%s"
                        " --bindhome"
@@ -316,7 +331,7 @@ def run_udocker(image, cmd, workdir, env, path, base_dir, mpi, mpi_processes, mp
                        " --workdir=%s"
                        " -v /tmp"
                        " -v /var/tmp"
-                       " %s %s") % (extras, path, path, path, getpass.getuser(), path, workdir, image, cmd)
+                       " %s %s") % (extras, path, path, path, path, getpass.getuser(), path, workdir, image, cmd)
 
     logging.info('Running: "%s"', run_command)
 
@@ -359,23 +374,24 @@ def run_singularity(image, cmd, workdir, env, path, base_dir, mpi, mpi_processes
                " -np %d"
                " %s"
                " %s"
-               " -mca plm_rsh_agent /home/prominence/ssh_container %s") % (mpi_processes, mpi_per_node, mpi_env, cmd)
+               " -mca btl_base_warn_component_unused 0"
+               " -mca plm_rsh_agent /mnt/beeond/prominence/ssh_container %s") % (mpi_processes, mpi_per_node, mpi_env, cmd)
     elif mpi == 'mpich':
-        env_list = ['PROMINENCE_CONTAINER_LOCATION', 'PROMINENCE_PWD', 'HOME', 'TMP', 'TEMP']
+        env_list = ['PROMINENCE_CONTAINER_LOCATION', 'PROMINENCE_PWD', 'HOME', 'TMP', 'TEMP', 'TMPDIR']
         env_list.extend(env.keys())
         mpi_env = ",".join('%s' % item for item in env_list)
         cmd = ("mpirun -f /home/user/.hosts-mpich"
                " -np %d"
                " -envlist %s"
                " -launcher ssh"
-               " -launcher-exec /home/prominence/ssh_container %s") % (mpi_processes, mpi_env, cmd)
+               " -launcher-exec /mnt/beeond/prominence/ssh_container %s") % (mpi_processes, mpi_env, cmd)
 
     command = 'exec'
     if cmd is None:
         cmd = ''
         command = 'run'
 
-    if base_dir == '/home/prominence':
+    if base_dir == '/home/prominence' or base_dir == '/mnt/beeond/prominence':
         run_command = ("singularity %s"
                        " --no-home"
                        " --bind /home"
@@ -392,6 +408,7 @@ def run_singularity(image, cmd, workdir, env, path, base_dir, mpi, mpi_processes
                                         PATH='/usr/local/bin:/usr/bin:/usr/local/sbin:/usr/sbin',
                                         TMP='%s' % path,
                                         TEMP='%s' % path,
+                                        TMPDIR='%s' % path,
                                         PROMINENCE_CONTAINER_LOCATION='%s' % os.path.dirname(image),
                                         PROMINENCE_PWD='%s' % workdir),
                                shell=True,
@@ -415,7 +432,7 @@ def run_tasks(path, base_dir, mpi_processes):
     """
     Execute sequential tasks
     """
-    with open('.job.json') as json_file:
+    with open('.job.mapped.json') as json_file:
         job = json.load(json_file)
 
     # Set the number of nodes
@@ -426,6 +443,8 @@ def run_tasks(path, base_dir, mpi_processes):
 
     count = 0
     for task in job['tasks']:
+        logging.info('Working on task %d', count)
+
         image = task['image']
 
         cmd = None
@@ -464,22 +483,42 @@ def run_tasks(path, base_dir, mpi_processes):
             mpi_processes = procs_per_node*num_nodes
 
         exit_code = 1
+        download_exit_code = -1
+
+        # Check if a previous task used the same image: in that case use the previous image
+        image_count = 0
+        found_image = False
+        for task_check in job['tasks']:
+            if image == task_check['image'] and image_count < count:
+                found_image = True
+                logging.info('Will use cached image from task %d for this task', image_count)
+                break
+            image_count += 1
+
         if task['runtime'] == 'udocker':
-            download_exit_code = download_udocker(image, location, count, base_dir)
-            if download_exit_code != 0:
-                update_classad('ProminenceImagePullSuccess', 1)
+            # Pull image if necessary or use a previously pulled image
+            if found_image:
+                image = 'image%d' % image_count
             else:
-                image = 'image%d' % count
+                download_exit_code = download_udocker(image, location, count, base_dir)
+                if download_exit_code != 0:
+                    update_classad('ProminenceImagePullSuccess', 1)
+                else:
+                    image = 'image%d' % count
+            # Run task
+            if found_image or download_exit_code == 0:
                 exit_code = run_udocker(image, cmd, workdir, env, path, base_dir, mpi, mpi_processes, procs_per_node)
         else:
-            image_new = '%s/image.simg' % location
-            download_exit_code = download_singularity(image, image_new, location)
-            if download_exit_code != 0:
-                update_classad('ProminenceImagePullSuccess', 1)
+            # Pull image if necessary or use a previously pulled image
+            if found_image:
+                image_new = '%s/%d/image.simg' % (base_dir, image_count)
             else:
+                image_new = '%s/image.simg' % location
+                download_exit_code = download_singularity(image, image_new, location, base_dir)
+                if download_exit_code != 0:
+                    update_classad('ProminenceImagePullSuccess', 1)
+            if found_image or download_exit_code == 0:
                 exit_code = run_singularity(image_new, cmd, workdir, env, path, base_dir, mpi, mpi_processes, procs_per_node)
-
-        shutil.rmtree(location)
 
         count += 1
 
@@ -501,9 +540,14 @@ if __name__ == "__main__":
     path = os.getcwd()
 
     logging.basicConfig(filename='%s/promlet.log' % path, level=logging.INFO, format='%(asctime)s %(message)s')
-    logging.info('Started promlet')
+    logging.info('Started promlet using path "%s"' % path)
 
     base_dir = '/home/prominence'
+
+    # Handle BeeOND
+    if not os.path.isdir(base_dir):
+        if os.path.isdir('/mnt/beeond/prominence'):
+            base_dir = '/mnt/beeond/prominence'
 
     # Handle HPC systems
     if not os.path.isdir(base_dir):
