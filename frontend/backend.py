@@ -586,7 +586,7 @@ class ProminenceBackend(object):
             # Submit dag
         cmd = "condor_submit_dag -batch-name %s -append '+ProminenceType=\"workflow\"' -append '+ProminenceIdentity=\"%s\"' -append '+ProminenceJobUniqueIdentifier=\"%s\"' job.dag" % (wf_name, username, uid)
         (return_code, stdout, stderr, timedout) = run(cmd, job_sandbox, 30)
-        print 'condor_submit stdout=', stdout
+        print 'condor_submit stdout=', stdout 
         print 'condor_submit stderr=', stderr
         m = re.search(r'submitted to cluster\s(\d+)', stdout)
         if m:
@@ -710,7 +710,7 @@ class ProminenceBackend(object):
                     tasks = json.load(json_file)['tasks']
             except:
                 return []
-
+            
             jobj['tasks'] = tasks
 
             # Return status as failed if container image pull failed
@@ -975,3 +975,4 @@ class ProminenceBackend(object):
             with open(filename) as fd:
                 return fd.read()
         return None
+

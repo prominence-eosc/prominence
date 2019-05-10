@@ -13,7 +13,7 @@ RUN yum -y install epel-release && \
                 requests && \
     chmod a+xr /usr/local/libexec/promlet.py && \
     useradd prominence
-
+                   
 ENTRYPOINT ["uwsgi", \
             "--plugins", "http,python", \
             "--http-socket", ":8080", \

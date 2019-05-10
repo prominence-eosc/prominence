@@ -341,13 +341,13 @@ def get_stdout(username, group, job_id):
         return jsonify({'error':'Job does not exist'}), 400
     if username != identity:
         return jsonify({'error':'Not authorized to access this job'}), 403
-
+    
     stdout = backend.get_stdout(uid, job_id)
     if stdout is None:
         return jsonify({'error':'stdout does not exist'}), 404
     else:
         return stdout
-
+    
 @app.route("/prominence/v1/jobs/<int:job_id>/stderr", methods=['GET'])
 @requires_auth
 def get_stderr(username, group, job_id):
