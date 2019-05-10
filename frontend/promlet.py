@@ -394,6 +394,7 @@ def run_singularity(image, cmd, workdir, env, path, base_dir, mpi, mpi_processes
     if base_dir == '/home/prominence' or base_dir == '/mnt/beeond/prominence':
         run_command = ("singularity %s"
                        " --no-home"
+                       " --bind /home"
                        " --bind /mnt"
                        " --home %s"
                        " --pwd %s %s %s") % (command, path, workdir, image, cmd)
