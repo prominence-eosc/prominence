@@ -394,7 +394,7 @@ def run_singularity(image, cmd, workdir, env, path, base_dir, mpi, mpi_processes
     if base_dir == '/home/prominence' or base_dir == '/mnt/beeond/prominence':
         run_command = ("singularity %s"
                        " --no-home"
-                       " --bind /home"
+                       " --bind /mnt"
                        " --home %s"
                        " --pwd %s %s %s") % (command, path, workdir, image, cmd)
     else:
@@ -478,7 +478,7 @@ def run_tasks(path, base_dir, mpi_processes):
             procs_per_node = task['procsPerNode']
         else:
             procs_per_node = 0
-
+ 
         if procs_per_node > 0:
             mpi_processes = procs_per_node*num_nodes
 
@@ -494,7 +494,7 @@ def run_tasks(path, base_dir, mpi_processes):
                 logging.info('Will use cached image from task %d for this task', image_count)
                 break
             image_count += 1
-
+  
         if task['runtime'] == 'udocker':
             # Pull image if necessary or use a previously pulled image
             if found_image:
