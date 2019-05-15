@@ -562,6 +562,10 @@ class ProminenceBackend(object):
                 with open(filename, 'w') as file:
                     json.dump(job, file)
 
+                filename = job_sandbox + '/' + job['name'] + '/.job.mapped.json'
+                with open(filename, 'w') as file:
+                    json.dump(job, file)
+
                 # Copy executable
                 copyfile(self._config['PROMLET_FILE'], os.path.join(job_sandbox, job['name'], 'promlet.py'))
                 os.chmod(job_sandbox + '/' + job['name'] + '/promlet.py', 0775)
@@ -615,7 +619,7 @@ class ProminenceBackend(object):
         Delete the specified workflow
         """
         schedd = htcondor.Schedd()
-        ret = schedd.act(htcondor.JobAction.Remove, 'ProminenceIdentity == "%s" && ClusterId == %d && Cmd == "/bin/condor_dagman"' % (username, workflow_id))
+        ret = schedd.act(htcondor.JobAction.Remove, 'ProminenceIdentity == "%s" && ClusterId == %d && Cmd == "/usr/bin/condor_dagman"' % (username, workflow_id))
 
         if ret["TotalSuccess"] > 0:
             return (0, {})
