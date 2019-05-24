@@ -321,10 +321,11 @@ class ProminenceBackend(object):
         artifacts = []
         if 'artifacts' in jjob:
             for artifact in jjob['artifacts']:
-                artifacts.append(artifact)
-                if 'http' not in artifact:
-                    artifact = self.create_swift_url('GET', '/v1/prominence-jobs/%s/%s' % (username, artifact), 6000)
-                input_files.append(artifact)
+                artifact_url = artifact['url']
+                artifacts.append(artifact_url)
+                if 'http' not in artifact_url:
+                    artifact_url = self.create_swift_url('GET', '/v1/prominence-jobs/%s/%s' % (username, artifact_url), 6000)
+                input_files.append(artifact_url)
             cjob['+ProminenceArtifacts'] = condor_str(",".join(artifacts))
 
         cjob['transfer_input_files'] = str(','.join(input_files))

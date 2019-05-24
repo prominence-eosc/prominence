@@ -253,7 +253,7 @@ def download_udocker(image, location, label, base_dir):
 
     return 0
 
-def run_udocker(image, cmd, workdir, env, path, base_dir, mpi, mpi_processes, mpi_procs_per_node):
+def run_udocker(image, cmd, workdir, env, path, base_dir, mpi, mpi_processes, mpi_procs_per_node, artifacts):
     """
     Execute a task using udocker
     """
@@ -299,6 +299,10 @@ def run_udocker(image, cmd, workdir, env, path, base_dir, mpi, mpi_processes, mp
     if mountpoint is not None:
         logging.info('Mount point is %s', mountpoint)
         mounts = '-v %s ' % mountpoint
+
+    # Artifact mounts
+    for artifact in artifacts:
+        mounts = mounts + ' -v %s/%s:%s ' % (path, artifact, artifacts[artifact])
 
     if base_dir == '/home/prominence' or base_dir == '/mnt/beeond/prominence':
         # Used on clouds
@@ -355,7 +359,7 @@ def run_udocker(image, cmd, workdir, env, path, base_dir, mpi, mpi_processes, mp
 
     return return_code
 
-def run_singularity(image, cmd, workdir, env, path, base_dir, mpi, mpi_processes, mpi_procs_per_node):
+def run_singularity(image, cmd, workdir, env, path, base_dir, mpi, mpi_processes, mpi_procs_per_node, artifacts):
     """
     Execute a task using Singularity
     """
@@ -391,13 +395,19 @@ def run_singularity(image, cmd, workdir, env, path, base_dir, mpi, mpi_processes
         cmd = ''
         command = 'run'
 
+    # Artifact mounts
+    mounts = ''
+    for artifact in artifacts:
+        mounts = mounts + ' --bind %s/%s:%s ' % (path, artifact, artifacts[artifact])
+
     if base_dir == '/home/prominence' or base_dir == '/mnt/beeond/prominence':
         run_command = ("singularity %s"
                        " --no-home"
                        " --bind /home"
                        " --bind /mnt"
                        " --home %s"
-                       " --pwd %s %s %s") % (command, path, workdir, image, cmd)
+                       " %s"
+                       " --pwd %s %s %s") % (command, path, mounts, workdir, image, cmd)
     else:
         run_command = 'singularity %s --home %s --pwd %s %s %s' % (command, path, workdir, image, cmd)
 
@@ -441,6 +451,14 @@ def run_tasks(path, base_dir, mpi_processes):
         num_nodes = job['resources']['nodes']
     else:
         num_nodes = 1
+
+    # Artifact mounts
+    artifacts = {}
+    for artifact in job['artifacts']:
+        if 'mountPoint' in artifact:
+            source = artifact['mountPoint'].split(':')[0]
+            dest = artifact['mountPoint'].split(':')[1]
+            artifacts[source] = dest
 
     count = 0
     for task in job['tasks']:
@@ -508,7 +526,7 @@ def run_tasks(path, base_dir, mpi_processes):
                     image = 'image%d' % count
             # Run task
             if found_image or download_exit_code == 0:
-                exit_code = run_udocker(image, cmd, workdir, env, path, base_dir, mpi, mpi_processes, procs_per_node)
+                exit_code = run_udocker(image, cmd, workdir, env, path, base_dir, mpi, mpi_processes, procs_per_node, artifacts)
         else:
             # Pull image if necessary or use a previously pulled image
             if found_image:
@@ -519,7 +537,7 @@ def run_tasks(path, base_dir, mpi_processes):
                 if download_exit_code != 0:
                     update_classad('ProminenceImagePullSuccess', 1)
             if found_image or download_exit_code == 0:
-                exit_code = run_singularity(image_new, cmd, workdir, env, path, base_dir, mpi, mpi_processes, procs_per_node)
+                exit_code = run_singularity(image_new, cmd, workdir, env, path, base_dir, mpi, mpi_processes, procs_per_node, artifacts)
 
         count += 1
 
@@ -562,5 +580,13 @@ if __name__ == "__main__":
         run_cwl(sys.argv[2], sys.argv[3])
     else:
         run_tasks(path, base_dir, int(sys.argv[2]))
+   
+    # Include contents of stagein log
+    #try:
+    #    with open('/tmp/stagein.log', 'r') as stagein_log:
+    #        stagein_contents = stagein_log.read()
+    #        logging.info('Contents of /tmp/stagein.log:\n%s', stagein_contents)
+    #except:
+    #    pass
 
     logging.info('Exiting promlet')
