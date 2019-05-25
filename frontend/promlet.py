@@ -455,9 +455,9 @@ def run_tasks(path, base_dir, mpi_processes):
     # Artifact mounts
     artifacts = {}
     for artifact in job['artifacts']:
-        if 'mountPoint' in artifact:
-            source = artifact['mountPoint'].split(':')[0]
-            dest = artifact['mountPoint'].split(':')[1]
+        if 'mountpoint' in artifact:
+            source = artifact['mountpoint'].split(':')[0]
+            dest = artifact['mountpoint'].split(':')[1]
             artifacts[source] = dest
 
     count = 0
