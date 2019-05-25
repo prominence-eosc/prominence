@@ -15,8 +15,6 @@ from threading import Timer
 import classad
 import htcondor
 
-import validate
-
 # Job template
 JOB_SUBMIT = \
 """
@@ -154,11 +152,6 @@ class ProminenceBackend(object):
         """
         Create a job
         """
-        # Validate the input JSON
-        (status, msg) = validate.validate_job(jjob)
-        if not status:
-            return (1, {'error':msg})
-
         # Create the job sandbox
         job_sandbox = self.create_sandbox(uid)
         if job_sandbox is None:

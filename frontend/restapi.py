@@ -10,6 +10,8 @@ from flask import Flask, jsonify, request
 
 from backend import ProminenceBackend
 
+import validate
+
 app = Flask(__name__)
 
 # Configuration
@@ -244,6 +246,11 @@ def submit_job(username, group):
     uid = str(uuid.uuid4())
 
     app.logger.info('%s JobSubmission user:%s group:%s uid:%s' % (get_remote_addr(request), username, group, uid))
+
+    # Validate the input JSON
+    (status, msg) = validate.validate_job(request.get_json())
+    if not status:
+        return jsonify({'error': msg}), 400
 
     # Create job
     (return_code, data) = backend.create_job(username, group, uid, request.get_json())
