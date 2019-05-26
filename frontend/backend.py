@@ -333,6 +333,21 @@ class ProminenceBackend(object):
         if 'outputDirs' in jjob:
             cjob['+ProminenceOutputDirs'] = condor_str(','.join(jjob['outputDirs']))
 
+            output_locations_put = []
+            output_locations_get = []
+
+            for dirname in jjob['outputDirs']:
+                dirs = dirname.split('/')
+                dirname_base = dirs[len(dirs) - 1]
+                url_put = self.create_swift_url('PUT', '/v1/prominence-jobs/%s/%s.tgz' % (uid, dirname_base), 864000)
+                url_get = self.create_swift_url('GET', '/v1/prominence-jobs/%s/%s.tgz' % (uid, dirname_base), 864000)
+                output_locations_put.append(url_put)
+                output_locations_get.append(url_get)
+
+            if len(output_locations_put) > 0:
+                cjob['+ProminenceOutputDirLocations'] = condor_str(",".join(output_locations_put))
+                cjob['+ProminenceOutputDirLocationsUser'] = condor_str(",".join(output_locations_get))
+
         # Set max runtime
         max_run_time = 43200
         if 'walltime' in jjob['resources']:
