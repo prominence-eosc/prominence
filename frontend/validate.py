@@ -77,10 +77,20 @@ def validate_job(job):
         if not isinstance(job['outputFiles'], list):
             return (False, 'an array of outputFiles must be provided')
 
+    # Output directories
+    if 'outputDirs' in job:
+        if not isinstance(job['outputDirs'], list):
+            return (False, 'an array of outputDirs must be provided')
+
     # Inputs
     if 'inputs' in job:
         if not isinstance(job['inputs'], list):
             return (False, 'an array of inputs must be provided')
+        for input in job['inputs']:
+            if 'filename' not in input:
+                return (False, 'each input must contain a filename')
+            if 'content' not in input:
+                return (False, 'each input must contain base64 encoded content')
 
     # Storage
     if 'storage' in job:
