@@ -520,6 +520,7 @@ def run_tasks(path, base_dir, mpi_processes):
             if found_image:
                 image = 'image%d' % image_count
             else:
+                logging.info('Pulling image for task')
                 download_exit_code = download_udocker(image, location, count, base_dir)
                 if download_exit_code != 0:
                     update_classad('ProminenceImagePullSuccess', 1)
@@ -528,6 +529,7 @@ def run_tasks(path, base_dir, mpi_processes):
             # Run task
             if found_image or download_exit_code == 0:
                 update_classad('ProminenceTask%dStartTime' % count, time.time())
+                logging.info('Running task')
                 exit_code = run_udocker(image, cmd, workdir, env, path, base_dir, mpi, mpi_processes, procs_per_node, artifacts)
         else:
             # Pull image if necessary or use a previously pulled image
@@ -535,11 +537,13 @@ def run_tasks(path, base_dir, mpi_processes):
                 image_new = '%s/%d/image.simg' % (base_dir, image_count)
             else:
                 image_new = '%s/image.simg' % location
+                logging.info('Pulling image for task')
                 download_exit_code = download_singularity(image, image_new, location, base_dir)
                 if download_exit_code != 0:
                     update_classad('ProminenceImagePullSuccess', 1)
             if found_image or download_exit_code == 0:
                 update_classad('ProminenceTask%dStartTime' % count, time.time())
+                logging.info('Running task')
                 exit_code = run_singularity(image_new, cmd, workdir, env, path, base_dir, mpi, mpi_processes, procs_per_node, artifacts)
 
         count += 1
