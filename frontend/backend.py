@@ -663,6 +663,7 @@ class ProminenceBackend(object):
                           'CompletionDate',
                           'EnteredCurrentStatus',
                           'RemoveReason',
+                          'RemoteWallClockTime',
                           'LastHoldReasonSubCode',
                           'ProminenceUserInputFiles',
                           'ProminenceOutputFiles',
@@ -770,9 +771,13 @@ class ProminenceBackend(object):
             if 'JobStartDate' in job and int(job['JobStartDate']) > 0:
                 events['startTime'] = int(job['JobStartDate'])
 
-            # For remote jobs on remote HTC/HPC, JobStartDate doesn't exist for a running job
+            # For remote jobs on remote HTC/HPC, JobStartDate doesn't exist
             if 'JobStartDate' not in job and job['JobStatus'] == 2:
                 events['startTime'] = int(job['EnteredCurrentStatus'])
+
+            if 'JobStartDate' not in job and (job['JobStatus'] == 3 or job['JobStatus'] == 4):
+                if int(job['RemoteWallClockTime']) > 0 and int(job['CompletionDate']) > 0:
+                    events['startTime'] = int(job['CompletionDate']) - int(job['RemoteWallClockTime'])
 
             # Get the job end date if needed. Note that if a job was removed CompletionDate is 0,
             # so we use EnteredCurrentStatus instead
