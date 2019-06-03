@@ -365,11 +365,11 @@ def run_singularity(image, cmd, workdir, env, path, base_dir, mpi, mpi_processes
     """
 
     mpi_per_node = ''
-    #if mpi_procs_per_node > 0:
-        #mpi_per_node = '-N %d' % mpi_procs_per_node
-    if 'OMP_NUM_THREADS' in env:
-        omp_threads = int(env['OMP_NUM_THREADS'])
-        mpi_per_node = '--map-by socket:PE=%d --bind-to core' % omp_threads
+    if mpi_procs_per_node > 0:
+        mpi_per_node = '-N %d' % mpi_procs_per_node
+    #if 'OMP_NUM_THREADS' in env:
+    #    omp_threads = int(env['OMP_NUM_THREADS'])
+    #    mpi_per_node = '--map-by socket:PE=%d --bind-to core' % omp_threads
 
     if mpi == 'openmpi':
         mpi_env = " -x PROMINENCE_CONTAINER_LOCATION -x PROMINENCE_PWD -x HOME -x TEMP -x TMP "
@@ -454,11 +454,12 @@ def run_tasks(path, base_dir, mpi_processes):
 
     # Artifact mounts
     artifacts = {}
-    for artifact in job['artifacts']:
-        if 'mountpoint' in artifact:
-            source = artifact['mountpoint'].split(':')[0]
-            dest = artifact['mountpoint'].split(':')[1]
-            artifacts[source] = dest
+    if 'artifacts' in job:
+        for artifact in job['artifacts']:
+            if 'mountpoint' in artifact:
+                source = artifact['mountpoint'].split(':')[0]
+                dest = artifact['mountpoint'].split(':')[1]
+                artifacts[source] = dest
 
     count = 0
     for task in job['tasks']:
@@ -526,6 +527,7 @@ def run_tasks(path, base_dir, mpi_processes):
                     image = 'image%d' % count
             # Run task
             if found_image or download_exit_code == 0:
+                update_classad('ProminenceTask%dStartTime' % count, time.time())
                 exit_code = run_udocker(image, cmd, workdir, env, path, base_dir, mpi, mpi_processes, procs_per_node, artifacts)
         else:
             # Pull image if necessary or use a previously pulled image
@@ -537,6 +539,7 @@ def run_tasks(path, base_dir, mpi_processes):
                 if download_exit_code != 0:
                     update_classad('ProminenceImagePullSuccess', 1)
             if found_image or download_exit_code == 0:
+                update_classad('ProminenceTask%dStartTime' % count, time.time())
                 exit_code = run_singularity(image_new, cmd, workdir, env, path, base_dir, mpi, mpi_processes, procs_per_node, artifacts)
 
         count += 1
