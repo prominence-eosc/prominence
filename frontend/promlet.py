@@ -412,7 +412,7 @@ def run_singularity(image, cmd, workdir, env, path, base_dir, mpi, mpi_processes
                        " %s"
                        " --pwd %s %s %s") % (command, path, mounts, workdir, image, cmd)
     else:
-        run_command = 'singularity %s --home %s --pwd %s %s %s' % (command, path, workdir, image, cmd)
+        run_command = 'singularity %s --home %s %s --pwd %s %s %s' % (command, path, mounts, workdir, image, cmd)
 
     logging.info('Running: "%s"', run_command)
 
