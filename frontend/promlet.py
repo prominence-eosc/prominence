@@ -140,6 +140,7 @@ def download_singularity(image, image_new, location, base_dir):
             return 1
 
     update_classad('ProminenceImagePullTime', time.time() - start)
+    logging.info('Time to pull image: %d', time.time() - start)
 
     return 0
 
@@ -250,6 +251,7 @@ def download_udocker(image, location, label, base_dir):
         return 1
 
     update_classad('ProminenceImagePullTime', time.time() - start)
+    logging.info('Time to pull image: %d', time.time() - start)
 
     return 0
 
@@ -331,11 +333,12 @@ def run_udocker(image, cmd, workdir, env, path, base_dir, mpi, mpi_processes, mp
                        " --hostauth"
                        " --user=%s"
                        " --bindhome"
+                       " %s"
                        " -v %s"
                        " --workdir=%s"
                        " -v /tmp"
                        " -v /var/tmp"
-                       " %s %s") % (extras, path, path, path, path, getpass.getuser(), path, workdir, image, cmd)
+                       " %s %s") % (extras, path, path, path, path, getpass.getuser(), mounts, path, workdir, image, cmd)
 
     logging.info('Running: "%s"', run_command)
 
