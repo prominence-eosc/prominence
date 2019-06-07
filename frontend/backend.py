@@ -304,18 +304,14 @@ class ProminenceBackend(object):
             cjob['+ProminenceOutputFiles'] = condor_str(','.join(jjob['outputFiles']))
 
             output_locations_put = []
-            output_locations_get = []
 
             for filename in jjob['outputFiles']:
                 filename_base = os.path.basename(filename)
                 url_put = self.create_swift_url('PUT', '/v1/prominence-jobs/%s/%s' % (uid, filename_base), 864000)
-                url_get = self.create_swift_url('GET', '/v1/prominence-jobs/%s/%s' % (uid, filename_base), 864000)
                 output_locations_put.append(url_put)
-                output_locations_get.append(url_get)
 
             if jjob['outputFiles']:
                 cjob['+ProminenceOutputLocations'] = condor_str(",".join(output_locations_put))
-                cjob['+ProminenceOutputLocationsUser'] = condor_str(",".join(output_locations_get))
 
         # Artifacts
         artifacts = []
@@ -334,19 +330,15 @@ class ProminenceBackend(object):
             cjob['+ProminenceOutputDirs'] = condor_str(','.join(jjob['outputDirs']))
 
             output_locations_put = []
-            output_locations_get = []
 
             for dirname in jjob['outputDirs']:
                 dirs = dirname.split('/')
                 dirname_base = dirs[len(dirs) - 1]
                 url_put = self.create_swift_url('PUT', '/v1/prominence-jobs/%s/%s.tgz' % (uid, dirname_base), 864000)
-                url_get = self.create_swift_url('GET', '/v1/prominence-jobs/%s/%s.tgz' % (uid, dirname_base), 864000)
                 output_locations_put.append(url_put)
-                output_locations_get.append(url_get)
 
             if len(output_locations_put) > 0:
                 cjob['+ProminenceOutputDirLocations'] = condor_str(",".join(output_locations_put))
-                cjob['+ProminenceOutputDirLocationsUser'] = condor_str(",".join(output_locations_get))
 
         # Set max runtime
         max_run_time = 43200
@@ -550,18 +542,14 @@ class ProminenceBackend(object):
                     cjob['+ProminenceOutputFiles'] = condor_str(','.join(job['outputFiles']))
 
                     output_locations_put = []
-                    output_locations_get = []
 
                     for filename in job['outputFiles']:
                         filename_base = os.path.basename(filename)
                         url_put = (file_maps[filename_base])[1]
-                        url_get = (file_maps[filename_base])[2]
                         output_locations_put.append(url_put)
-                        output_locations_get.append(url_get)
 
                     if job['outputFiles']:
                         cjob['+ProminenceOutputLocations'] = condor_str(",".join(output_locations_put))
-                        cjob['+ProminenceOutputLocationsUser'] = condor_str(",".join(output_locations_get))
 
                 contents_additional = "\n"
                 for key in cjob:
@@ -590,8 +578,6 @@ class ProminenceBackend(object):
         if 'dependencies' in jjob:
             for parent in jjob['dependencies']:
                 children = " ".join(jjob['dependencies'][parent])
-                #parents = " ".join(relationship['parents'])
-                #children = " ".join(relationship['children'])
                 dag.append('PARENT ' + parent + ' CHILD ' + children)
             dag.append('NODE_STATUS_FILE workflow.dag.status')
         with open(job_sandbox + '/job.dag', 'w') as fd:
@@ -670,8 +656,6 @@ class ProminenceBackend(object):
                           'ProminenceOutputDirs',
                           'ProminenceUserEnvironment',
                           'ProminenceUserMetadata',
-                          'ProminenceOutputLocationsUser',
-                          'ProminenceOutputDirLocationsUser',
                           'TransferInput',
                           'ProminenceJobUniqueIdentifier',
                           'ProminenceArtifacts',
@@ -821,29 +805,25 @@ class ProminenceBackend(object):
                     input_files = str(job['ProminenceUserInputFiles']).split(',')
                     jobj['inputFiles'] = input_files
 
+                if 'ProminenceJobUniqueIdentifier' in job:
+                    uid = str(job['ProminenceJobUniqueIdentifier'])
+
                 if 'ProminenceOutputFiles' in job:
                     output_files = str(job['ProminenceOutputFiles']).split(',')
-                    if 'ProminenceOutputLocationsUser' in job:
-                        output_locations = str(job['ProminenceOutputLocationsUser']).split(',')
                     outputs = []
-                    for counter, output_file in enumerate(output_files):
-                        if 'ProminenceOutputLocationsUser' in job:
-                            url = output_locations[counter]
-                        else:
-                            url = ''
+                    for output_file in output_files:
+                        filename = os.path.basename(output_file)
+                        url = self.create_swift_url('GET', '/v1/prominence-jobs/%s/%s' % (uid, filename), 600)
                         file_map = {'name':output_file, 'url':url}
                         outputs.append(file_map)
                     jobj['outputFiles'] = outputs
                 if 'ProminenceOutputDirs' in job:
                     output_dirs = str(job['ProminenceOutputDirs']).split(',')
-                    if 'ProminenceOutputDirLocationsUser' in job:
-                        output_locations = str(job['ProminenceOutputDirLocationsUser']).split(',')
                     outputs = []
-                    for counter, output_dir in enumerate(output_dirs):
-                        if 'ProminenceOutputDirLocationsUser' in job:
-                            url = output_locations[counter]
-                        else:
-                            url = ''
+                    for output_dir in output_dirs:
+                        dirs = output_dir.split('/')
+                        dirname_base = dirs[len(dirs) - 1]
+                        url = self.create_swift_url('GET', '/v1/prominence-jobs/%s/%s.tgz' % (uid, dirname_base), 600)
                         file_map = {'name':output_dir, 'url':url}
                         outputs.append(file_map)
                     jobj['outputDirs'] = outputs
