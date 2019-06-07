@@ -9,8 +9,23 @@ import sys
 import time
 import shutil
 import logging
+from resource import getrusage, RUSAGE_CHILDREN
 import requests
 
+def monitor(function, *args, **kwargs):
+    """
+    Monitor CPU and wall time usage of a function which runs a child process
+    """
+    start_time, start_resources = time.time(), getrusage(RUSAGE_CHILDREN)
+    exit_code = function(*args, **kwargs)
+    end_time, end_resources = time.time(), getrusage(RUSAGE_CHILDREN)
+
+    time_real = end_time - start_time
+    time_user = end_resources.ru_utime - start_resources.ru_utime
+    time_sys = end_resources.ru_stime - start_resources.ru_stime
+
+    return (exit_code, time_real, time_user, time_sys)
+ 
 def mount_storage():
     """
     Mount user-specified storage
@@ -533,7 +548,8 @@ def run_tasks(path, base_dir, mpi_processes):
             if found_image or download_exit_code == 0:
                 update_classad('ProminenceTask%dStartTime' % count, time.time())
                 logging.info('Running task')
-                exit_code = run_udocker(image, cmd, workdir, env, path, base_dir, mpi, mpi_processes, procs_per_node, artifacts)
+                (exit_code, time_real, time_user, time_sys) = monitor(run_udocker, image, cmd, workdir, env, path, base_dir, mpi, mpi_processes, procs_per_node, artifacts)
+                logging.info('Timing real: %d, user: %d, sys: %d', time_real, time_user, time_sys)
         else:
             # Pull image if necessary or use a previously pulled image
             if found_image:
@@ -547,7 +563,8 @@ def run_tasks(path, base_dir, mpi_processes):
             if found_image or download_exit_code == 0:
                 update_classad('ProminenceTask%dStartTime' % count, time.time())
                 logging.info('Running task')
-                exit_code = run_singularity(image_new, cmd, workdir, env, path, base_dir, mpi, mpi_processes, procs_per_node, artifacts)
+                (exit_code, time_real, time_user, time_sys) = monitor(run_singularity, image_new, cmd, workdir, env, path, base_dir, mpi, mpi_processes, procs_per_node, artifacts)
+                logging.info('Timing real: %d, user: %d, sys: %d', time_real, time_user, time_sys)
 
         count += 1
 
