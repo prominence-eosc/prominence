@@ -273,7 +273,7 @@ class ProminenceBackend(object):
         cjob['Error'] = job_sandbox +  '/job.$(Cluster).$(Process).err'
         cjob['should_transfer_files'] = 'YES'
         cjob['when_to_transfer_output'] = 'ON_EXIT_OR_EVICT'
-        cjob['transfer_output_files'] = 'promlet.log'
+        cjob['transfer_output_files'] = 'promlet.log,promlet.json'
         cjob['+WantIOProxy'] = 'true'
 
         if group is not None:
@@ -715,9 +715,17 @@ class ProminenceBackend(object):
                     tasks = json.load(json_file)['tasks']
             except:
                 return []
-            
+
             jobj['tasks'] = tasks
 
+            # Get promlet output if exists
+            tasks_u = []
+            try:
+                with open(job['Iwd'] + '/promlet.json') as json_file:
+                    tasks_u = json.load(json_file)
+            except:
+                pass
+            
             # Return status as failed if container image pull failed
             if 'ProminenceImagePullSuccess' in job:
                 if job['ProminenceImagePullSuccess'] == 1:
@@ -797,8 +805,10 @@ class ProminenceBackend(object):
                 if 'ProminenceInfrastructureSite' in job:
                     if job['ProminenceInfrastructureSite'] != 'none':
                         execution['site'] = str(job['ProminenceInfrastructureSite'])
-                    if 'ProminenceExitCode' in job:
-                        execution['exitCode'] = int(job['ProminenceExitCode'])
+                    #if 'ProminenceExitCode' in job:
+                    #    execution['exitCode'] = int(job['ProminenceExitCode'])
+                    if tasks_u:
+                        execution['tasks'] = tasks_u
                     jobj['execution'] = execution
 
                 if 'ProminenceUserInputFiles' in job:
