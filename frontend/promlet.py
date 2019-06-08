@@ -480,6 +480,8 @@ def run_tasks(path, base_dir, mpi_processes):
                 artifacts[source] = dest
 
     count = 0
+    tasks_u = []
+
     for task in job['tasks']:
         logging.info('Working on task %d', count)
 
@@ -522,12 +524,17 @@ def run_tasks(path, base_dir, mpi_processes):
 
         exit_code = 1
         download_exit_code = -1
+        image_pull_time = -1
+        time_real = -1
+        time_user = -1
+        time_sys = -1
 
-        # Check if a previous task used the same image: in that case use the previous image
+        # Check if a previous task used the same image: in that case use the previous image if the same container
+        # runtime was used
         image_count = 0
         found_image = False
         for task_check in job['tasks']:
-            if image == task_check['image'] and image_count < count:
+            if image == task_check['image'] and image_count < count and task['runtime'] == task_check['runtime']:
                 found_image = True
                 logging.info('Will use cached image from task %d for this task', image_count)
                 break
@@ -539,7 +546,7 @@ def run_tasks(path, base_dir, mpi_processes):
                 image = 'image%d' % image_count
             else:
                 logging.info('Pulling image for task')
-                download_exit_code = download_udocker(image, location, count, base_dir)
+                (download_exit_code, image_pull_time, _, _) = monitor(download_udocker, image, location, count, base_dir)
                 if download_exit_code != 0:
                     update_classad('ProminenceImagePullSuccess', 1)
                 else:
@@ -557,7 +564,7 @@ def run_tasks(path, base_dir, mpi_processes):
             else:
                 image_new = '%s/image.simg' % location
                 logging.info('Pulling image for task')
-                download_exit_code = download_singularity(image, image_new, location, base_dir)
+                (download_exit_code, image_pull_time, _, _) = monitor(download_singularity, image, image_new, location, base_dir)
                 if download_exit_code != 0:
                     update_classad('ProminenceImagePullSuccess', 1)
             if found_image or download_exit_code == 0:
@@ -566,10 +573,24 @@ def run_tasks(path, base_dir, mpi_processes):
                 (exit_code, time_real, time_user, time_sys) = monitor(run_singularity, image_new, cmd, workdir, env, path, base_dir, mpi, mpi_processes, procs_per_node, artifacts)
                 logging.info('Timing real: %d, user: %d, sys: %d', time_real, time_user, time_sys)
 
+        task_u = {}
+        task_u['imagePullTime'] = image_pull_time
+        task_u['exitCode'] = exit_code
+        task_u['wallTimeUsage'] = time_real
+        task_u['cpuTimeUsage'] = time_user + time_sys
+        tasks_u.append(task_u)
+
         count += 1
 
         if exit_code != 0:
             break
+
+    # Write json job details
+    try:
+        with open('promlet.json', 'w') as file:
+            json.dump(tasks_u, file)
+    except Exception as exc:
+        logging.critical('Unable to write promlet.json due to: %s', exc)
 
 def run_cwl(cwl, inputs):
     """
