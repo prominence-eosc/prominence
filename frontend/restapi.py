@@ -144,18 +144,7 @@ def get_workflow(username, group, workflow_id):
     """
     app.logger.info('%s DescribeWorkflow user:%s group:%s id:%d' % (get_remote_addr(request), username, group, workflow_id))
 
-    completed = False
-    active = True
-    num = 1
-    if 'completed' in request.args:
-        if request.args.get('completed') == 'true':
-            completed = True
-            active = False
-        if 'num' in request.args and isinstance(request.args.get('num'), int):
-            num = request.args.get('num')
-
-    data = backend.list_workflows(workflow_id, username, active, completed, num, 1, (None, None))
-
+    data = backend.list_workflows(workflow_id, username, True, True, 1, 1, (None, None))
     return jsonify(data)
 
 @app.route("/prominence/v1/workflows/<int:workflow_id>/<string:job>/stdout", methods=['GET'])
@@ -307,18 +296,7 @@ def get_job(username, group, job_id):
     """
     app.logger.info('%s DescribeJob user:%s group:%s id:%d' % (get_remote_addr(request), username, group, job_id))
 
-    completed = False
-    active = True
-    num = 1
-    if 'completed' in request.args:
-        if request.args.get('completed') == 'true':
-            completed = True
-            active = False
-        if 'num' in request.args and isinstance(request.args.get('num'), int):
-            num = request.args.get('num')
-
-    data = backend.list_jobs(job_id, username, active, completed, num, 1, (None, None))
-
+    data = backend.list_jobs(job_id, username, True, True, 1, 1, (None, None))
     return jsonify(data)
 
 @app.route("/prominence/v1/jobs/<int:job_id>", methods=['DELETE'])
