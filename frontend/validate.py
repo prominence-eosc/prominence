@@ -50,6 +50,9 @@ def validate_job(job):
             if 'runtime' in task:
                 if task['runtime'] != 'udocker' and task['runtime'] != 'singularity':
                     return (False, 'the container runtime must be either udocker or singularity')
+            if 'env' in task:
+                if not isinstance(task['env'], dict):
+                    return (False, 'environment variables must be defined as a dict')
     else:
         return (False, 'a job must contain tasks')
 
