@@ -776,7 +776,7 @@ class ProminenceBackend(object):
             if 'CompletionDate' in job and (job['JobStatus'] == 3 or job['JobStatus'] == 4):
                 if int(job['CompletionDate']) > 0:
                     events['endTime'] = int(job['CompletionDate'])
-                elif int(job['CompletionDate']) == 0 and int(job['EnteredCurrentStatus']) > 0:
+                elif int(job['CompletionDate']) == 0 and int(job['EnteredCurrentStatus']) > 0 and 'JobStartDate' in job:
                     events['endTime'] = int(job['EnteredCurrentStatus'])
 
             if detail > 0:
