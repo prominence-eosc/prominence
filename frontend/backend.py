@@ -742,7 +742,7 @@ class ProminenceBackend(object):
                         jobj['status'] = 'failed'
                 if 'RemoveReason' in job:
                     if 'Python-initiated action' in job['RemoveReason']:
-                        reason = 'Job cancelled by user'
+                        reason = 'Job deleted by user'
                     if 'Infrastructure took too long to be deployed' in job['RemoveReason']:
                         reason = 'Infrastructure took too long to be deployed'
                 if 'LastHoldReasonSubCode' in job:
