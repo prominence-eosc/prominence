@@ -1,4 +1,4 @@
-FROM alahiff/htcondor:8.7.10
+FROM eoscprominence/htcondor:8.9.2
 
 COPY restapi.py /usr/local/bin/
 COPY backend.py /usr/local/bin/
