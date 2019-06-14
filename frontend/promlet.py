@@ -638,3 +638,4 @@ if __name__ == "__main__":
     #    pass
 
     logging.info('Exiting promlet')
+    exit(0)
