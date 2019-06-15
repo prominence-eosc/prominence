@@ -32,7 +32,7 @@ def validate_job(job):
     # Check for valid items in job
     for item in job:
         if item not in job_valids:
-            return (False, 'invalid item in job description')
+            return (False, 'invalid item "%s" in job description' % item)
 
     # Name
     if 'name' in job:
@@ -53,9 +53,9 @@ def validate_job(job):
                 return (False, 'label values must be less than 64 characters in length')
 
             if not re.match(r'^[a-zA-Z0-9]+$', label):
-                return (False, 'label name is invalid')
+                return (False, 'label name "%s" is invalid' % label)
             if not re.match(r'^[\w\-\_\.\/]+$', job['labels'][label]):
-                return (False, 'label value is invalid')
+                return (False, 'label value "%s" is invalid' % job['labels'][label])
 
     # Preemptible
     if 'preemptible' in job:
@@ -66,7 +66,7 @@ def validate_job(job):
     if 'resources' in job:
         for item in job['resources']:
             if item not in resources_valids:
-                return (False, 'invalid item in resources')
+                return (False, 'invalid item "%s" in resources' % item)
 
         if 'nodes' in job['resources']:
             if not str(job['resources']['nodes']).isdigit():
@@ -102,7 +102,7 @@ def validate_job(job):
         for task in job['tasks']:
             for item in task:
                 if item not in task_valids:
-                    return (False, 'invalid item in task')
+                    return (False, 'invalid item "%s" in task' % item)
 
             if 'image' not in task:
                 return (False, 'each task must specify a container image')
