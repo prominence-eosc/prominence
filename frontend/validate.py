@@ -5,10 +5,40 @@ def validate_job(job):
     """
     Validate JSON job description
     """
+    job_valids = ['name',
+                  'labels',
+                  'preemptible',
+                  'tasks',
+                  'resources',
+                  'inputs',
+                  'artifacts',
+                  'outputFiles',
+                  'outputDirs',
+                  'storage']
+
+    task_valids = ['image',
+                   'cmd',
+                   'env',
+                   'workdir',
+                   'procsPerNode',
+                   'type',
+                   'runtime']
+
+    resources_valids = ['nodes',
+                        'cpus',
+                        'memory',
+                        'disk']
+
+    # Check for valid items in job
+    for item in job:
+        if item not in job_valids:
+            return (False, 'invalid item in job description')
+
     # Name
     if 'name' in job:
         if len(job['name']) > 64:
             return (False, 'job name must be less than 64 characters in length')
+
         if job['name'] != '' and not re.match(r'^[a-zA-Z0-9\-\_]+$', job['name']):
             return (False, 'invalid job name')
 
@@ -17,7 +47,6 @@ def validate_job(job):
         if not isinstance(job['labels'], dict):
             return (False, 'labels must be defined as a dict')
         for label in job['labels']:
-            print(label)
             if len(label) > 64:
                 return (False, 'label names must be less than 64 characters in length')
             if len(job['labels'][label]) > 64:
@@ -35,6 +64,10 @@ def validate_job(job):
 
     # Resources
     if 'resources' in job:
+        for item in job['resources']:
+            if item not in resources_valids:
+                return (False, 'invalid item in resources')
+
         if 'nodes' in job['resources']:
             if not str(job['resources']['nodes']).isdigit():
                 return (False, 'number of nodes must be an integer')
@@ -67,14 +100,21 @@ def validate_job(job):
             return (False, 'an array of tasks must be provided')
 
         for task in job['tasks']:
+            for item in task:
+                if item not in task_valids:
+                    return (False, 'invalid item in task')
+
             if 'image' not in task:
                 return (False, 'each task must specify a container image')
+
             if 'runtime' in task:
                 if task['runtime'] != 'udocker' and task['runtime'] != 'singularity':
                     return (False, 'the container runtime must be either udocker or singularity')
+
             if 'env' in task:
                 if not isinstance(task['env'], dict):
                     return (False, 'environment variables must be defined as a dict')
+
             if 'procsPerNode' in task:
                 if not str(task['procsPerNode']).isdigit():
                     return (False, 'number of processes per node must be an integer')
@@ -83,6 +123,7 @@ def validate_job(job):
                 if 'cpus' in job['resources']:
                     if task['procsPerNode'] > job['resources']['cpus']:
                         return (False, 'number of processes per node must be less than number of CPU cores per node')
+
             if 'type' in task:
                 if task['type'] != 'openmpi' and task['type'] != 'mpich':
                     return (False, 'invalid task type')
@@ -98,6 +139,7 @@ def validate_job(job):
         for artifact in job['artifacts']:
             if 'url' not in artifact:
                 return (False, 'an artifact must contain a URL')
+
             if 'mountpoint' in artifact:
                 if ':' in artifact['mountpoint']:
                     src = artifact['mountpoint'].split(':')[0]
