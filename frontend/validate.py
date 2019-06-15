@@ -7,9 +7,26 @@ def validate_job(job):
     """
     # Name
     if 'name' in job:
-        match = re.match(r'([\w\-\_]+)', job['name'])
-        if job['name'] != '' and (not match or len(job['name']) > 64):
-            return (False, 'invalid job name specified')
+        if len(job['name']) > 64:
+            return (False, 'job name must be less than 64 characters in length')
+        if job['name'] != '' and not re.match(r'^[a-zA-Z0-9\-\_]+$', job['name']):
+            return (False, 'invalid job name')
+
+    # Labels
+    if 'labels' in job:
+        if not isinstance(job['labels'], dict):
+            return (False, 'labels must be defined as a dict')
+        for label in job['labels']:
+            print(label)
+            if len(label) > 64:
+                return (False, 'label names must be less than 64 characters in length')
+            if len(job['labels'][label]) > 64:
+                return (False, 'label values must be less than 64 characters in length')
+
+            if not re.match(r'^[a-zA-Z0-9]+$', label):
+                return (False, 'label name is invalid')
+            if not re.match(r'^[\w\-\_\.\/]+$', job['labels'][label]):
+                return (False, 'label value is invalid')
 
     # Resources
     if 'resources' in job:
@@ -53,6 +70,15 @@ def validate_job(job):
             if 'env' in task:
                 if not isinstance(task['env'], dict):
                     return (False, 'environment variables must be defined as a dict')
+            if 'procsPerNode' in task:
+                if not str(task['procsPerNode']).isdigit():
+                    return (False, 'number of processes per node must be an integer')
+                if task['procsPerNode'] < 1:
+                    return (False, 'number of processes per node must be at least 1')
+            if 'type' in task:
+                if task['type'] != 'openmpi' and task['type'] != 'mpich':
+                    return (False, 'invalid task type')
+
     else:
         return (False, 'a job must contain tasks')
 
