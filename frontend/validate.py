@@ -28,6 +28,11 @@ def validate_job(job):
             if not re.match(r'^[\w\-\_\.\/]+$', job['labels'][label]):
                 return (False, 'label value is invalid')
 
+    # Preemptible
+    if 'preemptible' in job:
+        if job['preemptible'] != True and job['preemptible'] != False:
+            return (False, 'preemptible must be either true or false')
+
     # Resources
     if 'resources' in job:
         if 'nodes' in job['resources']:
@@ -75,6 +80,9 @@ def validate_job(job):
                     return (False, 'number of processes per node must be an integer')
                 if task['procsPerNode'] < 1:
                     return (False, 'number of processes per node must be at least 1')
+                if 'cpus' in job['resources']:
+                    if task['procsPerNode'] > job['resources']['cpus']:
+                        return (False, 'number of processes per node must be less than number of CPU cores per node')
             if 'type' in task:
                 if task['type'] != 'openmpi' and task['type'] != 'mpich':
                     return (False, 'invalid task type')
