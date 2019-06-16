@@ -577,7 +577,10 @@ def run_tasks(path, base_dir, mpi_processes):
         task_u['imagePullTime'] = image_pull_time
         task_u['exitCode'] = exit_code
         task_u['wallTimeUsage'] = time_real
-        task_u['cpuTimeUsage'] = time_user + time_sys
+        if time_user > -1 and time_sys > -1:
+            task_u['cpuTimeUsage'] = time_user + time_sys
+        else:
+            task_u['cpuTimeUsage'] = -1
         tasks_u.append(task_u)
 
         count += 1
