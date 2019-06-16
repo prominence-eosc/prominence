@@ -141,6 +141,7 @@ def download_singularity(image, image_new, location, base_dir):
                                    cwd=os.path.dirname(image_new),
                                    shell=True,
                                    env=dict(os.environ,
+                                            PATH='/usr/local/bin:/usr/bin:/usr/local/sbin:/usr/sbin',
                                             SINGULARITY_LOCALCACHEDIR='%s/.singularity' % base_dir,
                                             SINGULARITY_TMPDIR='%s/.tmp' % base_dir),
                                    stdout=subprocess.PIPE,
