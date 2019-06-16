@@ -1,6 +1,60 @@
 import json
 import re
 
+def validate_workflow(workflow):
+    """
+    Validate JSON workflow description
+    """
+    workflow_valids = ['name',
+                       'labels',
+                       'jobs',
+                       'dependencies']
+
+    # Check for valid items in workflow
+    for item in workflow:
+        if item not in workflow_valids:
+            return (False, 'invalid item "%s" in workflow description' % item)
+
+    # Name
+    if 'name' in workflow:
+        if len(workflow['name']) > 64:
+            return (False, 'workflow name must be less than 64 characters in length')
+
+        if workflow['name'] != '' and not re.match(r'^[a-zA-Z0-9\-\_]+$', workflow['name']):
+            return (False, 'invalid workflow name')
+
+    # Jobs
+    if 'jobs' in workflow:
+        for job in workflow['jobs']:
+            (status, msg) = validate_job(job)
+            if not status:
+                return (status, msg)
+    else:
+        return (False, 'a workflow must contain jobs')
+
+    # Dependencies
+    if 'dependencies' in workflow:
+        if not isinstance(workflow['dependencies'], dict):
+            return (False, 'dependencies must be a dict')
+
+        jobs = []
+        for job in workflow['jobs']:
+            if 'name' in job:
+                jobs.append(job['name'])
+            else:
+                return (False, 'all jobs must have names')
+
+        for dependency in workflow['dependencies']:
+            children = workflow['dependencies'][dependency]
+            if not isinstance(children, list):
+                return (False, 'children of parent job must be in the form of a list')
+            for child in children:
+                if child not in jobs:
+                    return (False, 'child job "%s" is not actually defined' % child)
+
+
+    return (True, '')
+
 def validate_job(job):
     """
     Validate JSON job description
