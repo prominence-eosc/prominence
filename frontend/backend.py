@@ -191,7 +191,7 @@ class ProminenceBackend(object):
             tasks_new = []
             count_task = 0
             for task in jjob['tasks']:
-                if 'http' not in task['image'] and ('.tar' in task['image'] or '.simg' in task['image']):
+                if 'http' not in task['image'] and ('.tar' in task['image'] or '.simg' in task['image'] or '.sif' in task['image']):
                     image = task['image']
 
                     # Check if image is the same as a previous task
@@ -211,7 +211,7 @@ class ProminenceBackend(object):
 
                     if '.tar' in task['image']:
                         task['runtime'] = 'udocker'
-                    elif '.simg' in task['image']:
+                    elif '.simg' in task['image'] or '.sif' in task['image']:
                         task['runtime'] = 'singularity'
                 elif 'shub://' in task['image']:
                     task['runtime'] = 'singularity'
