@@ -829,7 +829,10 @@ class ProminenceBackend(object):
                     outputs = []
                     for output_file in output_files:
                         filename = os.path.basename(output_file)
-                        url = self.create_swift_url('GET', '/v1/prominence-jobs/%s/%s' % (uid, filename), 600)
+                        if job['JobStatus'] == 4:
+                            url = self.create_swift_url('GET', '/v1/prominence-jobs/%s/%s' % (uid, filename), 600)
+                        else:
+                            url = ''
                         file_map = {'name':output_file, 'url':url}
                         outputs.append(file_map)
                     jobj['outputFiles'] = outputs
@@ -839,7 +842,10 @@ class ProminenceBackend(object):
                     for output_dir in output_dirs:
                         dirs = output_dir.split('/')
                         dirname_base = dirs[len(dirs) - 1]
-                        url = self.create_swift_url('GET', '/v1/prominence-jobs/%s/%s.tgz' % (uid, dirname_base), 600)
+                        if job['JobStatus'] == 4:
+                            url = self.create_swift_url('GET', '/v1/prominence-jobs/%s/%s.tgz' % (uid, dirname_base), 600)
+                        else:
+                            url = ''
                         file_map = {'name':output_dir, 'url':url}
                         outputs.append(file_map)
                     jobj['outputDirs'] = outputs
