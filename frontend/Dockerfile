@@ -11,7 +11,8 @@ RUN yum -y install epel-release && \
                    gcc && \
     pip install uwsgi \
                 flask \
-                requests && \
+                requests \
+                boto3 && \
     chmod a+xr /usr/local/libexec/promlet.py && \
     useradd prominence
                    
