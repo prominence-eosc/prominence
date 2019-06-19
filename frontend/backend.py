@@ -125,7 +125,7 @@ class ProminenceBackend(object):
                                  endpoint_url=self._config['S3_URL'],
                                  aws_access_key_id=self._config['S3_ACCESS_KEY_ID'],
                                  aws_secret_access_key=self._config['S3_SECRET_ACCESS_KEY'])
-        if method = 'get':
+        if method == 'get':
             try:
                 response = s3_client.generate_presigned_url('get_object',
                                                             Params={'Bucket': bucket_name, 'Key': object_name},
