@@ -1,4 +1,5 @@
 import base64
+import boto3
 import json
 import os
 import re
@@ -116,14 +117,31 @@ class ProminenceBackend(object):
             return None
         return job_sandbox
 
-    def create_swift_url(self, method, path, duration_in_seconds=600):
+    def create_presigned_url(self, method, bucket_name, object_name, duration_in_seconds=600):
         """
-        Create a Swift temporary URL
+        Create presigned S3 URL
         """
-        expires = int(time.time() + duration_in_seconds)
-        hmac_body = '%s\n%s\n%s' % (method, expires, path)
-        sig = hmac.new(self._config['SWIFT_KEY'], hmac_body, sha1).hexdigest()
-        return "{host}{path}?temp_url_sig={sig}&temp_url_expires={expires}".format(host=self._config['SWIFT_HOSTNAME'], path=path, sig=sig, expires=expires)
+        s3_client = boto3.client('s3',
+                                 endpoint_url=self._config['S3_URL'],
+                                 aws_access_key_id=self._config['S3_ACCESS_KEY_ID'],
+                                 aws_secret_access_key=self._config['S3_SECRET_ACCESS_KEY'])
+        if method = 'get':
+            try:
+                response = s3_client.generate_presigned_url('get_object',
+                                                            Params={'Bucket': bucket_name, 'Key': object_name},
+                                                            ExpiresIn=duration_in_seconds)
+            except Exception as e:
+                return None
+        else:
+            try:
+                response = s3_client.generate_presigned_url('put_object',
+                                                            Params={'Bucket':bucket_name, 'Key':object_name},
+                                                            ExpiresIn=duration_in_seconds,
+                                                            HttpMethod='PUT')
+            except Exception as e:
+                return None
+
+        return response
 
     def get_job_unique_id(self, job_id):
         """
@@ -207,7 +225,7 @@ class ProminenceBackend(object):
                     if found and count_task_check < count_task:
                         task['image'] = tasks_new[count_task_check]
                     else:
-                        task['image'] = self.create_swift_url('GET', '/v1/prominence-jobs/%s/%s' % (username, image), 6000)
+                        task['image'] = self.create_presigned_url('get', 'prominence-jobs', '%s/%s' % (username, image), 6000)
 
                     if '.tar' in task['image']:
                         task['runtime'] = 'udocker'
@@ -307,7 +325,7 @@ class ProminenceBackend(object):
 
             for filename in jjob['outputFiles']:
                 filename_base = os.path.basename(filename)
-                url_put = self.create_swift_url('PUT', '/v1/prominence-jobs/%s/%s' % (uid, filename_base), 864000)
+                url_put = self.create_presigned_url('put', 'prominence-jobs', '%s/%s' % (uid, filename_base), 864000)
                 output_locations_put.append(url_put)
 
             if jjob['outputFiles']:
@@ -320,7 +338,7 @@ class ProminenceBackend(object):
                 artifact_url = artifact['url']
                 artifacts.append(artifact_url)
                 if 'http' not in artifact_url:
-                    artifact_url = self.create_swift_url('GET', '/v1/prominence-jobs/%s/%s' % (username, artifact_url), 6000)
+                    artifact_url = self.create_presigned_url('get', 'prominence-jobs', '%s/%s' % (username, artifact_url), 864000)
                 input_files.append(artifact_url)
             cjob['+ProminenceArtifacts'] = condor_str(",".join(artifacts))
 
@@ -334,7 +352,7 @@ class ProminenceBackend(object):
             for dirname in jjob['outputDirs']:
                 dirs = dirname.split('/')
                 dirname_base = dirs[len(dirs) - 1]
-                url_put = self.create_swift_url('PUT', '/v1/prominence-jobs/%s/%s.tgz' % (uid, dirname_base), 864000)
+                url_put = self.create_presigned_url('put', 'prominence-jobs', '%s/%s.tgz' % (uid, filename_base), 864000)
                 output_locations_put.append(url_put)
 
             if len(output_locations_put) > 0:
@@ -428,8 +446,8 @@ class ProminenceBackend(object):
                 if 'outputFiles' in job:
                     for filename in job['outputFiles']:
                         filename_base = os.path.basename(filename)
-                        url_put = self.create_swift_url('PUT', '/v1/prominence-jobs/%s/%s' % (uid, filename_base), 864000)
-                        url_get = self.create_swift_url('GET', '/v1/prominence-jobs/%s/%s' % (uid, filename_base), 864000)
+                        url_put = self.create_presigned_url('put', 'prominence-jobs', '%s/%s' % (uid, filename_base), 864000)
+                        url_get = self.create_presigned_url('get', 'prominence-jobs', '%s/%s' % (uid, filename_base), 864000)
                         file_maps[filename_base] = (filename, url_put, url_get)
 
             # Check for storage specified in workflow, to be applied to all jobs
@@ -532,7 +550,7 @@ class ProminenceBackend(object):
                         if artifact in file_maps:
                             artifact = (file_maps[filename_base])[2]
                         elif 'http' not in artifact and artifact not in file_maps:
-                            artifact = self.create_swift_url('GET', '/v1/prominence-jobs/%s/%s' % (username, artifact), 6000)
+                            artifact = self.create_presigned_url('get', 'prominence-jobs', '%s/%s' % (username, artifact), 864000)
                         input_files.append(artifact)
                     cjob['+ProminenceArtifacts'] = condor_str(",".join(artifacts))
                 cjob['transfer_input_files'] = str(','.join(input_files))
@@ -668,7 +686,7 @@ class ProminenceBackend(object):
                           'ProminenceStorageCredentials',
                           'ProminenceStorageMountPoint',
                           'Iwd']
-        jobs_state_map = {1:'idle',
+        jobs_state_map = {1:'created',
                           2:'running',
                           3:'deleted',
                           4:'completed',
@@ -706,7 +724,7 @@ class ProminenceBackend(object):
             # If job is idle and infrastructure is ready, set status to 'ready'
             if 'ProminenceInfrastructureState' in job:
                 if job['JobStatus'] == 1 and job['ProminenceInfrastructureState'] == 'configured':
-                    jobj['status'] = 'ready'
+                    jobj['status'] = 'idle'
                 if job['JobStatus'] == 1 and (job['ProminenceInfrastructureState'] == 'deployment-init' or job['ProminenceInfrastructureState'] == 'creating'):
                     jobj['status'] = 'deploying'
 
@@ -750,10 +768,6 @@ class ProminenceBackend(object):
                         reason = 'Runtime limit exceeded'
                         jobj['status'] = 'killed'
                 jobj['statusReason'] = reason
-
-            jobj['type'] = 'batch'
-            if 'ProminenceWantMPI' in job:
-                jobj['type'] = 'mpi'
 
             if 'ProminencePreemptible' in job:
                 jobj['preemptible'] = True
@@ -830,7 +844,7 @@ class ProminenceBackend(object):
                     for output_file in output_files:
                         filename = os.path.basename(output_file)
                         if job['JobStatus'] == 4:
-                            url = self.create_swift_url('GET', '/v1/prominence-jobs/%s/%s' % (uid, filename), 600)
+                            url = self.create_presigned_url('get', 'prominence-jobs', '%s/%s' % (uid, filename), 600)
                         else:
                             url = ''
                         file_map = {'name':output_file, 'url':url}
@@ -843,7 +857,7 @@ class ProminenceBackend(object):
                         dirs = output_dir.split('/')
                         dirname_base = dirs[len(dirs) - 1]
                         if job['JobStatus'] == 4:
-                            url = self.create_swift_url('GET', '/v1/prominence-jobs/%s/%s.tgz' % (uid, dirname_base), 600)
+                            url = self.create_presigned_url('get', 'prominence-jobs', '%s/%s.tgz' % (uid, dirname_base), 600)
                         else:
                             url = ''
                         file_map = {'name':output_dir, 'url':url}
@@ -858,9 +872,10 @@ class ProminenceBackend(object):
                 if 'ProminenceUserMetadata' in job:
                     metadata = []
                     for var in str(job['ProminenceUserMetadata']).split(','):
-                        key = var.split("=")[0]
-                        value = var.split("=")[1]
-                        metadata.append({key:value})
+                        if '=' in var:
+                            key = var.split('=')[0]
+                            value = var.split('=')[1]
+                            metadata.append({key:value})
                     jobj['labels'] = metadata
 
             jobj['events'] = events
@@ -882,7 +897,7 @@ class ProminenceBackend(object):
                           'Cmd',
                           'Iwd'
                           ]
-        jobs_state_map = {1:'idle',
+        jobs_state_map = {1:'created',
                           2:'running',
                           3:'deleted',
                           4:'completed',
