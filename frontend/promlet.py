@@ -632,14 +632,6 @@ if __name__ == "__main__":
         run_cwl(sys.argv[2], sys.argv[3])
     else:
         run_tasks(path, base_dir, int(sys.argv[2]))
-   
-    # Include contents of stagein log
-    #try:
-    #    with open('/tmp/stagein.log', 'r') as stagein_log:
-    #        stagein_contents = stagein_log.read()
-    #        logging.info('Contents of /tmp/stagein.log:\n%s', stagein_contents)
-    #except:
-    #    pass
 
     logging.info('Exiting promlet')
     exit(0)
