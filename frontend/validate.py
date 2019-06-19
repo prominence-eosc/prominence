@@ -81,7 +81,8 @@ def validate_job(job):
     resources_valids = ['nodes',
                         'cpus',
                         'memory',
-                        'disk']
+                        'disk',
+                        'walltime']
 
     # Check for valid items in job
     for item in job:
@@ -145,6 +146,12 @@ def validate_job(job):
                 return (False, 'required disk must be an integer')
             if job['resources']['disk'] < 1:
                 return (False, 'disk must be at least 1')
+
+        if 'walltime' in job['resources']:
+            if not str(job['resources']['walltime']).isdigit():
+                return (False, 'required walltime must be an integer')
+            if job['resources']['walltime'] < 1:
+                return (False, 'walltime must be at least 1 minute')
     else:
         return (False, 'a job must contain resources')
 
