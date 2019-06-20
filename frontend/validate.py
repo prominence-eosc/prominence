@@ -134,12 +134,16 @@ def validate_job(job):
                 return (False, 'number of cpus must be an integer')
             if job['resources']['cpus'] < 1:
                 return (False, 'number of cpus must be at least 1')
+        else:
+            return (False, 'number of cpus must be defined')
 
         if 'memory' in job['resources']:
             if not str(job['resources']['memory']).isdigit():
                 return (False, 'memory must be an integer')
             if job['resources']['memory'] < 1:
                 return (False, 'memory must be at least 1')
+        else:
+            return (False, 'memory (in GB) must be defined')
 
         if 'disk' in job['resources']:
             if not str(job['resources']['disk']).isdigit():
@@ -171,6 +175,8 @@ def validate_job(job):
             if 'runtime' in task:
                 if task['runtime'] != 'udocker' and task['runtime'] != 'singularity':
                     return (False, 'the container runtime must be either udocker or singularity')
+            else:
+                return (False, 'a container runtime must be defined')
 
             if 'env' in task:
                 if not isinstance(task['env'], dict):
