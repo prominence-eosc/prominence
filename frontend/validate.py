@@ -20,7 +20,7 @@ def validate_workflow(workflow):
         if len(workflow['name']) > 64:
             return (False, 'workflow name must be less than 64 characters in length')
 
-        if workflow['name'] != '' and not re.match(r'^[a-zA-Z0-9\-\_]+$', workflow['name']):
+        if workflow['name'] != '' and not re.match(r'^[a-zA-Z0-9\-\_\s]+$', workflow['name']):
             return (False, 'invalid workflow name')
 
     # Jobs
@@ -94,7 +94,7 @@ def validate_job(job):
         if len(job['name']) > 64:
             return (False, 'job name must be less than 64 characters in length')
 
-        if job['name'] != '' and not re.match(r'^[a-zA-Z0-9\-\_]+$', job['name']):
+        if job['name'] != '' and not re.match(r'^[a-zA-Z0-9\-\_\s]+$', job['name']):
             return (False, 'invalid job name')
 
     # Labels
