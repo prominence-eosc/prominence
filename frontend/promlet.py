@@ -1,5 +1,6 @@
 #!/usr/bin/python
 from __future__ import print_function
+import argparse
 import getpass
 import json
 import os
@@ -9,8 +10,58 @@ import sys
 import time
 import shutil
 import logging
+import tarfile
 from resource import getrusage, RUSAGE_CHILDREN
 import requests
+
+def upload(filename, url):
+    """
+    Upload a file to a URL
+    """
+    try:
+        with open(filename, 'rb') as file_obj:
+            response = requests.put(url, data=file_obj)
+    except requests.exceptions.RequestException:
+        return None
+    except IOError:
+        return None
+
+    if response.status_code == 201:
+        return True
+    return None
+
+def stageout(job_file, path, base_dir):
+    """
+    Copy any required output files and/or directories to S3 storage
+    """
+    try:
+        with open(job_file, 'r') as json_file:
+            job = json.load(json_file)
+    except Exception as ex:
+        logging.critical('Unable to read job description due to %s', ex)
+        return False
+
+    # Upload any output files
+    if 'outputFiles' in job:
+        for output in job['outputFiles']:
+            if upload(output['name'], output['url']):
+                logging.info('Successfully uploaded file %s to cloud storage', output['name'])
+            else:
+                logging.info('Unable to upload file %s to cloud storage', output['name'])
+
+    # Upload any output directories
+    if 'outputDirs' in job:
+        for output in job['outputDirs']:
+            output_filename = os.path.basename(output['name']) + ".tgz"
+            try:
+                with tarfile.open(output_filename, "w:gz") as tar:
+                    tar.add(output['name'])
+            except Exception as exc:
+                logging.info('Got exception on tar creation for directory %s: %s', output['name'], exc)
+            if upload(output_filename, output['url']):
+                logging.info('Successfully uploaded file %s to cloud storage', output['name'])
+            else:
+                logging.info('Unable to upload file %s to cloud storage', output['name'])
 
 def monitor(function, *args, **kwargs):
     """
@@ -26,15 +77,15 @@ def monitor(function, *args, **kwargs):
 
     return (exit_code, time_real, time_user, time_sys)
  
-def mount_storage():
+def mount_storage(job_file):
     """
     Mount user-specified storage
     """
     try:
-        with open('.job.mapped.json', 'r') as json_file:
+        with open(job_file, 'r') as json_file:
             job = json.load(json_file)
     except Exception as ex:
-        logging.critical('Unable to read .job.mapped.json due to %s', ex)
+        logging.critical('Unable to read job description due to %s', ex)
         return False
 
     if 'storage' in job:
@@ -386,9 +437,6 @@ def run_singularity(image, cmd, workdir, env, path, base_dir, mpi, mpi_processes
     mpi_per_node = ''
     if mpi_procs_per_node > 0:
         mpi_per_node = '-N %d' % mpi_procs_per_node
-    #if 'OMP_NUM_THREADS' in env:
-    #    omp_threads = int(env['OMP_NUM_THREADS'])
-    #    mpi_per_node = '--map-by socket:PE=%d --bind-to core' % omp_threads
 
     if mpi == 'openmpi':
         mpi_env = " -x PROMINENCE_CONTAINER_LOCATION -x PROMINENCE_PWD -x HOME -x TEMP -x TMP "
@@ -458,11 +506,11 @@ def run_singularity(image, cmd, workdir, env, path, base_dir, mpi, mpi_processes
 
     return return_code
 
-def run_tasks(path, base_dir, mpi_processes):
+def run_tasks(job_file, path, base_dir, mpi_processes, is_batch):
     """
     Execute sequential tasks
     """
-    with open('.job.mapped.json') as json_file:
+    with open(job_file) as json_file:
         job = json.load(json_file)
 
     # Set the number of nodes
@@ -596,24 +644,31 @@ def run_tasks(path, base_dir, mpi_processes):
     except Exception as exc:
         logging.critical('Unable to write promlet.json due to: %s', exc)
 
-def run_cwl(cwl, inputs):
-    """
-    Run a CWL workflow
-    """
-    process = subprocess.Popen('cwltool --user-space-docker-cmd=udocker %s %s' % (cwl, inputs), env=dict(os.environ), shell=True, stdout=subprocess.PIPE)
-    stdout, stderr = process.communicate()
-    if stdout is not None:
-        print(stdout)
-    if stderr is not None:
-        eprint(stderr)
-
 if __name__ == "__main__":
-    path = os.getcwd()
+    parser = argparse.ArgumentParser(description='promlet')
+    parser.add_argument('--mpi-procs',
+                        dest='mpiprocs',
+                        default=1,
+                        type=int,
+                        help='MPI processes per node')
+    parser.add_argument('--batch',
+                        dest='batch',
+                        default=False,
+                        action='store_true',
+                        help='Running on a batch system')
+    parser.add_argument('--job',
+                        dest='job',
+                        help='JSON job description file')
 
+    args = parser.parse_args()
+
+    # Initial directory
+    path = os.getcwd()
+    base_dir = '/home/prominence'
+
+    # Setup logging
     logging.basicConfig(filename='%s/promlet.log' % path, level=logging.INFO, format='%(asctime)s %(message)s')
     logging.info('Started promlet using path "%s"' % path)
-
-    base_dir = '/home/prominence'
 
     # Handle BeeOND
     if not os.path.isdir(base_dir):
@@ -621,17 +676,19 @@ if __name__ == "__main__":
             base_dir = '/mnt/beeond/prominence'
 
     # Handle HPC systems
-    if not os.path.isdir(base_dir):
+    if args.batch:
         base_dir = os.path.join(path, 'prominence')
         os.mkdir(base_dir)
 
     # Mount user-specified storage if necessary
-    mount_storage()
+    mount_storage(args.job)
 
-    if sys.argv[1] == 'cwl':
-        run_cwl(sys.argv[2], sys.argv[3])
-    else:
-        run_tasks(path, base_dir, int(sys.argv[2]))
+    # Run tasks
+    run_tasks(args.job, path, base_dir, args.mpiprocs, args.batch)
+
+    # Upload output files if necessary
+    stageout(args.job, path, base_dir)
 
     logging.info('Exiting promlet')
     exit(0)
+

@@ -21,7 +21,7 @@ JOB_SUBMIT = \
 """
 universe = vanilla
 executable = promlet.py
-arguments = tasks %(processes)s $(ProcId)
+arguments = --mpi-procs %(processes)s --job .job.mapped.json
 
 output = job.%(name)s.$(ProcId).out
 error = job.%(name)s.$(ProcId).err
@@ -183,6 +183,9 @@ class ProminenceBackend(object):
         os.chdir(job_sandbox)
         os.chmod(os.path.join(job_sandbox, 'promlet.py'), 0775)
 
+        # Copy of job (mapped version)
+        jjob_mapped = jjob.copy()
+
         # Write input files to sandbox
         input_files = []
         if 'inputs' in jjob:
@@ -236,19 +239,9 @@ class ProminenceBackend(object):
                 tasks_new.append(task)
                 count_task += 1
 
-            jjob_new = jjob
-            jjob_new['tasks'] = tasks_new
-
-            # Write mapped job.json
-            with open(os.path.join(job_sandbox, '.job.mapped.json'), 'w') as file:
-                json.dump(jjob_new, file)
+            jjob_mapped['tasks'] = tasks_new
 
             input_files.append(os.path.join(job_sandbox, '.job.mapped.json'))
-            mpi_processes = int(jjob['resources']['cpus'])*int(jjob['resources']['nodes'])
-            cjob['arguments'] = str('tasks %d 0' % mpi_processes)
-        elif 'workflow' in jjob:
-            if jjob['workflow']['type'] == 'cwl':
-                cjob['arguments'] = str('cwl %s %s' % (jjob['workflow']['cwl'], jjob['workflow']['inputs']))
         else:
             return (1, {"error":"No tasks or workflow specified"})
 
@@ -283,7 +276,7 @@ class ProminenceBackend(object):
             cjob['+ProminenceSharedDiskSize'] = str(jjob['resources']['disk'])
 
         mpi_processes = int(jjob['resources']['cpus'])*int(jjob['resources']['nodes'])
-        cjob['arguments'] = str('%s %d' % (cjob['arguments'], mpi_processes))
+        cjob['arguments'] = str('--mpi-procs %d --job .job.mapped.json' % mpi_processes)
 
         cjob['universe'] = 'vanilla'
         cjob['Log'] = job_sandbox + '/job.$(Cluster).$(Process).log'
@@ -319,6 +312,7 @@ class ProminenceBackend(object):
 
         # Output files
         if 'outputFiles' in jjob:
+            output_files_new = []
             cjob['+ProminenceOutputFiles'] = condor_str(','.join(jjob['outputFiles']))
 
             output_locations_put = []
@@ -327,9 +321,11 @@ class ProminenceBackend(object):
                 filename_base = os.path.basename(filename)
                 url_put = self.create_presigned_url('put', 'prominence-jobs', '%s/%s' % (uid, filename_base), 864000)
                 output_locations_put.append(url_put)
+                output_files_new.append({'name':filename, 'url':url_put})
 
             if jjob['outputFiles']:
                 cjob['+ProminenceOutputLocations'] = condor_str(",".join(output_locations_put))
+            jjob_mapped['outputFiles'] = output_files_new
 
         # Artifacts
         artifacts = []
@@ -345,6 +341,7 @@ class ProminenceBackend(object):
         cjob['transfer_input_files'] = str(','.join(input_files))
 
         if 'outputDirs' in jjob:
+            output_dirs_new = []
             cjob['+ProminenceOutputDirs'] = condor_str(','.join(jjob['outputDirs']))
 
             output_locations_put = []
@@ -352,11 +349,13 @@ class ProminenceBackend(object):
             for dirname in jjob['outputDirs']:
                 dirs = dirname.split('/')
                 dirname_base = dirs[len(dirs) - 1]
-                url_put = self.create_presigned_url('put', 'prominence-jobs', '%s/%s.tgz' % (uid, filename_base), 864000)
+                url_put = self.create_presigned_url('put', 'prominence-jobs', '%s/%s.tgz' % (uid, dirname_base), 864000)
                 output_locations_put.append(url_put)
+                output_dirs_new.append({'name':dirname, 'url':url_put})
 
             if len(output_locations_put) > 0:
                 cjob['+ProminenceOutputDirLocations'] = condor_str(",".join(output_locations_put))
+            jjob_mapped['outputDirs'] = output_dirs_new
 
         # Set max runtime
         max_run_time = 43200
@@ -410,6 +409,10 @@ class ProminenceBackend(object):
                     return (1, {"error":"Invalid label specified"})
 
             cjob['+ProminenceUserMetadata'] = condor_str(','.join(labels_list))
+
+        # Write mapped job.json
+        with open(os.path.join(job_sandbox, '.job.mapped.json'), 'w') as file:
+            json.dump(jjob_mapped, file)
 
         data = {}
         retval = 0
