@@ -318,13 +318,13 @@ class ProminenceBackend(object):
             output_locations_put = []
 
             for filename in jjob['outputFiles']:
-                filename_base = os.path.basename(filename)
-                url_put = self.create_presigned_url('put', 'prominence-jobs', '%s/%s' % (uid, filename_base), 864000)
+                url_put = self.create_presigned_url('put',
+                                                    'prominence-jobs',
+                                                    '%s/%s' % (uid, os.path.basename(filename)),
+                                                    864000)
                 output_locations_put.append(url_put)
                 output_files_new.append({'name':filename, 'url':url_put})
 
-            if jjob['outputFiles']:
-                cjob['+ProminenceOutputLocations'] = condor_str(",".join(output_locations_put))
             jjob_mapped['outputFiles'] = output_files_new
 
         # Artifacts
@@ -347,14 +347,13 @@ class ProminenceBackend(object):
             output_locations_put = []
 
             for dirname in jjob['outputDirs']:
-                dirs = dirname.split('/')
-                dirname_base = dirs[len(dirs) - 1]
-                url_put = self.create_presigned_url('put', 'prominence-jobs', '%s/%s.tgz' % (uid, dirname_base), 864000)
+                url_put = self.create_presigned_url('put',
+                                                    'prominence-jobs',
+                                                    '%s/%s.tgz' % (uid, os.path.basename(dirname)),
+                                                    864000)
                 output_locations_put.append(url_put)
                 output_dirs_new.append({'name':dirname, 'url':url_put})
 
-            if len(output_locations_put) > 0:
-                cjob['+ProminenceOutputDirLocations'] = condor_str(",".join(output_locations_put))
             jjob_mapped['outputDirs'] = output_dirs_new
 
         # Set max runtime
