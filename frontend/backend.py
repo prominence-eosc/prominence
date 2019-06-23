@@ -21,7 +21,7 @@ JOB_SUBMIT = \
 """
 universe = vanilla
 executable = promlet.py
-arguments = --mpi-procs %(processes)s --job .job.mapped.json
+arguments = --job .job.mapped.json
 
 output = job.%(name)s.$(ProcId).out
 error = job.%(name)s.$(ProcId).err
@@ -275,8 +275,7 @@ class ProminenceBackend(object):
         else:
             cjob['+ProminenceSharedDiskSize'] = str(jjob['resources']['disk'])
 
-        mpi_processes = int(jjob['resources']['cpus'])*int(jjob['resources']['nodes'])
-        cjob['arguments'] = str('--mpi-procs %d --job .job.mapped.json' % mpi_processes)
+        cjob['arguments'] = '--job .job.mapped.json'
 
         cjob['universe'] = 'vanilla'
         cjob['Log'] = job_sandbox + '/job.$(Cluster).$(Process).log'
@@ -730,14 +729,14 @@ class ProminenceBackend(object):
                 if job['JobStatus'] == 1 and (job['ProminenceInfrastructureState'] == 'deployment-init' or job['ProminenceInfrastructureState'] == 'creating'):
                     jobj['status'] = 'deploying'
 
-            # Get json
+            # Get json from file
             try:
                 with open(job['Iwd'] + '/.job.json') as json_file:
-                    tasks = json.load(json_file)['tasks']
+                    job_json_file = json.load(json_file)
             except:
                 return []
 
-            jobj['tasks'] = tasks
+            jobj['tasks'] = job_json_file['tasks']
 
             # Get promlet output if exists
             tasks_u = []
@@ -802,13 +801,7 @@ class ProminenceBackend(object):
                     events['endTime'] = int(job['EnteredCurrentStatus'])
 
             if detail > 0:
-                resources = {}
-                resources['memory'] = int(job['ProminenceMemoryPerNode'])
-                resources['cpus'] = int(job['ProminenceCpusPerNode'])
-                resources['nodes'] = int(job['ProminenceNumNodes'])
-                resources['disk'] = int(job['ProminenceSharedDiskSize'])
-                resources['walltime'] = int(job['ProminenceMaxRunTime'])
-                jobj['resources'] = resources
+                jobj['resources'] = job_json_file['resources']
 
                 if 'ProminenceStorageType' in job and 'ProminenceStorageCredentials' in job and 'ProminenceStorageMountPoint' in job:
                     storage = {}
@@ -827,8 +820,6 @@ class ProminenceBackend(object):
                 if 'ProminenceInfrastructureSite' in job:
                     if job['ProminenceInfrastructureSite'] != 'none':
                         execution['site'] = str(job['ProminenceInfrastructureSite'])
-                    #if 'ProminenceExitCode' in job:
-                    #    execution['exitCode'] = int(job['ProminenceExitCode'])
                     if tasks_u:
                         execution['tasks'] = tasks_u
                     jobj['execution'] = execution
