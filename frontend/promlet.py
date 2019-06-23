@@ -3,27 +3,50 @@ from __future__ import print_function
 import argparse
 import getpass
 import json
+import logging
 import os
 import re
 import subprocess
 import sys
-import time
-import shutil
-import logging
 import tarfile
+import time
+from functools import wraps
 from resource import getrusage, RUSAGE_CHILDREN
 import requests
 
+def retry(tries=4, delay=3, backoff=2):
+    """
+    Retry calling the decorated function using an exponential backoff
+    """
+    def deco_retry(f):
+        @wraps(f)
+        def f_retry(*args, **kwargs):
+            mtries, mdelay = tries, delay
+            while mtries > 1:
+                rv = f(*args, **kwargs)
+                if not rv:
+                    time.sleep(mdelay)
+                    mtries -= 1
+                    mdelay *= backoff
+                else:
+                    return rv
+            return f(*args, **kwargs)
+        return f_retry
+    return deco_retry
+
+@retry(tries=3, delay=2, backoff=2)
 def upload(filename, url):
     """
     Upload a file to a URL
     """
     try:
         with open(filename, 'rb') as file_obj:
-            response = requests.put(url, data=file_obj)
-    except requests.exceptions.RequestException:
+            response = requests.put(url, data=file_obj, timeout=120)
+    except requests.exceptions.RequestException as exc:
+        logging.warning('RequestException when trying to upload file', filename)
         return None
     except IOError:
+        logging.warning('IOError when trying to upload file', filename)
         return None
 
     if response.status_code == 201:
@@ -39,7 +62,7 @@ def stageout(job_file, path, base_dir):
             job = json.load(json_file)
     except Exception as ex:
         logging.critical('Unable to read job description due to %s', ex)
-        return False
+        return
 
     # Upload any output files
     if 'outputFiles' in job:
@@ -62,6 +85,7 @@ def stageout(job_file, path, base_dir):
                 logging.info('Successfully uploaded file %s to cloud storage', output['name'])
             else:
                 logging.info('Unable to upload file %s to cloud storage', output['name'])
+    return
 
 def monitor(function, *args, **kwargs):
     """
@@ -506,18 +530,28 @@ def run_singularity(image, cmd, workdir, env, path, base_dir, mpi, mpi_processes
 
     return return_code
 
-def run_tasks(job_file, path, base_dir, mpi_processes, is_batch):
+def run_tasks(job_file, path, base_dir, is_batch):
     """
     Execute sequential tasks
     """
-    with open(job_file) as json_file:
-        job = json.load(json_file)
+    try:
+        with open(job_file, 'r') as json_file:
+            job = json.load(json_file)
+    except Exception as ex:
+        logging.critical('Unable to read job description due to %s', ex)
+        return
 
-    # Set the number of nodes
+    # Number of nodes
     if 'nodes' in job['resources']:
         num_nodes = job['resources']['nodes']
     else:
         num_nodes = 1
+
+    # Number of CPUs
+    num_cpus = job['resources']['cpus']
+
+    # MPI processes
+    mpi_processes = num_cpus*num_nodes
 
     # Artifact mounts
     artifacts = {}
@@ -646,11 +680,6 @@ def run_tasks(job_file, path, base_dir, mpi_processes, is_batch):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='promlet')
-    parser.add_argument('--mpi-procs',
-                        dest='mpiprocs',
-                        default=1,
-                        type=int,
-                        help='MPI processes per node')
     parser.add_argument('--batch',
                         dest='batch',
                         default=False,
@@ -684,7 +713,7 @@ if __name__ == "__main__":
     mount_storage(args.job)
 
     # Run tasks
-    run_tasks(args.job, path, base_dir, args.mpiprocs, args.batch)
+    run_tasks(args.job, path, base_dir, args.batch)
 
     # Upload output files if necessary
     stageout(args.job, path, base_dir)
