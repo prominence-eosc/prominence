@@ -228,7 +228,7 @@ class ProminenceBackend(object):
                     if found and count_task_check < count_task:
                         task['image'] = tasks_new[count_task_check]
                     else:
-                        task['image'] = self.create_presigned_url('get', 'prominence-jobs', '%s/%s' % (username, image), 6000)
+                        task['image'] = self.create_presigned_url('get', 'prominence-jobs', 'scratch/%s/%s' % (username, image), 6000)
 
                     if '.tar' in task['image']:
                         task['runtime'] = 'udocker'
@@ -319,7 +319,7 @@ class ProminenceBackend(object):
             for filename in jjob['outputFiles']:
                 url_put = self.create_presigned_url('put',
                                                     'prominence-jobs',
-                                                    '%s/%s' % (uid, os.path.basename(filename)),
+                                                    'scratch/%s/%s' % (uid, os.path.basename(filename)),
                                                     864000)
                 output_locations_put.append(url_put)
                 output_files_new.append({'name':filename, 'url':url_put})
@@ -333,7 +333,7 @@ class ProminenceBackend(object):
                 artifact_url = artifact['url']
                 artifacts.append(artifact_url)
                 if 'http' not in artifact_url:
-                    artifact_url = self.create_presigned_url('get', 'prominence-jobs', '%s/%s' % (username, artifact_url), 864000)
+                    artifact_url = self.create_presigned_url('get', 'prominence-jobs', 'scratch/%s/%s' % (username, artifact_url), 864000)
                 input_files.append(artifact_url)
             cjob['+ProminenceArtifacts'] = condor_str(",".join(artifacts))
 
@@ -348,7 +348,7 @@ class ProminenceBackend(object):
             for dirname in jjob['outputDirs']:
                 url_put = self.create_presigned_url('put',
                                                     'prominence-jobs',
-                                                    '%s/%s.tgz' % (uid, os.path.basename(dirname)),
+                                                    'scratch/%s/%s.tgz' % (uid, os.path.basename(dirname)),
                                                     864000)
                 output_locations_put.append(url_put)
                 output_dirs_new.append({'name':dirname, 'url':url_put})
@@ -447,8 +447,8 @@ class ProminenceBackend(object):
                 if 'outputFiles' in job:
                     for filename in job['outputFiles']:
                         filename_base = os.path.basename(filename)
-                        url_put = self.create_presigned_url('put', 'prominence-jobs', '%s/%s' % (uid, filename_base), 864000)
-                        url_get = self.create_presigned_url('get', 'prominence-jobs', '%s/%s' % (uid, filename_base), 864000)
+                        url_put = self.create_presigned_url('put', 'prominence-jobs', 'scratch/%s/%s' % (uid, filename_base), 864000)
+                        url_get = self.create_presigned_url('get', 'prominence-jobs', 'scratch/%s/%s' % (uid, filename_base), 864000)
                         file_maps[filename_base] = (filename, url_put, url_get)
 
             # Check for storage specified in workflow, to be applied to all jobs
@@ -551,7 +551,7 @@ class ProminenceBackend(object):
                         if artifact in file_maps:
                             artifact = (file_maps[filename_base])[2]
                         elif 'http' not in artifact and artifact not in file_maps:
-                            artifact = self.create_presigned_url('get', 'prominence-jobs', '%s/%s' % (username, artifact), 864000)
+                            artifact = self.create_presigned_url('get', 'prominence-jobs', 'scratch/%s/%s' % (username, artifact), 864000)
                         input_files.append(artifact)
                     cjob['+ProminenceArtifacts'] = condor_str(",".join(artifacts))
                 cjob['transfer_input_files'] = str(','.join(input_files))
@@ -837,7 +837,7 @@ class ProminenceBackend(object):
                     for output_file in output_files:
                         filename = os.path.basename(output_file)
                         if job['JobStatus'] == 4:
-                            url = self.create_presigned_url('get', 'prominence-jobs', '%s/%s' % (uid, filename), 600)
+                            url = self.create_presigned_url('get', 'prominence-jobs', 'scratch/%s/%s' % (uid, filename), 600)
                         else:
                             url = ''
                         file_map = {'name':output_file, 'url':url}
@@ -850,7 +850,7 @@ class ProminenceBackend(object):
                         dirs = output_dir.split('/')
                         dirname_base = dirs[len(dirs) - 1]
                         if job['JobStatus'] == 4:
-                            url = self.create_presigned_url('get', 'prominence-jobs', '%s/%s.tgz' % (uid, dirname_base), 600)
+                            url = self.create_presigned_url('get', 'prominence-jobs', 'scratch/%s/%s.tgz' % (uid, dirname_base), 600)
                         else:
                             url = ''
                         file_map = {'name':output_dir, 'url':url}
