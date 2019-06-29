@@ -44,12 +44,12 @@ def get_user_details(token):
     elif 'sub' in response.json():
         username = str(response.json()['sub'])
 
-    group = None
+    groups = None
     if 'groups' in response.json():
         if len(response.json()['groups']) > 0:
-            group = str(response.json()['groups'][0])
+            groups = ','.join(str(group) for group in response.json()['groups'])
 
-    return (username, group)
+    return (username, groups)
 
 def get_remote_addr(req):
     """
@@ -95,7 +95,7 @@ def upload_file(username, group):
     app.logger.info('%s UploadData user:%s group:%s' % (get_remote_addr(request), username, group))
 
     if 'filename' in request.get_json():
-        url = backend.create_swift_url('PUT', '/v1/prominence-jobs/%s/%s' % (username, request.get_json()['filename']))
+        url = backend.create_presigned_url('put', 'prominence-jobs', 'uploads/%s/%s' % (username, request.get_json()['filename']))
         return jsonify({'url':url}), 201
     return jsonify({'error':'invalid JSON content supplied'}), 400
 
