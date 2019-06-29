@@ -166,7 +166,7 @@ class ProminenceBackend(object):
                     identity = job['ProminenceIdentity']
         return (uid, identity)
 
-    def create_job(self, username, group, uid, jjob):
+    def create_job(self, username, groups, uid, jjob):
         """
         Create a job
         """
@@ -228,7 +228,7 @@ class ProminenceBackend(object):
                     if found and count_task_check < count_task:
                         task['image'] = tasks_new[count_task_check]
                     else:
-                        task['image'] = self.create_presigned_url('get', 'prominence-jobs', 'scratch/%s/%s' % (username, image), 6000)
+                        task['image'] = self.create_presigned_url('get', 'prominence-jobs', 'uploads/%s/%s' % (username, image), 6000)
 
                     if '.tar' in task['image']:
                         task['runtime'] = 'udocker'
@@ -286,8 +286,8 @@ class ProminenceBackend(object):
         cjob['transfer_output_files'] = 'promlet.log,promlet.json'
         cjob['+WantIOProxy'] = 'true'
 
-        if group is not None:
-            cjob['+ProminenceGroup'] = condor_str(group)
+        if groups is not None:
+            cjob['+ProminenceGroup'] = condor_str(groups)
 
         # Stream stdout/err
         cjob['stream_error'] = 'true'
@@ -320,7 +320,7 @@ class ProminenceBackend(object):
                 url_put = self.create_presigned_url('put',
                                                     'prominence-jobs',
                                                     'scratch/%s/%s' % (uid, os.path.basename(filename)),
-                                                    864000)
+                                                    604800)
                 output_locations_put.append(url_put)
                 output_files_new.append({'name':filename, 'url':url_put})
 
@@ -333,7 +333,7 @@ class ProminenceBackend(object):
                 artifact_url = artifact['url']
                 artifacts.append(artifact_url)
                 if 'http' not in artifact_url:
-                    artifact_url = self.create_presigned_url('get', 'prominence-jobs', 'scratch/%s/%s' % (username, artifact_url), 864000)
+                    artifact_url = self.create_presigned_url('get', 'prominence-jobs', 'uploads/%s/%s' % (username, artifact_url), 604800)
                 input_files.append(artifact_url)
             cjob['+ProminenceArtifacts'] = condor_str(",".join(artifacts))
 
@@ -349,7 +349,7 @@ class ProminenceBackend(object):
                 url_put = self.create_presigned_url('put',
                                                     'prominence-jobs',
                                                     'scratch/%s/%s.tgz' % (uid, os.path.basename(dirname)),
-                                                    864000)
+                                                    604800)
                 output_locations_put.append(url_put)
                 output_dirs_new.append({'name':dirname, 'url':url_put})
 
@@ -362,8 +362,7 @@ class ProminenceBackend(object):
                 max_run_time = int(jjob['resources']['walltime'])*60
         cjob['periodic_hold'] = str('JobStatus == 2 && CurrentTime - EnteredCurrentStatus > %d && isUndefined(RouteName)' % max_run_time)
         cjob['periodic_hold_subcode'] = str('ifThenElse(JobStatus == 2 && CurrentTime - EnteredCurrentStatus > %d && isUndefined(RouteName), 1001, 1000)' % max_run_time)
-        max_run_time /= 60
-        cjob['+ProminenceMaxRunTime'] = str("%d" % max_run_time)
+        cjob['+ProminenceMaxRunTime'] = str("%d" % (max_run_time/60))
 
         # Is job MPI?
         if 'tasks' in jjob:
@@ -376,12 +375,11 @@ class ProminenceBackend(object):
                     cjob['+ProminenceMPIType'] = condor_str('mpich')
 
         # Prepare for submission to a remote HPC system
-        if jjob['resources']['nodes'] > 1 or 1 == 1:
-            tasks = jjob['resources']['nodes']
-            cpusPerTask = jjob['resources']['cpus']
-            memoryPerCpu = jjob['resources']['memory']*1000
-            timeRequired = '{:02d}:{:02d}:00'.format(*divmod(max_run_time/60, 60))
-            cjob['+remote_cerequirements'] = "RequiredTasks == %d && RequiredMemoryPerCpu == %d && RequiredCpusPerTask == %d && RequiredTime == \"%s\"" % (tasks, memoryPerCpu, cpusPerTask, timeRequired)
+        tasks = jjob['resources']['nodes']
+        cpusPerTask = jjob['resources']['cpus']
+        memoryPerCpu = jjob['resources']['memory']*1000
+        timeRequired = '{:02d}:{:02d}:00'.format(*divmod(max_run_time/60, 60))
+        cjob['+remote_cerequirements'] = "RequiredTasks == %d && RequiredMemoryPerCpu == %d && RequiredCpusPerTask == %d && RequiredTime == \"%s\"" % (tasks, memoryPerCpu, cpusPerTask, timeRequired)
 
         # Set max idle time for local resources
         max_idle_time = 0
@@ -427,7 +425,7 @@ class ProminenceBackend(object):
 
         return (retval, data)
 
-    def create_workflow(self, username, group, uid, jjob):
+    def create_workflow(self, username, groups, uid, jjob):
         """
         Create a workflow
         """
@@ -447,8 +445,8 @@ class ProminenceBackend(object):
                 if 'outputFiles' in job:
                     for filename in job['outputFiles']:
                         filename_base = os.path.basename(filename)
-                        url_put = self.create_presigned_url('put', 'prominence-jobs', 'scratch/%s/%s' % (uid, filename_base), 864000)
-                        url_get = self.create_presigned_url('get', 'prominence-jobs', 'scratch/%s/%s' % (uid, filename_base), 864000)
+                        url_put = self.create_presigned_url('put', 'prominence-jobs', 'scratch/%s/%s' % (uid, filename_base), 604800)
+                        url_get = self.create_presigned_url('get', 'prominence-jobs', 'scratch/%s/%s' % (uid, filename_base), 604800)
                         file_maps[filename_base] = (filename, url_put, url_get)
 
             # Check for storage specified in workflow, to be applied to all jobs
@@ -551,7 +549,7 @@ class ProminenceBackend(object):
                         if artifact in file_maps:
                             artifact = (file_maps[filename_base])[2]
                         elif 'http' not in artifact and artifact not in file_maps:
-                            artifact = self.create_presigned_url('get', 'prominence-jobs', 'scratch/%s/%s' % (username, artifact), 864000)
+                            artifact = self.create_presigned_url('get', 'prominence-jobs', 'uploads/%s/%s' % (username, artifact), 604800)
                         input_files.append(artifact)
                     cjob['+ProminenceArtifacts'] = condor_str(",".join(artifacts))
                 cjob['transfer_input_files'] = str(','.join(input_files))
@@ -691,7 +689,7 @@ class ProminenceBackend(object):
                           2:'running',
                           3:'deleted',
                           4:'completed',
-                          5:'held'}
+                          5:'failed'}
 
         schedd = htcondor.Schedd()
 
