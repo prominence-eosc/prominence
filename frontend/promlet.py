@@ -82,9 +82,9 @@ def stageout(job_file, path, base_dir):
             except Exception as exc:
                 logging.info('Got exception on tar creation for directory %s: %s', output['name'], exc)
             if upload(output_filename, output['url']):
-                logging.info('Successfully uploaded file %s to cloud storage', output['name'])
+                logging.info('Successfully uploaded directory %s to cloud storage', output['name'])
             else:
-                logging.info('Unable to upload file %s to cloud storage', output['name'])
+                logging.info('Unable to upload directory %s to cloud storage', output['name'])
     return
 
 def monitor(function, *args, **kwargs):
@@ -434,13 +434,16 @@ def run_udocker(image, cmd, workdir, env, path, base_dir, mpi, mpi_processes, mp
     logging.info('Running: "%s"', run_command)
 
     start = time.time()
-    process = subprocess.Popen(run_command,
-                               env=dict(os.environ,
-                                        UDOCKER_DIR='%s/.udocker' % base_dir),
-                               shell=True,
-                               stdout=subprocess.PIPE)
-    stdout, stderr = process.communicate()
-    return_code = process.returncode
+    try:
+        process = subprocess.Popen(run_command,
+                                   env=dict(os.environ,
+                                            UDOCKER_DIR='%s/.udocker' % base_dir),
+                                   shell=True,
+                                   stdout=subprocess.PIPE)
+        stdout, stderr = process.communicate()
+        return_code = process.returncode
+    except Exception as err:
+        logging.error('Exception running udocker: ', err)
     logging.info('Task had exit code %d', return_code)
 
     update_classad('ProminenceExecuteTime', time.time() - start)
@@ -457,7 +460,6 @@ def run_singularity(image, cmd, workdir, env, path, base_dir, mpi, mpi_processes
     """
     Execute a task using Singularity
     """
-
     mpi_per_node = ''
     if mpi_procs_per_node > 0:
         mpi_per_node = '-N %d' % mpi_procs_per_node
@@ -539,7 +541,14 @@ def run_tasks(job_file, path, base_dir, is_batch):
             job = json.load(json_file)
     except Exception as ex:
         logging.critical('Unable to read job description due to %s', ex)
-        return
+        return False
+
+    # Create directory which will be the home directory inside the container
+    #try:
+    #    os.mkdir(base_dir + '/myhome')
+    #except Exception as ex:
+    #    logging.error('Unable to create the myhome directory due to: %s', ex)
+    #    return False
 
     # Number of nodes
     if 'nodes' in job['resources']:
@@ -636,7 +645,6 @@ def run_tasks(job_file, path, base_dir, is_batch):
                     image = 'image%d' % count
             # Run task
             if found_image or download_exit_code == 0:
-                update_classad('ProminenceTask%dStartTime' % count, time.time())
                 logging.info('Running task')
                 (exit_code, time_real, time_user, time_sys) = monitor(run_udocker, image, cmd, workdir, env, path, base_dir, mpi, mpi_processes, procs_per_node, artifacts)
                 logging.info('Timing real: %d, user: %d, sys: %d', time_real, time_user, time_sys)
@@ -651,7 +659,6 @@ def run_tasks(job_file, path, base_dir, is_batch):
                 if download_exit_code != 0:
                     update_classad('ProminenceImagePullSuccess', 1)
             if found_image or download_exit_code == 0:
-                update_classad('ProminenceTask%dStartTime' % count, time.time())
                 logging.info('Running task')
                 (exit_code, time_real, time_user, time_sys) = monitor(run_singularity, image_new, cmd, workdir, env, path, base_dir, mpi, mpi_processes, procs_per_node, artifacts)
                 logging.info('Timing real: %d, user: %d, sys: %d', time_real, time_user, time_sys)
@@ -678,7 +685,10 @@ def run_tasks(job_file, path, base_dir, is_batch):
     except Exception as exc:
         logging.critical('Unable to write promlet.json due to: %s', exc)
 
-if __name__ == "__main__":
+def create_parser():
+    """
+    Create the arguments parser
+    """
     parser = argparse.ArgumentParser(description='promlet')
     parser.add_argument('--batch',
                         dest='batch',
@@ -689,7 +699,11 @@ if __name__ == "__main__":
                         dest='job',
                         help='JSON job description file')
 
-    args = parser.parse_args()
+    return parser.parse_args()
+
+if __name__ == "__main__":
+    # Extract arguments from the command line
+    args = create_parser()
 
     # Initial directory
     path = os.getcwd()
@@ -705,9 +719,17 @@ if __name__ == "__main__":
             base_dir = '/mnt/beeond/prominence'
 
     # Handle HPC systems
-    if args.batch:
+    if args.batch or not os.path.isdir('/home/prominence'):
         base_dir = os.path.join(path, 'prominence')
         os.mkdir(base_dir)
+        batch = True
+
+    # Write empty json job details, so no matter what happens next, at least an empty file exists
+    try:
+        with open('promlet.json', 'w') as file:
+            json.dump({}, file)
+    except Exception as exc:
+        logging.critical('Unable to write promlet.json due to: %s', exc)
 
     # Mount user-specified storage if necessary
     mount_storage(args.job)
