@@ -653,12 +653,6 @@ class ProminenceBackend(object):
                           'ClusterId',
                           'ProcId',
                           'DAGManJobId',
-                          'ProminenceMemoryPerNode',
-                          'ProminenceCpusPerNode',
-                          'ProminenceNumNodes',
-                          'ProminenceSharedDiskSize',
-                          'ProminenceMaxRunTime',
-                          'ProminenceWantMPIVersion',
                           'ProminenceInfrastructureSite',
                           'ProminenceInfrastructureState',
                           'QDate',
@@ -669,14 +663,12 @@ class ProminenceBackend(object):
                           'RemoveReason',
                           'RemoteWallClockTime',
                           'LastHoldReasonSubCode',
-                          'ProminenceUserInputFiles',
                           'ProminenceOutputFiles',
                           'ProminenceOutputDirs',
                           'ProminenceUserEnvironment',
                           'ProminenceUserMetadata',
                           'TransferInput',
                           'ProminenceJobUniqueIdentifier',
-                          'ProminenceArtifacts',
                           'ProminenceName',
                           'ProminenceExitCode',
                           'ProminencePreemptible',
@@ -715,18 +707,6 @@ class ProminenceBackend(object):
             jobs_condor.extend(jobs_active)
 
         for job in jobs_condor:
-            jobj = {}
-            jobj['id'] = job['ClusterId']
-            jobj['status'] = jobs_state_map[job['JobStatus']]
-            jobj['name'] = job['ProminenceName']
-
-            # If job is idle and infrastructure is ready, set status to 'ready'
-            if 'ProminenceInfrastructureState' in job:
-                if job['JobStatus'] == 1 and job['ProminenceInfrastructureState'] == 'configured':
-                    jobj['status'] = 'idle'
-                if job['JobStatus'] == 1 and (job['ProminenceInfrastructureState'] == 'deployment-init' or job['ProminenceInfrastructureState'] == 'creating'):
-                    jobj['status'] = 'deploying'
-
             # Get json from file
             try:
                 with open(job['Iwd'] + '/.job.json') as json_file:
@@ -734,7 +714,20 @@ class ProminenceBackend(object):
             except:
                 return []
 
+            jobj = {}
+            jobj['id'] = job['ClusterId']
+            jobj['status'] = jobs_state_map[job['JobStatus']]
             jobj['tasks'] = job_json_file['tasks']
+            if 'name' in job_json_file:
+                if job_json_file['name'] != '':
+                    jobj['name'] = job_json_file['name']
+
+            # If job is idle and infrastructure is ready, set status to 'ready'
+            if 'ProminenceInfrastructureState' in job:
+                if job['JobStatus'] == 1 and job['ProminenceInfrastructureState'] == 'configured':
+                    jobj['status'] = 'idle'
+                if job['JobStatus'] == 1 and (job['ProminenceInfrastructureState'] == 'deployment-init' or job['ProminenceInfrastructureState'] == 'creating'):
+                    jobj['status'] = 'deploying'
 
             # Get promlet output if exists
             tasks_u = []
@@ -801,6 +794,18 @@ class ProminenceBackend(object):
             if detail > 0:
                 jobj['resources'] = job_json_file['resources']
 
+                if 'artifacts' in job_json_file:
+                    jobj['artifacts'] = job_json_file['artifacts']
+
+                if 'inputs' in job_json_file:
+                    jobj['inputs'] = job_json_file['inputs']
+
+                if 'labels' in job_json_file:
+                    jobj['labels'] = job_json_file['labels']
+
+                if 'constraints' in job_json_file:
+                    jobj['constraints'] = job_json_file['constraints']
+
                 if 'ProminenceStorageType' in job and 'ProminenceStorageCredentials' in job and 'ProminenceStorageMountPoint' in job:
                     storage = {}
                     storage['type'] = job['ProminenceStorageType']
@@ -821,10 +826,6 @@ class ProminenceBackend(object):
                     if tasks_u:
                         execution['tasks'] = tasks_u
                     jobj['execution'] = execution
-
-                if 'ProminenceUserInputFiles' in job:
-                    input_files = str(job['ProminenceUserInputFiles']).split(',')
-                    jobj['inputFiles'] = input_files
 
                 if 'ProminenceJobUniqueIdentifier' in job:
                     uid = str(job['ProminenceJobUniqueIdentifier'])
@@ -854,20 +855,6 @@ class ProminenceBackend(object):
                         file_map = {'name':output_dir, 'url':url}
                         outputs.append(file_map)
                     jobj['outputDirs'] = outputs
-                if 'TransferInput' in job:
-                    input_files = str(job['TransferInput']).split(',')
-                if 'ProminenceArtifacts' in job:
-                    artifacts = str(job['ProminenceArtifacts']).split(',')
-                    if artifacts:
-                        jobj['artifacts'] = artifacts
-                if 'ProminenceUserMetadata' in job:
-                    metadata = []
-                    for var in str(job['ProminenceUserMetadata']).split(','):
-                        if '=' in var:
-                            key = var.split('=')[0]
-                            value = var.split('=')[1]
-                            metadata.append({key:value})
-                    jobj['labels'] = metadata
 
             jobj['events'] = events
 
