@@ -95,7 +95,17 @@ def upload_file(username, group):
     app.logger.info('%s UploadData user:%s group:%s' % (get_remote_addr(request), username, group))
 
     if 'filename' in request.get_json():
-        url = backend.create_presigned_url('put', 'prominence-jobs', 'uploads/%s/%s' % (username, request.get_json()['filename']))
+        filename = request.get_json()['filename']
+        if '/' in filename:
+            pieces = filename.split('/')
+            filename_only = pieces[len(pieces) - 1]
+            pieces.remove(filename_only)
+            file_group = '/'.join(pieces)
+            if file_group not in group:
+                return jsonify({'error':'Not authorized to access upload with this path'}), 403
+            url = backend.create_presigned_url('put', 'prominence-jobs', 'uploads/%s' % request.get_json()['filename'])
+        else:
+            url = backend.create_presigned_url('put', 'prominence-jobs', 'uploads/%s/%s' % (username, request.get_json()['filename']))
         return jsonify({'url':url}), 201
     return jsonify({'error':'invalid JSON content supplied'}), 400
 
