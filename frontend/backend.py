@@ -228,7 +228,11 @@ class ProminenceBackend(object):
                     if found and count_task_check < count_task:
                         task['image'] = tasks_new[count_task_check]
                     else:
-                        task['image'] = self.create_presigned_url('get', 'prominence-jobs', 'uploads/%s/%s' % (username, image), 6000)
+                        if '/' in task['image']:
+                            path = task['image']
+                        else:
+                            path = '%s/%s' % (username, task['image'])
+                        task['image'] = self.create_presigned_url('get', 'prominence-jobs', 'uploads/%s' % path, 6000)
 
                     if '.tar' in task['image']:
                         task['runtime'] = 'udocker'
@@ -333,7 +337,11 @@ class ProminenceBackend(object):
                 artifact_url = artifact['url']
                 artifacts.append(artifact_url)
                 if 'http' not in artifact_url:
-                    artifact_url = self.create_presigned_url('get', 'prominence-jobs', 'uploads/%s/%s' % (username, artifact_url), 604800)
+                    if '/' in artifact_url:
+                        path = artifact_url
+                    else:
+                        path = '%s/%s' % (username, artifact_url)
+                    artifact_url = self.create_presigned_url('get', 'prominence-jobs', 'uploads/%s' % path, 604800)
                 input_files.append(artifact_url)
             cjob['+ProminenceArtifacts'] = condor_str(",".join(artifacts))
 
@@ -718,9 +726,9 @@ class ProminenceBackend(object):
             jobj['id'] = job['ClusterId']
             jobj['status'] = jobs_state_map[job['JobStatus']]
             jobj['tasks'] = job_json_file['tasks']
+            jobj['name'] = ''
             if 'name' in job_json_file:
-                if job_json_file['name'] != '':
-                    jobj['name'] = job_json_file['name']
+                jobj['name'] = job_json_file['name']
 
             # If job is idle and infrastructure is ready, set status to 'ready'
             if 'ProminenceInfrastructureState' in job:
