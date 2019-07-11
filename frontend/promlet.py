@@ -100,6 +100,18 @@ def monitor(function, *args, **kwargs):
     time_sys = end_resources.ru_stime - start_resources.ru_stime
 
     return (exit_code, time_real, time_user, time_sys)
+
+def get_info():
+    """
+    Get information to be passed to job environment variables
+    """
+    try:
+        with open('/etc/prominence.json', 'r') as json_file:
+            job = json.load(json_file)
+    except Exception as ex:
+        logging.error('Unable to read job info due to %s', ex)
+        return {}
+    return job
  
 def mount_storage(job_file):
     """
@@ -431,13 +443,23 @@ def run_udocker(image, cmd, workdir, env, path, base_dir, mpi, mpi_processes, mp
                        " -v /var/tmp"
                        " %s %s") % (extras, path, path, path, path, getpass.getuser(), mounts, path, workdir, image, cmd)
 
+    job_cpus = -1
+    job_memory = -1
+    job_info = get_info()
+    if 'cpus' in job_info:
+        job_cpus = job_info['cpus']
+    if 'memory' in job_info:
+        job_memory = job_info['memory']
+
     logging.info('Running: "%s"', run_command)
 
     start = time.time()
     try:
         process = subprocess.Popen(run_command,
                                    env=dict(os.environ,
-                                            UDOCKER_DIR='%s/.udocker' % base_dir),
+                                            UDOCKER_DIR='%s/.udocker' % base_dir,
+                                            PROMINENCE_CPUS='%d' % job_cpus,
+                                            PROMINENCE_MEMORY='%d' % job_memory),
                                    shell=True,
                                    stdout=subprocess.PIPE)
         stdout, stderr = process.communicate()
@@ -504,6 +526,14 @@ def run_singularity(image, cmd, workdir, env, path, base_dir, mpi, mpi_processes
     else:
         run_command = 'singularity %s --home %s %s --pwd %s %s %s' % (command, path, mounts, workdir, image, cmd)
 
+    job_cpus = -1
+    job_memory = -1
+    job_info = get_info()
+    if 'cpus' in job_info:
+        job_cpus = job_info['cpus']
+    if 'memory' in job_info:
+        job_memory = job_info['memory']
+
     logging.info('Running: "%s"', run_command)
 
     start = time.time()
@@ -514,7 +544,9 @@ def run_singularity(image, cmd, workdir, env, path, base_dir, mpi, mpi_processes
                                         TEMP='%s' % path,
                                         TMPDIR='%s' % path,
                                         PROMINENCE_CONTAINER_LOCATION='%s' % os.path.dirname(image),
-                                        PROMINENCE_PWD='%s' % workdir),
+                                        PROMINENCE_PWD='%s' % workdir,
+                                        PROMINENCE_CPUS='%d' % job_cpus,
+                                        PROMINENCE_MEMORY='%d' % job_memory),
                                shell=True,
                                stdout=subprocess.PIPE)
     stdout, stderr = process.communicate()
