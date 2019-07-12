@@ -76,7 +76,8 @@ def validate_job(job):
                   'artifacts',
                   'outputFiles',
                   'outputDirs',
-                  'storage']
+                  'storage',
+                  'numberOfRetries']
 
     task_valids = ['image',
                    'cmd',
@@ -271,5 +272,13 @@ def validate_job(job):
                 return (False, 'OneData provider must be defined')
             if 'token' not in job['storage']['onedata']:
                 return (False, 'OneData token must be defined')
+
+    # Retries
+    if 'numberOfRetries' in job:
+        if not str(job['numberOfRetries']).isdigit():
+            return (False, 'the number of retries must be an integer')
+
+        if job['numberOfRetries'] < 1:
+            return (False, 'the number of retries must be greater than 0')
 
     return (True, '')
