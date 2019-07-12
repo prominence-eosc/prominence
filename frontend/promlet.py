@@ -2,6 +2,7 @@
 from __future__ import print_function
 import argparse
 import getpass
+import glob
 import json
 import logging
 import os
@@ -67,10 +68,11 @@ def stageout(job_file, path, base_dir):
     # Upload any output files
     if 'outputFiles' in job:
         for output in job['outputFiles']:
-            if upload(output['name'], output['url']):
-                logging.info('Successfully uploaded file %s to cloud storage', output['name'])
+            out_file = glob.glob(output['name'])
+            if upload(out_file, output['url']):
+                logging.info('Successfully uploaded file %s to cloud storage', out_file)
             else:
-                logging.info('Unable to upload file %s to cloud storage', output['name'])
+                logging.info('Unable to upload file %s to cloud storage', out_file)
 
     # Upload any output directories
     if 'outputDirs' in job:
@@ -605,6 +607,7 @@ def run_tasks(job_file, path, base_dir, is_batch):
 
     count = 0
     tasks_u = []
+    success = True
 
     for task in job['tasks']:
         logging.info('Working on task %d', count)
@@ -708,6 +711,7 @@ def run_tasks(job_file, path, base_dir, is_batch):
         count += 1
 
         if exit_code != 0:
+            success = False
             break
 
     # Write json job details
@@ -716,6 +720,8 @@ def run_tasks(job_file, path, base_dir, is_batch):
             json.dump(tasks_u, file)
     except Exception as exc:
         logging.critical('Unable to write promlet.json due to: %s', exc)
+
+    return success
 
 def create_parser():
     """
@@ -767,11 +773,15 @@ if __name__ == "__main__":
     mount_storage(args.job)
 
     # Run tasks
-    run_tasks(args.job, path, base_dir, args.batch)
+    success = run_tasks(args.job, path, base_dir, args.batch)
 
     # Upload output files if necessary
     stageout(args.job, path, base_dir)
 
     logging.info('Exiting promlet')
+
+    # Return appropriate exit code - necessary for retries of DAG nodes
+    if not success:
+        exit(1)
     exit(0)
 
