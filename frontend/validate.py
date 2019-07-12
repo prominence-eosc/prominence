@@ -8,7 +8,8 @@ def validate_workflow(workflow):
     workflow_valids = ['name',
                        'labels',
                        'jobs',
-                       'dependencies']
+                       'dependencies',
+                       'numberOfRetries']
 
     # Check for valid items in workflow
     for item in workflow:
@@ -52,6 +53,13 @@ def validate_workflow(workflow):
                 if child not in jobs:
                     return (False, 'child job "%s" is not actually defined' % child)
 
+    # Retries
+    if 'numberOfRetries' in workflow:
+        if not str(workflow['numberOfRetries']).isdigit():
+            return (False, 'the number of retries must be an integer')
+
+        if workflow['numberOfRetries'] < 1:
+            return (False, 'the number of retries must be greater than 0')
 
     return (True, '')
 
