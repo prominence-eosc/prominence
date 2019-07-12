@@ -196,7 +196,6 @@ class ProminenceBackend(object):
                     file.write(base64.b64decode(file_input['content']))
                     filenames.append(file_input['filename'])
                     input_files.append(filename_new)
-            cjob['+ProminenceUserInputFiles'] = condor_str(','.join(filenames))
 
         # Default number of nodes
         if 'nodes' not in jjob['resources']:
