@@ -105,7 +105,7 @@ def monitor(function, *args, **kwargs):
 
 def get_info():
     """
-    Get information to be passed to job environment variables
+    Get information to be passed to job
     """
     try:
         with open('/etc/prominence.json', 'r') as json_file:
@@ -447,11 +447,14 @@ def run_udocker(image, cmd, workdir, env, path, base_dir, mpi, mpi_processes, mp
 
     job_cpus = -1
     job_memory = -1
+    num_retries = 0
     job_info = get_info()
     if 'cpus' in job_info:
         job_cpus = job_info['cpus']
     if 'memory' in job_info:
         job_memory = job_info['memory']
+    if 'numberOfRetries' in job_info:
+        num_retries = job_info['numberOfRetries']
 
     logging.info('Running: "%s"', run_command)
 
@@ -530,11 +533,14 @@ def run_singularity(image, cmd, workdir, env, path, base_dir, mpi, mpi_processes
 
     job_cpus = -1
     job_memory = -1
+    num_retries = 0
     job_info = get_info()
     if 'cpus' in job_info:
         job_cpus = job_info['cpus']
     if 'memory' in job_info:
         job_memory = job_info['memory']
+    if 'numberOfRetries' in job_info:
+        num_retries = job_info['numberOfRetries']
 
     logging.info('Running: "%s"', run_command)
 
