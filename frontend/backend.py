@@ -761,6 +761,9 @@ class ProminenceBackend(object):
                     if job['ProminenceInfrastructureState'] == "failed":
                         reason = 'Infrastructure deployment failed'
                         jobj['status'] = 'failed'
+                    if job['ProminenceInfrastructureState'] == "unable":
+                        reason = 'No resources meet the specified requirements'
+                        jobj['status'] = 'failed'
                 if 'RemoveReason' in job:
                     if 'Python-initiated action' in job['RemoveReason']:
                         reason = 'Job deleted by user'
@@ -946,6 +949,8 @@ class ProminenceBackend(object):
             nodes_unready = 0
             dag_status = 0
 
+            node_stats = {}
+
             file = '%s/workflow.dag.status' % wf['Iwd']
 
             node_state_map = {0:'waiting',
@@ -966,7 +971,10 @@ class ProminenceBackend(object):
                         dag_status = class_ad['DagStatus']
                     if class_ad['Type'] == 'NodeStatus':
                         node = class_ad['Node']
-                        status = node_state_map[class_ad['NodeStatus']]
+                        stats = {}
+                        stats['status'] = node_state_map[class_ad['NodeStatus']]
+                        stats['retries'] = class_ad['RetryCount']
+                        node_stats[node] = stats
             except Exception:
                 pass
 
