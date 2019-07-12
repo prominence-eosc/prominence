@@ -61,6 +61,9 @@ def validate_workflow(workflow):
         if workflow['numberOfRetries'] < 1:
             return (False, 'the number of retries must be greater than 0')
 
+        if workflow['numberOfRetries'] > 6:
+            return (False, 'the number of retries must be less than 6')
+
     return (True, '')
 
 def validate_job(job):
@@ -280,5 +283,8 @@ def validate_job(job):
 
         if job['numberOfRetries'] < 1:
             return (False, 'the number of retries must be greater than 0')
+
+        if job['numberOfRetries'] > 6:
+            return (False, 'the number of retries must be less than 6')
 
     return (True, '')
