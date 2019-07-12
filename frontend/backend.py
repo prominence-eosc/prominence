@@ -130,7 +130,7 @@ class ProminenceBackend(object):
                 response = s3_client.generate_presigned_url('get_object',
                                                             Params={'Bucket': bucket_name, 'Key': object_name},
                                                             ExpiresIn=duration_in_seconds)
-            except Exception as e:
+            except Exception:
                 return None
         else:
             try:
@@ -138,7 +138,7 @@ class ProminenceBackend(object):
                                                             Params={'Bucket':bucket_name, 'Key':object_name},
                                                             ExpiresIn=duration_in_seconds,
                                                             HttpMethod='PUT')
-            except Exception as e:
+            except Exception:
                 return None
 
         return response
@@ -465,7 +465,7 @@ class ProminenceBackend(object):
                     storage_type = jjob['storage']['type']
                     if jjob['storage']['type'] == 'b2drop':
                         storage_creds = '%s/%s' % (jjob['storage']['b2drop']['app-username'], jjob['storage']['b2drop']['app-password'])
-                        storage_mountpoint = jjob['storage']['b2drop']['mountpoint']
+                        storage_mountpoint = jjob['storage']['mountpoint']
 
             for job in jjob['jobs']:
                 info = {}
@@ -585,6 +585,10 @@ class ProminenceBackend(object):
                 with open(job_filename, 'w') as fd:
                     fd.write(JOB_SUBMIT % info)
                 dag.append('JOB ' + job['name'] + ' job.jdl DIR ' + job['name'])
+
+                # Retries
+                if 'numberOfRetries' in jjob:
+                    dag.append('RETRY ALL_NODES %d' % jjob['numberOfRetries'])
 
                 # Write .job.json
                 filename = job_sandbox + '/' + job['name'] + '/.job.json'
@@ -887,7 +891,7 @@ class ProminenceBackend(object):
                           2:'running',
                           3:'deleted',
                           4:'completed',
-                          5:'held'}
+                          5:'failed'}
 
         schedd = htcondor.Schedd()
 
@@ -969,6 +973,10 @@ class ProminenceBackend(object):
 
             nodes = {}
             jobs = {}
+
+            # If no jobs have been created, report status as created
+            if nodes_queued == 0 and wfj['status'] != 'completed' and wfj['status'] != 'failed':
+                wfj['status'] = 'created'
 
             nodes['total'] = nodes_total
             nodes['done'] = nodes_done
