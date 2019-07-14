@@ -2,10 +2,10 @@
 from __future__ import print_function
 from functools import wraps
 import logging
-import uuid
 import os
-import requests
 import sys
+import uuid
+import requests
 from flask import Flask, jsonify, request
 
 from backend import ProminenceBackend
@@ -103,9 +103,9 @@ def upload_file(username, group):
             file_group = '/'.join(pieces)
             if file_group not in group:
                 return jsonify({'error':'Not authorized to access upload with this path'}), 403
-            url = backend.create_presigned_url('put', 'prominence-jobs', 'uploads/%s' % request.get_json()['filename'])
+            url = backend.create_presigned_url('put', app.config['S3_BUCKET'], 'uploads/%s' % request.get_json()['filename'])
         else:
-            url = backend.create_presigned_url('put', 'prominence-jobs', 'uploads/%s/%s' % (username, request.get_json()['filename']))
+            url = backend.create_presigned_url('put', app.config['S3_BUCKET'], 'uploads/%s/%s' % (username, request.get_json()['filename']))
         return jsonify({'url':url}), 201
     return jsonify({'error':'invalid JSON content supplied'}), 400
 

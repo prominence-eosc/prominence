@@ -231,7 +231,7 @@ class ProminenceBackend(object):
                             path = task['image']
                         else:
                             path = '%s/%s' % (username, task['image'])
-                        task['image'] = self.create_presigned_url('get', 'prominence-jobs', 'uploads/%s' % path, 6000)
+                        task['image'] = self.create_presigned_url('get', self._config['S3_BUCKET'], 'uploads/%s' % path, 6000)
 
                     if '.tar' in task['image']:
                         task['runtime'] = 'udocker'
@@ -321,7 +321,7 @@ class ProminenceBackend(object):
 
             for filename in jjob['outputFiles']:
                 url_put = self.create_presigned_url('put',
-                                                    'prominence-jobs',
+                                                    self._config['S3_BUCKET'],
                                                     'scratch/%s/%s' % (uid, os.path.basename(filename)),
                                                     604800)
                 output_locations_put.append(url_put)
@@ -340,7 +340,7 @@ class ProminenceBackend(object):
                         path = artifact_url
                     else:
                         path = '%s/%s' % (username, artifact_url)
-                    artifact_url = self.create_presigned_url('get', 'prominence-jobs', 'uploads/%s' % path, 604800)
+                    artifact_url = self.create_presigned_url('get', self._config['S3_BUCKET'], 'uploads/%s' % path, 604800)
                 input_files.append(artifact_url)
             cjob['+ProminenceArtifacts'] = condor_str(",".join(artifacts))
 
@@ -354,7 +354,7 @@ class ProminenceBackend(object):
 
             for dirname in jjob['outputDirs']:
                 url_put = self.create_presigned_url('put',
-                                                    'prominence-jobs',
+                                                    self._config['S3_BUCKET'],
                                                     'scratch/%s/%s.tgz' % (uid, os.path.basename(dirname)),
                                                     604800)
                 output_locations_put.append(url_put)
@@ -452,8 +452,8 @@ class ProminenceBackend(object):
                 if 'outputFiles' in job:
                     for filename in job['outputFiles']:
                         filename_base = os.path.basename(filename)
-                        url_put = self.create_presigned_url('put', 'prominence-jobs', 'scratch/%s/%s' % (uid, filename_base), 604800)
-                        url_get = self.create_presigned_url('get', 'prominence-jobs', 'scratch/%s/%s' % (uid, filename_base), 604800)
+                        url_put = self.create_presigned_url('put', self._config['S3_BUCKET'], 'scratch/%s/%s' % (uid, filename_base), 604800)
+                        url_get = self.create_presigned_url('get', self._config['S3_BUCKET'], 'scratch/%s/%s' % (uid, filename_base), 604800)
                         file_maps[filename_base] = (filename, url_put, url_get)
 
             # Check for storage specified in workflow, to be applied to all jobs
@@ -556,7 +556,7 @@ class ProminenceBackend(object):
                         if artifact in file_maps:
                             artifact = (file_maps[filename_base])[2]
                         elif 'http' not in artifact and artifact not in file_maps:
-                            artifact = self.create_presigned_url('get', 'prominence-jobs', 'uploads/%s/%s' % (username, artifact), 604800)
+                            artifact = self.create_presigned_url('get', self._config['S3_BUCKET'], 'uploads/%s/%s' % (username, artifact), 604800)
                         input_files.append(artifact)
                     cjob['+ProminenceArtifacts'] = condor_str(",".join(artifacts))
                 cjob['transfer_input_files'] = str(','.join(input_files))
@@ -853,7 +853,7 @@ class ProminenceBackend(object):
                     for output_file in output_files:
                         filename = os.path.basename(output_file)
                         if job['JobStatus'] == 4:
-                            url = self.create_presigned_url('get', 'prominence-jobs', 'scratch/%s/%s' % (uid, filename), 600)
+                            url = self.create_presigned_url('get', self._config['S3_BUCKET'], 'scratch/%s/%s' % (uid, filename), 600)
                         else:
                             url = ''
                         file_map = {'name':output_file, 'url':url}
@@ -866,7 +866,7 @@ class ProminenceBackend(object):
                         dirs = output_dir.split('/')
                         dirname_base = dirs[len(dirs) - 1]
                         if job['JobStatus'] == 4:
-                            url = self.create_presigned_url('get', 'prominence-jobs', 'scratch/%s/%s.tgz' % (uid, dirname_base), 600)
+                            url = self.create_presigned_url('get', self._config['S3_BUCKET'], 'scratch/%s/%s.tgz' % (uid, dirname_base), 600)
                         else:
                             url = ''
                         file_map = {'name':output_dir, 'url':url}
