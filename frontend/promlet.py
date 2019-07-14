@@ -50,7 +50,7 @@ def upload(filename, url):
         logging.warning('IOError when trying to upload file', filename)
         return None
 
-    if response.status_code == 201:
+    if response.status_code == 200:
         return True
     return None
 
@@ -63,16 +63,17 @@ def stageout(job_file, path, base_dir):
             job = json.load(json_file)
     except Exception as ex:
         logging.critical('Unable to read job description due to %s', ex)
-        return
+        return False
 
     # Upload any output files
     if 'outputFiles' in job:
         for output in job['outputFiles']:
-            out_file = glob.glob(output['name'])
+            out_file = glob.glob(output['name'])[0]
             if upload(out_file, output['url']):
                 logging.info('Successfully uploaded file %s to cloud storage', out_file)
             else:
-                logging.info('Unable to upload file %s to cloud storage', out_file)
+                logging.error('Unable to upload file %s to cloud storage', out_file)
+                return False
 
     # Upload any output directories
     if 'outputDirs' in job:
@@ -82,12 +83,14 @@ def stageout(job_file, path, base_dir):
                 with tarfile.open(output_filename, "w:gz") as tar:
                     tar.add(output['name'])
             except Exception as exc:
-                logging.info('Got exception on tar creation for directory %s: %s', output['name'], exc)
+                logging.error('Got exception on tar creation for directory %s: %s', output['name'], exc)
+                return False
             if upload(output_filename, output['url']):
                 logging.info('Successfully uploaded directory %s to cloud storage', output['name'])
             else:
-                logging.info('Unable to upload directory %s to cloud storage', output['name'])
-    return
+                logging.error('Unable to upload directory %s to cloud storage', output['name'])
+                return False
+    return True
 
 def monitor(function, *args, **kwargs):
     """
@@ -453,8 +456,6 @@ def run_udocker(image, cmd, workdir, env, path, base_dir, mpi, mpi_processes, mp
         job_cpus = job_info['cpus']
     if 'memory' in job_info:
         job_memory = job_info['memory']
-    if 'numberOfRetries' in job_info:
-        num_retries = job_info['numberOfRetries']
 
     logging.info('Running: "%s"', run_command)
 
@@ -539,8 +540,6 @@ def run_singularity(image, cmd, workdir, env, path, base_dir, mpi, mpi_processes
         job_cpus = job_info['cpus']
     if 'memory' in job_info:
         job_memory = job_info['memory']
-    if 'numberOfRetries' in job_info:
-        num_retries = job_info['numberOfRetries']
 
     logging.info('Running: "%s"', run_command)
 
@@ -582,6 +581,10 @@ def run_tasks(job_file, path, base_dir, is_batch):
     except Exception as ex:
         logging.critical('Unable to read job description due to %s', ex)
         return False
+
+    num_retries = 0
+    if 'numberOfRetries' in job:
+        num_retries = job['numberOfRetries']
 
     # Create directory which will be the home directory inside the container
     #try:
@@ -657,6 +660,7 @@ def run_tasks(job_file, path, base_dir, is_batch):
 
         exit_code = 1
         download_exit_code = -1
+        retry_count = 0
         image_pull_time = -1
         time_real = -1
         time_user = -1
@@ -686,9 +690,11 @@ def run_tasks(job_file, path, base_dir, is_batch):
                     image = 'image%d' % count
             # Run task
             if found_image or download_exit_code == 0:
-                logging.info('Running task')
-                (exit_code, time_real, time_user, time_sys) = monitor(run_udocker, image, cmd, workdir, env, path, base_dir, mpi, mpi_processes, procs_per_node, artifacts)
-                logging.info('Timing real: %d, user: %d, sys: %d', time_real, time_user, time_sys)
+                while exit_code != 0 and retry_count < num_retries + 1:
+                    logging.info('Running task, attempt %d', retry_count + 1)
+                    (exit_code, time_real, time_user, time_sys) = monitor(run_udocker, image, cmd, workdir, env, path, base_dir, mpi, mpi_processes, procs_per_node, artifacts)
+                    logging.info('Timing real: %d, user: %d, sys: %d', time_real, time_user, time_sys)
+                    retry_count += 1
         else:
             # Pull image if necessary or use a previously pulled image
             if found_image:
@@ -700,14 +706,16 @@ def run_tasks(job_file, path, base_dir, is_batch):
                 if download_exit_code != 0:
                     update_classad('ProminenceImagePullSuccess', 1)
             if found_image or download_exit_code == 0:
-                logging.info('Running task')
-                (exit_code, time_real, time_user, time_sys) = monitor(run_singularity, image_new, cmd, workdir, env, path, base_dir, mpi, mpi_processes, procs_per_node, artifacts)
-                logging.info('Timing real: %d, user: %d, sys: %d', time_real, time_user, time_sys)
+                while exit_code != 0 and retry_count < num_retries + 1:
+                    (exit_code, time_real, time_user, time_sys) = monitor(run_singularity, image_new, cmd, workdir, env, path, base_dir, mpi, mpi_processes, procs_per_node, artifacts)
+                    logging.info('Timing real: %d, user: %d, sys: %d', time_real, time_user, time_sys)
+                    retry_count += 1
 
         task_u = {}
         task_u['imagePullTime'] = image_pull_time
         task_u['exitCode'] = exit_code
         task_u['wallTimeUsage'] = time_real
+        task_u['retries'] = retry_count - 1
         if time_user > -1 and time_sys > -1:
             task_u['cpuTimeUsage'] = time_user + time_sys
         else:
@@ -779,15 +787,15 @@ if __name__ == "__main__":
     mount_storage(args.job)
 
     # Run tasks
-    success = run_tasks(args.job, path, base_dir, args.batch)
+    success_tasks = run_tasks(args.job, path, base_dir, args.batch)
 
     # Upload output files if necessary
-    stageout(args.job, path, base_dir)
+    success_stageout = stageout(args.job, path, base_dir)
 
     logging.info('Exiting promlet')
 
     # Return appropriate exit code - necessary for retries of DAG nodes
-    if not success:
+    if not success_tasks or not success_stageout:
         exit(1)
     exit(0)
 
