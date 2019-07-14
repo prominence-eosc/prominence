@@ -386,7 +386,7 @@ class ProminenceBackend(object):
         cpusPerTask = jjob['resources']['cpus']
         memoryPerCpu = jjob['resources']['memory']*1000
         timeRequired = '{:02d}:{:02d}:00'.format(*divmod(max_run_time/60, 60))
-        cjob['+remote_cerequirements'] = "RequiredTasks == %d && RequiredMemoryPerCpu == %d && RequiredCpusPerTask == %d && RequiredTime == \"%s\"" % (tasks, memoryPerCpu, cpusPerTask, timeRequired)
+        cjob['+remote_cerequirements'] = condor_str("RequiredTasks == %d && RequiredMemoryPerCpu == %d && RequiredCpusPerTask == %d && RequiredTime == %s" % (tasks, memoryPerCpu, cpusPerTask, timeRequired))
 
         # Set max idle time for local resources
         max_idle_time = 0
@@ -807,6 +807,9 @@ class ProminenceBackend(object):
 
             if detail > 0:
                 jobj['resources'] = job_json_file['resources']
+
+                if 'numberOfRetries' in job_json_file:
+                    jobj['numberOfRetries'] = job_json_file['numberOfRetries']
 
                 if 'artifacts' in job_json_file:
                     jobj['artifacts'] = job_json_file['artifacts']
