@@ -175,7 +175,7 @@ def get_stdout_wf(username, group, workflow_id, job):
 
     stdout = backend.get_stdout(uid, job_id, job)
     if stdout is None:
-        return jsonify({'error':'stdout does not exist'}), 404
+        return jsonify({'error':'stdout does not exist'}), 400
     else:
         return stdout
 
@@ -197,7 +197,7 @@ def get_stderr_wf(username, group, workflow_id, job):
 
     stderr = backend.get_stderr(uid, job_id, job)
     if stderr is None:
-        return jsonify({'error':'stderr does not exist'}), 404
+        return jsonify({'error':'stderr does not exist'}), 400
     else:
         return stderr
 
@@ -339,7 +339,7 @@ def get_stdout(username, group, job_id):
     
     stdout = backend.get_stdout(uid, job_id)
     if stdout is None:
-        return jsonify({'error':'stdout does not exist'}), 404
+        return jsonify({'error':'stdout does not exist'}), 400
     else:
         return stdout
     
@@ -359,7 +359,7 @@ def get_stderr(username, group, job_id):
 
     stderr = backend.get_stderr(uid, job_id)
     if stderr is None:
-        return jsonify({'error':'stderr does not exist'}), 404
+        return jsonify({'error':'stderr does not exist'}), 400
     else:
         return stderr
 
