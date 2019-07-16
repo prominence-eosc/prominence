@@ -771,7 +771,7 @@ if __name__ == "__main__":
             base_dir = '/mnt/beeond/prominence'
 
     # Handle HPC systems
-    if args.batch or not os.path.isdir('/home/prominence'):
+    if args.batch or (not os.path.isdir('/home/prominence') and not os.path.isdir('/mnt/beeond/prominence')):
         base_dir = os.path.join(path, 'prominence')
         os.mkdir(base_dir)
         batch = True
