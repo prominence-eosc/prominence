@@ -203,9 +203,15 @@ class ProminenceBackend(object):
 
         # Write tasks definition to file
         if 'tasks' in jjob:
-            # Write original job.json
-            with open(os.path.join(job_sandbox, '.job.json'), 'w') as file:
-                json.dump(jjob, file)
+
+            # Set container runtime if necessary
+            if 'runtime' not in task:
+                if '.tar' in task['image']:
+                    task['runtime'] = 'udocker'
+                elif '.simg' in task['image'] or '.sif' in task['image']:
+                    task['runtime'] = 'singularity'
+                elif 'shub://' in task['image']:
+                    task['runtime'] = 'singularity'
 
             # Replace image identifiers with Swift temporary URLs
             tasks_new = []
@@ -233,12 +239,6 @@ class ProminenceBackend(object):
                             path = '%s/%s' % (username, task['image'])
                         task['image'] = self.create_presigned_url('get', self._config['S3_BUCKET'], 'uploads/%s' % path, 6000)
 
-                    if '.tar' in task['image']:
-                        task['runtime'] = 'udocker'
-                    elif '.simg' in task['image'] or '.sif' in task['image']:
-                        task['runtime'] = 'singularity'
-                elif 'shub://' in task['image']:
-                    task['runtime'] = 'singularity'
                 tasks_new.append(task)
                 count_task += 1
 
@@ -247,6 +247,10 @@ class ProminenceBackend(object):
             input_files.append(os.path.join(job_sandbox, '.job.mapped.json'))
         else:
             return (1, {"error":"No tasks or workflow specified"})
+
+        # Write original job.json
+        with open(os.path.join(job_sandbox, '.job.json'), 'w') as file:
+            json.dump(jjob, file)
 
         if 'name' in jjob:
             cjob['+ProminenceName'] = condor_str(jjob['name'])
