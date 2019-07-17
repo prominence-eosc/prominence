@@ -86,6 +86,16 @@ def requires_auth(function):
         return function(username, group, *args, **kwargs)
     return decorated
 
+@app.route("/prominence/v1/data", methods=['GET'])
+@app.route("/prominence/v1/data/<path:path>", methods=['GET'])
+@requires_auth
+def list_objects(username, group, path=None):
+    """
+    List objects in cloud storage
+    """
+    objects = backend.list_objects(username, group, str(path))
+    return jsonify(objects)
+
 @app.route("/prominence/v1/data/upload", methods=['POST'])
 @requires_auth
 def upload_file(username, group):
