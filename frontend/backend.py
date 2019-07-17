@@ -185,8 +185,6 @@ class ProminenceBackend(object):
             prefix = 'uploads/%s' % path
             prefix_to_remove = ['uploads']
 
-        print('[list_objects] prefix=',prefix)
-
         objects = []
          
         try:

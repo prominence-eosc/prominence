@@ -57,6 +57,15 @@ def get_remote_addr(req):
     """
     return req.environ.get('HTTP_X_REAL_IP', req.remote_addr)
 
+def object_access_allowed(groups, path):
+    """
+    Decide if a user is allowed to access a path
+    """
+    for group in groups.split(','):
+        if path.startswith(group):
+            return True
+    return False
+
 def authenticate():
     """
     Sends a 401 response
@@ -93,7 +102,16 @@ def list_objects(username, group, path=None):
     """
     List objects in cloud storage
     """
-    objects = backend.list_objects(username, group, str(path))
+    if path is None:
+        objects = backend.list_objects(username, group)
+        return jsonify(objects)
+    else:
+        path = str(path)
+
+    if not object_access_allowed(group, path):
+        return jsonify({'error':'Not authorized to access this path'}), 403
+
+    objects = backend.list_objects(username, group, path)
     return jsonify(objects)
 
 @app.route("/prominence/v1/data/upload", methods=['POST'])
