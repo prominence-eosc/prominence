@@ -201,7 +201,11 @@ class ProminenceBackend(object):
             pieces = name.split('/')
             for item in prefix_to_remove:
                 pieces.remove(item)
-            objects.append('/'.join(pieces))
+            obj = {}
+            obj['name'] = '/'.join(pieces)
+            obj['size'] = key['Size']
+            obj['lastModified'] = key['LastModified']
+            objects.append(obj)
 
         return objects
 
