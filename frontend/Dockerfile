@@ -17,7 +17,6 @@ RUN yum -y install epel-release && \
     useradd prominence
                    
 ENTRYPOINT ["uwsgi", \
-            "--plugins", "http,python", \
             "--http-socket", ":8080", \
             "--threads", "2", \
             "--uid", "prominence", \
