@@ -16,6 +16,8 @@ from threading import Timer
 import classad
 import htcondor
 
+import validate
+
 # Job template
 JOB_SUBMIT = \
 """
@@ -296,6 +298,9 @@ class ProminenceBackend(object):
                         else:
                             path = '%s/%s' % (username, task['image'])
                         task['image'] = self.create_presigned_url('get', self._config['S3_BUCKET'], 'uploads/%s' % path, 6000)
+                        url_exists = validate.validate_presigned_url(task['image'])
+                        if not url_exists:
+                            return (1, {"error":"Image %s does not exist" % image})
 
                 tasks_new.append(task)
                 count_task += 1
@@ -398,11 +403,15 @@ class ProminenceBackend(object):
                 artifact_url = artifact['url']
                 artifacts.append(artifact_url)
                 if 'http' not in artifact_url:
+                    artifact_original = artifact_url
                     if '/' in artifact_url:
                         path = artifact_url
                     else:
                         path = '%s/%s' % (username, artifact_url)
                     artifact_url = self.create_presigned_url('get', self._config['S3_BUCKET'], 'uploads/%s' % path, 604800)
+                    url_exists = validate.validate_presigned_url(artifact_url)
+                    if not url_exists:
+                        return (1, {"error":"Artifact %s does not exist" % artifact_original})
                 input_files.append(artifact_url)
             cjob['+ProminenceArtifacts'] = condor_str(",".join(artifacts))
 

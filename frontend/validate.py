@@ -1,5 +1,6 @@
 import json
 import re
+import requests
 
 def validate_workflow(workflow):
     """
@@ -288,3 +289,17 @@ def validate_job(job):
             return (False, 'the number of retries must be less than 6')
 
     return (True, '')
+
+def validate_presigned_url(url):
+    """
+    Validate a presigned URL
+    """
+    try:
+        response = requests.get(url, timeout=30)
+    except requests.exceptions.RequestException as err:
+        return False
+
+    if response.status_code != 200:
+        return False
+    return True
+
