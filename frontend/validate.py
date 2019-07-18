@@ -2,6 +2,8 @@ import json
 import re
 import requests
 
+import retry
+
 def validate_workflow(workflow):
     """
     Validate JSON workflow description
@@ -290,6 +292,7 @@ def validate_job(job):
 
     return (True, '')
 
+@retry.retry(tries=2, delay=1, backoff=1)
 def validate_presigned_url(url):
     """
     Validate a presigned URL

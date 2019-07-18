@@ -3,6 +3,7 @@ FROM eoscprominence/htcondor:8.9.2
 COPY restapi.py /usr/local/bin/
 COPY backend.py /usr/local/bin/
 COPY validate.py /usr/local/bin/
+COPY retry.py /usr/local/bin/
 COPY promlet.py /usr/local/libexec/
 
 RUN yum -y install epel-release && \
