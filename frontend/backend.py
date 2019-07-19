@@ -41,7 +41,7 @@ stream_error = true
 RequestCpus = %(cpus)s
 RequestMemory = %(reqmemory)s
 
-+remote_cerequirements = RequiredTasks == 1 && RequiredMemoryPerCpu == 1 && RequiredCpusPerTask == 1 && RequiredTime == 10
++remote_cerequirements_default = RequiredTasks == 1 && RequiredMemoryPerCpu == 1 && RequiredCpusPerTask == 1 && RequiredTime == 10
 
 +ProminenceWantJobRouter = ProminenceMaxIdleTime =?= 0 || (ProminenceMaxIdleTime > 0 && JobStatus == 1 && CurrentTime - EnteredCurrentStatus > ProminenceMaxIdleTime)
 +ProminenceJobUniqueIdentifier = "%(uuid)s"
@@ -98,6 +98,21 @@ def redact_storage_creds(storage):
         if 'token' in storage['onedata']:
             storage['onedata']['token'] = '***'
     return storage
+
+def delete_object(url, access_key_id, secret_access_key, bucket, key):
+    """
+    Delete object from object storage
+    """
+    s3_client = boto3.client('s3',
+                             endpoint_url=url,
+                             aws_access_key_id=access_key_id,
+                             aws_secret_access_key=secret_access_key)
+    try:
+        response = s3_client.delete_object(Bucket=bucket, Key=key)
+    except Exception:
+        return False
+
+    return True
 
 def get_matching_s3_objects(url, access_key_id, secret_access_key, bucket, prefix="", suffix=""):
     """
@@ -211,6 +226,18 @@ class ProminenceBackend(object):
 
         return objects
 
+    def delete_object(self, username, group, path):
+        """
+        Delete object from object storage
+        """
+        success = delete_object(self._config['S3_URL'],
+                                self._config['S3_ACCESS_KEY_ID'],
+                                self._config['S3_SECRET_ACCESS_KEY'],
+                                self._config['S3_BUCKET'],
+                                key)
+
+        return success
+
     def get_job_unique_id(self, job_id):
         """
         Return the uid and identity for a specified job id
@@ -269,10 +296,14 @@ class ProminenceBackend(object):
         if 'nodes' not in jjob['resources']:
             jjob['resources']['nodes'] = 1
 
+        # Write original job.json
+        with open(os.path.join(job_sandbox, '.job.json'), 'w') as file:
+            json.dump(jjob, file)
+
         # Write tasks definition to file
         if 'tasks' in jjob:
 
-            # Replace image identifiers with Swift temporary URLs
+            # Replace image identifiers with S3 presigned URLs
             tasks_new = []
             count_task = 0
             for task in jjob['tasks']:
@@ -310,10 +341,6 @@ class ProminenceBackend(object):
             input_files.append(os.path.join(job_sandbox, '.job.mapped.json'))
         else:
             return (1, {"error":"No tasks or workflow specified"})
-
-        # Write original job.json
-        with open(os.path.join(job_sandbox, '.job.json'), 'w') as file:
-            json.dump(jjob, file)
 
         if 'name' in jjob:
             cjob['+ProminenceName'] = condor_str(jjob['name'])
@@ -457,7 +484,7 @@ class ProminenceBackend(object):
         cpusPerTask = jjob['resources']['cpus']
         memoryPerCpu = jjob['resources']['memory']*1000
         timeRequired = '{:02d}:{:02d}:00'.format(*divmod(max_run_time/60, 60))
-        cjob['+remote_cerequirements'] = condor_str("RequiredTasks == %d && RequiredMemoryPerCpu == %d && RequiredCpusPerTask == %d && RequiredTime == %s" % (tasks, memoryPerCpu, cpusPerTask, timeRequired))
+        cjob['+remote_cerequirements_default'] = condor_str("RequiredTasks == %d && RequiredMemoryPerCpu == %d && RequiredCpusPerTask == %d && RequiredTime == %s" % (tasks, memoryPerCpu, cpusPerTask, timeRequired))
 
         # Set max idle time for local resources
         max_idle_time = 0

@@ -114,6 +114,19 @@ def list_objects(username, group, path=None):
     objects = backend.list_objects(username, group, path)
     return jsonify(objects)
 
+@app.route("/prominence/v1/data/<path:path>", methods=['DELETE'])
+@requires_auth
+def delete_object(username, group, path):
+    """
+    Delete object in cloud storage
+    """
+    path = str(path)
+    if not object_access_allowed(group, path):
+        return jsonify({'error':'Not authorized to access this path'}), 403
+
+    success = backend.delete_object(username, group, path)
+    return jsonify(objects)
+
 @app.route("/prominence/v1/data/upload", methods=['POST'])
 @requires_auth
 def upload_file(username, group):
