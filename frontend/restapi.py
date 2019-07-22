@@ -125,7 +125,7 @@ def delete_object(username, group, path):
         return jsonify({'error':'Not authorized to access this path'}), 403
 
     success = backend.delete_object(username, group, path)
-    return jsonify(objects)
+    return jsonify({}), 204
 
 @app.route("/prominence/v1/data/upload", methods=['POST'])
 @requires_auth
