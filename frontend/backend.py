@@ -344,9 +344,6 @@ class ProminenceBackend(object):
 
         if 'name' in jjob:
             cjob['+ProminenceName'] = condor_str(jjob['name'])
-            match_obj_name = re.match(r'([\w\-\_]+)', jjob['name'])
-            if jjob['name'] != "" and (not match_obj_name or len(jjob['name']) > 64):
-                return (1, {"error":"Invalid job name specified"})
         else:
             cjob['+ProminenceName'] = condor_str('')
 
@@ -570,11 +567,6 @@ class ProminenceBackend(object):
                 # If a job name is not defined, create one as we require all jobs to have a name
                 if 'name' not in job:
                     job['name'] = str(uuid.uuid4())
-
-                # Check validity of name
-                match_obj_name = re.match(r'([\w\-\_]+)', job['name'])
-                if not match_obj_name or len(job['name']) > 64:
-                    return (1, {"error":"Invalid job name specified"})
 
                 info['name'] = job['name']
 
