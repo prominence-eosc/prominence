@@ -103,11 +103,11 @@ def delete_object(url, access_key_id, secret_access_key, bucket, key):
     """
     Delete object from object storage
     """
-    s3_client = boto3.client('s3',
-                             endpoint_url=url,
-                             aws_access_key_id=access_key_id,
-                             aws_secret_access_key=secret_access_key)
     try:
+        s3_client = boto3.client('s3',
+                                 endpoint_url=url,
+                                 aws_access_key_id=access_key_id,
+                                 aws_secret_access_key=secret_access_key)
         response = s3_client.delete_object(Bucket=bucket, Key=key)
     except Exception:
         return False
