@@ -104,7 +104,7 @@ def monitor(function, *args, **kwargs):
     time_user = end_resources.ru_utime - start_resources.ru_utime
     time_sys = end_resources.ru_stime - start_resources.ru_stime
 
-    return (exit_code, time_real, time_user, time_sys)
+    return (exit_code, time_real, time_user, time_sys, end_resources.ru_maxrss)
 
 def get_info():
     """
@@ -414,7 +414,7 @@ def run_udocker(image, cmd, workdir, env, path, base_dir, mpi, mpi_processes, mp
     for artifact in artifacts:
         mounts = mounts + ' -v %s/%s:%s ' % (path, artifact, artifacts[artifact])
 
-    if base_dir == '/home/prominence' or base_dir == '/mnt/beeond/prominence':
+    if base_dir in ('/home/prominence', '/mnt/beeond/prominence'):
         # Used on clouds
         run_command = ("udocker -q run %s"
                        " --env=HOME=%s"
@@ -521,7 +521,7 @@ def run_singularity(image, cmd, workdir, env, path, base_dir, mpi, mpi_processes
     for artifact in artifacts:
         mounts = mounts + ' --bind %s/%s:%s ' % (path, artifact, artifacts[artifact])
 
-    if base_dir == '/home/prominence' or base_dir == '/mnt/beeond/prominence':
+    if base_dir in ('/home/prominence', '/mnt/beeond/prominence'):
         run_command = ("singularity %s"
                        " --no-home"
                        " --bind /home"
@@ -641,7 +641,11 @@ def run_tasks(job_file, path, base_dir, is_batch):
             env = task['env']
 
         location = '%s/%d' % (base_dir, count)
-        os.mkdir(location)
+        try:
+            os.mkdir(location)
+        except Exception as err:
+            logging.error('Unable to create directory %s', location)
+            return False
 
         mpi = None
         if 'type' in task:
@@ -665,6 +669,7 @@ def run_tasks(job_file, path, base_dir, is_batch):
         time_real = -1
         time_user = -1
         time_sys = -1
+        task_was_run = False
 
         # Check if a previous task used the same image: in that case use the previous image if the same container
         # runtime was used
@@ -683,18 +688,23 @@ def run_tasks(job_file, path, base_dir, is_batch):
                 image = 'image%d' % image_count
             else:
                 logging.info('Pulling image for task')
-                (download_exit_code, image_pull_time, _, _) = monitor(download_udocker, image, location, count, base_dir)
+                (download_exit_code, image_pull_time, _, _, _) = monitor(download_udocker, image, location, count, base_dir)
                 if download_exit_code != 0:
                     update_classad('ProminenceImagePullSuccess', 1)
+                    logging.error('Unable to pull image')
                 else:
                     image = 'image%d' % count
             # Run task
             if found_image or download_exit_code == 0:
+                task_was_run = True
                 while exit_code != 0 and retry_count < num_retries + 1:
                     logging.info('Running task, attempt %d', retry_count + 1)
-                    (exit_code, time_real, time_user, time_sys) = monitor(run_udocker, image, cmd, workdir, env, path, base_dir, mpi, mpi_processes, procs_per_node, artifacts)
-                    logging.info('Timing real: %d, user: %d, sys: %d', time_real, time_user, time_sys)
+                    (exit_code, time_real, time_user, time_sys, max_rss) = monitor(run_udocker, image, cmd, workdir, env, path, base_dir, mpi, mpi_processes, procs_per_node, artifacts)
+                    logging.info('Resources real: %d, user: %d, sys: %d, maxrss: %d', time_real, time_user, time_sys, max_rss)
                     retry_count += 1
+            else:
+                # If we didn't try running the task, set exit code to fill value
+                exit_code = -1
         else:
             # Pull image if necessary or use a previously pulled image
             if found_image:
@@ -702,24 +712,29 @@ def run_tasks(job_file, path, base_dir, is_batch):
             else:
                 image_new = '%s/image.simg' % location
                 logging.info('Pulling image for task')
-                (download_exit_code, image_pull_time, _, _) = monitor(download_singularity, image, image_new, location, base_dir)
+                (download_exit_code, image_pull_time, _, _, _) = monitor(download_singularity, image, image_new, location, base_dir)
                 if download_exit_code != 0:
                     update_classad('ProminenceImagePullSuccess', 1)
+                    logging.error('Unable to pull image')
             if found_image or download_exit_code == 0:
+                task_was_run = True
                 while exit_code != 0 and retry_count < num_retries + 1:
-                    (exit_code, time_real, time_user, time_sys) = monitor(run_singularity, image_new, cmd, workdir, env, path, base_dir, mpi, mpi_processes, procs_per_node, artifacts)
-                    logging.info('Timing real: %d, user: %d, sys: %d', time_real, time_user, time_sys)
+                    (exit_code, time_real, time_user, time_sys, max_rss) = monitor(run_singularity, image_new, cmd, workdir, env, path, base_dir, mpi, mpi_processes, procs_per_node, artifacts)
+                    logging.info('Resources real: %d, user: %d, sys: %d, maxrss: %d', time_real, time_user, time_sys, max_rss)
                     retry_count += 1
+            else:
+                # If we didn't try running the task, set exit code to fill value
+                exit_code = -1
 
         task_u = {}
         task_u['imagePullTime'] = image_pull_time
-        task_u['exitCode'] = exit_code
-        task_u['wallTimeUsage'] = time_real
-        task_u['retries'] = retry_count - 1
-        if time_user > -1 and time_sys > -1:
-            task_u['cpuTimeUsage'] = time_user + time_sys
-        else:
-            task_u['cpuTimeUsage'] = -1
+        if task_was_run:
+            task_u['exitCode'] = exit_code
+            task_u['wallTimeUsage'] = time_real
+            task_u['maxResidentSetSizeKB'] = max_rss
+            task_u['retries'] = retry_count - 1
+            if time_user > -1 and time_sys > -1:
+                task_u['cpuTimeUsage'] = time_user + time_sys
         tasks_u.append(task_u)
 
         count += 1
@@ -782,6 +797,19 @@ if __name__ == "__main__":
             json.dump({}, file)
     except Exception as exc:
         logging.critical('Unable to write promlet.json due to: %s', exc)
+        exit(1)
+
+    # Check if we have been run before
+    if os.path.isfile('.lock'):
+        logging.critical('Lock file detected - promlet is being re-run, exiting...')
+        exit(1)
+
+    # Create a lock file
+    try:
+        open('.lock', 'a').close()
+    except Exception as exc:
+        logging.critical('Unable to write lock file, exiting...')
+        exit(1)
 
     # Mount user-specified storage if necessary
     mount_storage(args.job)
@@ -792,10 +820,11 @@ if __name__ == "__main__":
     # Upload output files if necessary
     success_stageout = stageout(args.job, path, base_dir)
 
-    logging.info('Exiting promlet')
-
     # Return appropriate exit code - necessary for retries of DAG nodes
     if not success_tasks or not success_stageout:
+        logging.info('Exiting promlet with failure')
         exit(1)
+
+    logging.info('Exiting promlet with success')
     exit(0)
 
