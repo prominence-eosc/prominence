@@ -849,6 +849,12 @@ class ProminenceBackend(object):
                     jobj['status'] = 'failed'
                     jobj['statusReason'] = 'Container image pull failed'
 
+            for task in tasks_u:
+                if 'imagePullStatus' in task:
+                    if task['imagePullStatus'] == 'failed':
+                        jobj['status'] = 'failed'
+                        jobj['statusReason'] = 'Container image pull failed'
+
             # Generate useful error messages
             if 'JobRunCount' in job:
                 if job['JobStatus'] == 1 and job['JobRunCount'] > 0:
