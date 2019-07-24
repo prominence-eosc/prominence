@@ -226,10 +226,15 @@ class ProminenceBackend(object):
 
         return objects
 
-    def delete_object(self, username, group, path):
+    def delete_object(self, username, group, obj):
         """
         Delete object from object storage
         """
+        if '/' in obj:
+            key = 'uploads/%s' % obj
+        else:
+            key = 'uploads/%s/%s' % (username, obj)
+
         success = delete_object(self._config['S3_URL'],
                                 self._config['S3_ACCESS_KEY_ID'],
                                 self._config['S3_SECRET_ACCESS_KEY'],
@@ -308,7 +313,7 @@ class ProminenceBackend(object):
             count_task = 0
             for task in jjob['tasks']:
 
-                if 'http' not in task['image'] and ('.tar' in task['image'] or '.simg' in task['image'] or '.sif' in task['image']):
+                if 'http' not in task['image'] and ('.tar' in task['image'] or '.tgz' in task['image'] or '.simg' in task['image'] or '.sif' in task['image']):
                     image = task['image']
 
                     # Check if image is the same as a previous task
@@ -480,8 +485,7 @@ class ProminenceBackend(object):
         tasks = jjob['resources']['nodes']
         cpusPerTask = jjob['resources']['cpus']
         memoryPerCpu = jjob['resources']['memory']*1000
-        timeRequired = '{:02d}:{:02d}:00'.format(*divmod(max_run_time/60, 60))
-        cjob['+remote_cerequirements_default'] = condor_str("RequiredTasks == %d && RequiredMemoryPerCpu == %d && RequiredCpusPerTask == %d && RequiredTime == %s" % (tasks, memoryPerCpu, cpusPerTask, timeRequired))
+        cjob['+remote_cerequirements_default'] = condor_str("RequiredTasks == %d && RequiredMemoryPerCpu == %d && RequiredCpusPerTask == %d && RequiredTime == %d" % (tasks, memoryPerCpu, cpusPerTask, max_run_time))
 
         # Set max idle time for local resources
         max_idle_time = 0
@@ -758,6 +762,7 @@ class ProminenceBackend(object):
                           'ProminenceInfrastructureState',
                           'QDate',
                           'JobStartDate',
+                          'JobRunCount',
                           'JobCurrentStartExecutingDate',
                           'CompletionDate',
                           'EnteredCurrentStatus',
@@ -780,7 +785,7 @@ class ProminenceBackend(object):
                           'Iwd']
         jobs_state_map = {1:'created',
                           2:'running',
-                          3:'deleted',
+                          3:'failed',
                           4:'completed',
                           5:'failed'}
 
@@ -845,6 +850,11 @@ class ProminenceBackend(object):
                     jobj['statusReason'] = 'Container image pull failed'
 
             # Generate useful error messages
+            if 'JobRunCount' in job:
+                if job['JobStatus'] == 1 and job['JobRunCount'] > 0:
+                    jobj['status'] = 'failed'
+                    jobj['statusReason'] = ''
+
             if job['JobStatus'] == 3:
                 reason = ''
                 if 'ProminenceInfrastructureState' in job:
@@ -857,6 +867,7 @@ class ProminenceBackend(object):
                 if 'RemoveReason' in job:
                     if 'Python-initiated action' in job['RemoveReason']:
                         reason = 'Job deleted by user'
+                        jobj['status'] = 'deleted'
                     if 'Infrastructure took too long to be deployed' in job['RemoveReason']:
                         reason = 'Infrastructure took too long to be deployed'
                 if 'LastHoldReasonSubCode' in job:
@@ -984,7 +995,7 @@ class ProminenceBackend(object):
                           ]
         jobs_state_map = {1:'created',
                           2:'running',
-                          3:'deleted',
+                          3:'failed',
                           4:'completed',
                           5:'failed'}
 
