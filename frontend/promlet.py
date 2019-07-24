@@ -669,7 +669,9 @@ def run_tasks(job_file, path, base_dir, is_batch):
         time_real = -1
         time_user = -1
         time_sys = -1
+        max_rss = -1
         task_was_run = False
+        image_pull_status = 'completed'
 
         # Check if a previous task used the same image: in that case use the previous image if the same container
         # runtime was used
@@ -692,6 +694,7 @@ def run_tasks(job_file, path, base_dir, is_batch):
                 if download_exit_code != 0:
                     update_classad('ProminenceImagePullSuccess', 1)
                     logging.error('Unable to pull image')
+                    image_pull_status = 'failed'
                 else:
                     image = 'image%d' % count
             # Run task
@@ -716,6 +719,7 @@ def run_tasks(job_file, path, base_dir, is_batch):
                 if download_exit_code != 0:
                     update_classad('ProminenceImagePullSuccess', 1)
                     logging.error('Unable to pull image')
+                    image_pull_status = 'failed'
             if found_image or download_exit_code == 0:
                 task_was_run = True
                 while exit_code != 0 and retry_count < num_retries + 1:
@@ -727,6 +731,7 @@ def run_tasks(job_file, path, base_dir, is_batch):
                 exit_code = -1
 
         task_u = {}
+        task_u['imagePullStatus'] = image_pull_status
         task_u['imagePullTime'] = image_pull_time
         if task_was_run:
             task_u['exitCode'] = exit_code
