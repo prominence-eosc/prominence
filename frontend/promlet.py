@@ -688,6 +688,7 @@ def run_tasks(job_file, path, base_dir, is_batch):
             # Pull image if necessary or use a previously pulled image
             if found_image:
                 image = 'image%d' % image_count
+                image_pull_status = 'cached'
             else:
                 logging.info('Pulling image for task')
                 (download_exit_code, image_pull_time, _, _, _) = monitor(download_udocker, image, location, count, base_dir)
@@ -712,6 +713,7 @@ def run_tasks(job_file, path, base_dir, is_batch):
             # Pull image if necessary or use a previously pulled image
             if found_image:
                 image_new = '%s/%d/image.simg' % (base_dir, image_count)
+                image_pull_status = 'cached'
             else:
                 image_new = '%s/image.simg' % location
                 logging.info('Pulling image for task')
