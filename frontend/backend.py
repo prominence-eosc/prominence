@@ -947,8 +947,14 @@ class ProminenceBackend(object):
                 if 'ProminenceInfrastructureSite' in job:
                     if job['ProminenceInfrastructureSite'] != 'none':
                         execution['site'] = str(job['ProminenceInfrastructureSite'])
+                    new_tasks_u = []
                     if tasks_u:
-                        execution['tasks'] = tasks_u
+                        for task_u in tasks_u:
+                            if 'maxMemoryUsageKB' in task_u:
+                                execution['maxMemoryUsageKB'] = task_u['maxMemoryUsageKB']
+                            else:
+                                new_tasks_u.append(task_u)
+                        execution['tasks'] = new_tasks_u
                     jobj['execution'] = execution
 
                 if 'ProminenceJobUniqueIdentifier' in job:

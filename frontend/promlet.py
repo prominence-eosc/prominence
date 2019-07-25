@@ -92,6 +92,17 @@ def stageout(job_file, path, base_dir):
                 return False
     return True
 
+def get_usage_from_cgroup():
+    """
+    Read memory usage from cgroup (work in progress!)
+    """
+    max_usage_in_bytes = -1
+    files = glob.glob('/sys/fs/cgroup/memory/htcondor/*/memory.max_usage_in_bytes')
+    for file in files:
+        with open(file) as cgroup:
+            max_usage_in_bytes = int(cgroup.read())
+    return max_usage_in_bytes
+
 def monitor(function, *args, **kwargs):
     """
     Monitor CPU and wall time usage of a function which runs a child process
@@ -749,6 +760,13 @@ def run_tasks(job_file, path, base_dir, is_batch):
         if exit_code != 0:
             success = False
             break
+
+    # Get overall max memory usage
+    max_usage_in_bytes = get_usage_from_cgroup()
+    if max_usage_in_bytes > -1:
+        task_u = {}
+        task_u['maxMemoryUsageKB'] = max_usage_in_bytes/1000
+        tasks_u.append(task_u)
 
     # Write json job details
     try:
