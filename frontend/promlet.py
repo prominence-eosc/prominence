@@ -175,12 +175,6 @@ def get_storage_mountpoint():
 
     return None
 
-def eprint(*args, **kwargs):
-    """
-    Print to stderr
-    """
-    print(*args, file=sys.stderr, **kwargs)
-
 def update_classad(attr, value):
     """
     Update the job's ClassAd if possible
