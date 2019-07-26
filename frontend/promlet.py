@@ -295,12 +295,26 @@ def download_udocker(image, location, label, base_dir):
             logging.error('Unable to download udocker image due to: %s', e)
             return 1
 
+        # Install udocker
+        process = subprocess.Popen('udocker install',
+                                   env=dict(os.environ,
+                                            UDOCKER_DIR='%s/.udocker' % base_dir),
+                                   shell=True,
+                                   stdout=subprocess.PIPE,
+                                   stderr=subprocess.PIPE)
+        stdout, stderr = process.communicate()
+        return_code = process.returncode
+
+        logging.info('udocker install stdout: "%s"', stdout)
+        logging.info('udocker install stderr: "%s"', stderr)
+
         # Load image
         process = subprocess.Popen('udocker load -i %s/image.tar' % location,
                                    env=dict(os.environ,
                                             UDOCKER_DIR='%s/.udocker' % base_dir),
                                    shell=True,
-                                   stdout=subprocess.PIPE)
+                                   stdout=subprocess.PIPE,
+                                   stderr=subprocess.PIPE)
         stdout, stderr = process.communicate()
         return_code = process.returncode
 
@@ -477,9 +491,8 @@ def run_udocker(image, cmd, workdir, env, path, base_dir, mpi, mpi_processes, mp
                                             UDOCKER_DIR='%s/.udocker' % base_dir,
                                             PROMINENCE_CPUS='%d' % job_cpus,
                                             PROMINENCE_MEMORY='%d' % job_memory),
-                                   shell=True,
-                                   stdout=subprocess.PIPE)
-        stdout, stderr = process.communicate()
+                                   shell=True)
+        process.wait()
         return_code = process.returncode
     except Exception as err:
         logging.error('Exception running udocker: ', err)
@@ -487,11 +500,6 @@ def run_udocker(image, cmd, workdir, env, path, base_dir, mpi, mpi_processes, mp
 
     update_classad('ProminenceExecuteTime', time.time() - start)
     update_classad('ProminenceExitCode', return_code)
-
-    if stdout is not None:
-        print(stdout)
-    if stderr is not None:
-        eprint(stderr)
 
     return return_code
 
@@ -565,20 +573,14 @@ def run_singularity(image, cmd, workdir, env, path, base_dir, mpi, mpi_processes
                                         PROMINENCE_PWD='%s' % workdir,
                                         PROMINENCE_CPUS='%d' % job_cpus,
                                         PROMINENCE_MEMORY='%d' % job_memory),
-                               shell=True,
-                               stdout=subprocess.PIPE)
-    stdout, stderr = process.communicate()
+                               shell=True)
+    process.wait()
     return_code = process.returncode
 
     logging.info('Task had exit code %d', return_code)
 
     update_classad('ProminenceExecuteTime', time.time() - start)
     update_classad('ProminenceExitCode', return_code)
-
-    if stdout is not None:
-        print(stdout)
-    if stderr is not None:
-        eprint(stderr)
 
     return return_code
 
