@@ -749,7 +749,7 @@ class ProminenceBackend(object):
             return (0, {})
         return (1, {"error":"No such workflow"})
 
-    def list_jobs(self, job_id, identity, active, completed, num, detail, constraint):
+    def list_jobs(self, job_ids, identity, active, completed, num, detail, constraint):
         """
         List jobs or describe a specified job
         """
@@ -799,8 +799,11 @@ class ProminenceBackend(object):
         else:
             restrict = 'True'
         constraintc = 'ProminenceIdentity =?= "%s" && %s' % (identity, restrict)
-        if int(job_id) > -1:
-            constraintc = 'ClusterId =?= %s && %s' % (job_id, constraintc)
+        if job_ids:
+            constraints = []
+            for job_id in job_ids:
+                constraints.append('ClusterId == %d' % int(job_id))
+            constraintc = '%s && %s' % (' || '.join(constraints), constraintc)
 
         # Get completed jobs if necessary
         if completed:
