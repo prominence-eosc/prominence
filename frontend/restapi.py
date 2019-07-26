@@ -336,7 +336,14 @@ def jobs(username, group):
     if 'detail' in request.args:
         detail = 1
 
-    data = backend.list_jobs([], username, active, completed, num, detail, constraint)
+    job_ids = []
+    if 'id' in request.args:
+        job_ids = request.args.get('id').split(',')
+        # Assume both active jobs and completed jobs
+        completed = True
+        active = True
+
+    data = backend.list_jobs(job_ids, username, active, completed, num, detail, constraint)
 
     return jsonify(data)
 

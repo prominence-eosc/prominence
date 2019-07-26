@@ -803,7 +803,8 @@ class ProminenceBackend(object):
             constraints = []
             for job_id in job_ids:
                 constraints.append('ClusterId == %d' % int(job_id))
-            constraintc = '%s && %s' % (' || '.join(constraints), constraintc)
+            constraintc = '(%s) && %s' % (' || '.join(constraints), constraintc)
+            num = len(job_ids)
 
         # Get completed jobs if necessary
         if completed:
