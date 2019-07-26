@@ -799,7 +799,7 @@ class ProminenceBackend(object):
         else:
             restrict = 'True'
         constraintc = 'ProminenceIdentity =?= "%s" && %s' % (identity, restrict)
-        if job_ids:
+        if len(job_ids) > 0:
             constraints = []
             for job_id in job_ids:
                 constraints.append('ClusterId == %d' % int(job_id))
@@ -822,7 +822,7 @@ class ProminenceBackend(object):
                 with open(job['Iwd'] + '/.job.json') as json_file:
                     job_json_file = json.load(json_file)
             except:
-                return []
+                continue
 
             jobj = {}
             jobj['id'] = job['ClusterId']
