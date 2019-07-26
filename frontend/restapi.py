@@ -358,6 +358,23 @@ def get_job(username, group, job_id):
     data = backend.list_jobs([job_id], username, True, True, 1, 1, (None, None))
     return jsonify(data)
 
+@app.route("/prominence/v1/jobs", methods=['DELETE'])
+@requires_auth
+def delete_jobs(username, group):
+    """
+    Delete the specified job(s)
+    """
+    if 'id' not in request.args:
+        return jsonify({'error':'a job id or list of job ids must be provided'}), 400
+
+    app.logger.info('%s DeleteJobs user:%s group:%s id:%s' % (get_remote_addr(request), username, group, request.args.get('id')))
+
+    (return_code, data) = backend.delete_job(username, request.args.get('id').split(','))
+
+    if return_code == 0:
+        return jsonify(data), 200
+    return jsonify(data), 400
+
 @app.route("/prominence/v1/jobs/<int:job_id>", methods=['DELETE'])
 @requires_auth
 def delete_job(username, group, job_id):
