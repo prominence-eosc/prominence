@@ -366,7 +366,7 @@ def delete_job(username, group, job_id):
     """
     app.logger.info('%s DeleteJob user:%s group:%s id:%d' % (get_remote_addr(request), username, group, job_id))
 
-    (return_code, data) = backend.delete_job(username, job_id)
+    (return_code, data) = backend.delete_job(username, [job_id])
 
     if return_code == 0:
         return jsonify(data), 200

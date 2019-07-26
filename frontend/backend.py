@@ -726,17 +726,21 @@ class ProminenceBackend(object):
 
         return (retval, data)
 
-    def delete_job(self, username, job_id):
+    def delete_job(self, username, job_ids):
         """
-        Delete the specified job
+        Delete the specified job(s)
         """
+        constraints = []
+        for job_id in job_ids:
+            constraints.append('ClusterId == %d' % int(job_id))
+        constraint = '(%s) && ProminenceIdentity == "%s" && Cmd != "/bin/condor_dagman"' % (' || '.join(constraints), username)
+
         schedd = htcondor.Schedd()
-        ret = schedd.act(htcondor.JobAction.Remove,
-                         'ProminenceIdentity == "%s" && ClusterId == %d && Cmd != "/bin/condor_dagman"' % (username, job_id))
+        ret = schedd.act(htcondor.JobAction.Remove, constraint)
 
         if ret["TotalSuccess"] > 0:
             return (0, {})
-        return (1, {"error":"No such job"})
+        return (1, {"error":"No such job(s)"})
 
     def delete_workflow(self, username, workflow_id):
         """
