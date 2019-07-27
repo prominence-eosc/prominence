@@ -593,11 +593,11 @@ def run_tasks(job_file, path, base_dir, is_batch):
     if 'numberOfRetries' in job:
         num_retries = job['numberOfRetries']
 
-    # Create directory which will be the home directory inside the container
+    # Create directory which will be the user's home directory (& current directory) inside the container
     #try:
     #    os.mkdir(base_dir + '/myhome')
     #except Exception as ex:
-    #    logging.error('Unable to create the myhome directory due to: %s', ex)
+    #    logging.critical('Unable to create the myhome directory due to: %s', ex)
     #    return False
 
     # Number of nodes
