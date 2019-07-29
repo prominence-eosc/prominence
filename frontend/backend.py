@@ -689,25 +689,25 @@ class ProminenceBackend(object):
                 os.chmod(job_sandbox + '/' + job['name'] + '/promlet.py', 0775)
 
         # Create dag
+        dag.append('NODE_STATUS_FILE workflow.dag.status')
         if 'dependencies' in jjob:
             for parent in jjob['dependencies']:
                 children = " ".join(jjob['dependencies'][parent])
                 dag.append('PARENT ' + parent + ' CHILD ' + children)
-            dag.append('NODE_STATUS_FILE workflow.dag.status')
+
+        # Write dag definition file
         with open(job_sandbox + '/job.dag', 'w') as fd:
             fd.write('\n'.join(dag))
 
-            wf_name = ''
-            if 'name' in jjob:
-                wf_name = str(jjob['name'])
+        wf_name = ''
+        if 'name' in jjob:
+            wf_name = str(jjob['name'])
 
-            data = {}
+        data = {}
 
-            # Submit dag
+        # Submit dag
         cmd = "condor_submit_dag -batch-name %s -append '+ProminenceType=\"workflow\"' -append '+ProminenceIdentity=\"%s\"' -append '+ProminenceJobUniqueIdentifier=\"%s\"' job.dag" % (wf_name, username, uid)
         (return_code, stdout, stderr, timedout) = run(cmd, job_sandbox, 30)
-        print 'condor_submit stdout=', stdout 
-        print 'condor_submit stderr=', stderr
         m = re.search(r'submitted to cluster\s(\d+)', stdout)
         if m:
             retval = 201
