@@ -476,10 +476,8 @@ class ProminenceBackend(object):
             if 'type' in jjob['tasks'][0]:
                 if jjob['tasks'][0]['type'] == 'openmpi':
                     cjob['+ProminenceWantMPI'] = 'true'
-                    cjob['+ProminenceMPIType'] = condor_str('openmpi')
                 elif jjob['tasks'][0]['type'] == 'mpich':
                     cjob['+ProminenceWantMPI'] = 'true'
-                    cjob['+ProminenceMPIType'] = condor_str('mpich')
 
         # Prepare for submission to a remote HPC system
         tasks = jjob['resources']['nodes']
