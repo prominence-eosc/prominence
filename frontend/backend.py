@@ -411,8 +411,6 @@ class ProminenceBackend(object):
         # Output files
         if 'outputFiles' in jjob:
             output_files_new = []
-            cjob['+ProminenceOutputFiles'] = condor_str(','.join(jjob['outputFiles']))
-
             output_locations_put = []
 
             for filename in jjob['outputFiles']:
@@ -448,8 +446,6 @@ class ProminenceBackend(object):
 
         if 'outputDirs' in jjob:
             output_dirs_new = []
-            cjob['+ProminenceOutputDirs'] = condor_str(','.join(jjob['outputDirs']))
-
             output_locations_put = []
 
             for dirname in jjob['outputDirs']:
@@ -655,8 +651,6 @@ class ProminenceBackend(object):
 
                 # Output files
                 if 'outputFiles' in job:
-                    cjob['+ProminenceOutputFiles'] = condor_str(','.join(job['outputFiles']))
-
                     output_locations_put = []
 
                     for filename in job['outputFiles']:
@@ -776,8 +770,6 @@ class ProminenceBackend(object):
                           'RemoveReason',
                           'RemoteWallClockTime',
                           'LastHoldReasonSubCode',
-                          'ProminenceOutputFiles',
-                          'ProminenceOutputDirs',
                           'ProminenceUserEnvironment',
                           'ProminenceUserMetadata',
                           'TransferInput',
@@ -971,10 +963,9 @@ class ProminenceBackend(object):
                 if 'ProminenceJobUniqueIdentifier' in job:
                     uid = str(job['ProminenceJobUniqueIdentifier'])
 
-                if 'ProminenceOutputFiles' in job:
-                    output_files = str(job['ProminenceOutputFiles']).split(',')
+                if 'outputFiles' in job_json_file:
                     outputs = []
-                    for output_file in output_files:
+                    for output_file in job_json_file['outputFiles']:
                         filename = os.path.basename(output_file)
                         if job['JobStatus'] == 4:
                             url = self.create_presigned_url('get', self._config['S3_BUCKET'], 'scratch/%s/%s' % (uid, filename), 600)
@@ -983,10 +974,9 @@ class ProminenceBackend(object):
                         file_map = {'name':output_file, 'url':url}
                         outputs.append(file_map)
                     jobj['outputFiles'] = outputs
-                if 'ProminenceOutputDirs' in job:
-                    output_dirs = str(job['ProminenceOutputDirs']).split(',')
+                if 'outputDirs' in job_json_file:
                     outputs = []
-                    for output_dir in output_dirs:
+                    for output_dir in job_json_file['outputDirs']:
                         dirs = output_dir.split('/')
                         dirname_base = dirs[len(dirs) - 1]
                         if job['JobStatus'] == 4:
