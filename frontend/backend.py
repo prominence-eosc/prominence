@@ -742,16 +742,21 @@ class ProminenceBackend(object):
             return (0, {})
         return (1, {"error":"No such job(s)"})
 
-    def delete_workflow(self, username, workflow_id):
+    def delete_workflows(self, username, workflow_ids):
         """
-        Delete the specified workflow
+        Delete the specified workflow(s)
         """
+        constraints = []
+        for workflow_id in workflow_ids:
+            constraints.append('ClusterId == %d' % int(workflow_id))
+        constraint = '(%s) && ProminenceIdentity == "%s" && Cmd == "/usr/bin/condor_dagman"' % (' || '.join(constraints), username)
+
         schedd = htcondor.Schedd()
-        ret = schedd.act(htcondor.JobAction.Remove, 'ProminenceIdentity == "%s" && ClusterId == %d && Cmd == "/usr/bin/condor_dagman"' % (username, workflow_id))
+        ret = schedd.act(htcondor.JobAction.Remove, constraint)
 
         if ret["TotalSuccess"] > 0:
             return (0, {})
-        return (1, {"error":"No such workflow"})
+        return (1, {"error":"No such workflow(s)"})
 
     def list_jobs(self, job_ids, identity, active, completed, num, detail, constraint):
         """
@@ -1000,7 +1005,7 @@ class ProminenceBackend(object):
 
         return jobs
 
-    def list_workflows(self, workflow_id, identity, active, completed, num, detail, constraint):
+    def list_workflows(self, workflow_ids, identity, active, completed, num, detail, constraint):
         """
         List workflows or describe a specified workflow
         """
@@ -1029,8 +1034,12 @@ class ProminenceBackend(object):
         else:
             restrict = 'True'
         constraintc = 'ProminenceIdentity =?= "%s" && %s' % (identity, restrict)
-        if int(workflow_id) > -1:
-            constraintc = 'ClusterId =?= %s && %s' % (workflow_id, constraintc)
+        if len(workflow_ids) > 0:
+            constraints = []
+            for workflow_id in workflow_ids:
+                constraints.append('ClusterId == %d' % int(workflow_id))
+            constraintc = '(%s) && %s' % (' || '.join(constraints), constraintc)
+            num = len(workflow_ids)
 
         # Get completed workflows if necessary
         if completed:

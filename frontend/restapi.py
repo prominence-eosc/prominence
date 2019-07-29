@@ -184,7 +184,14 @@ def workflows(username, group):
     if 'detail' in request.args:
         detail = 1
 
-    data = backend.list_workflows(-1, username, active, completed, num, detail, constraint)
+    workflow_ids = []
+    if 'id' in request.args:
+        workflow_ids = request.args.get('id').split(',')
+        # Assume both active workflows and completed workflows
+        completed = True
+        active = True
+
+    data = backend.list_workflows(workflow_ids, username, active, completed, num, detail, constraint)
 
     return jsonify(data)
 
@@ -196,7 +203,7 @@ def get_workflow(username, group, workflow_id):
     """
     app.logger.info('%s DescribeWorkflow user:%s group:%s id:%d' % (get_remote_addr(request), username, group, workflow_id))
 
-    data = backend.list_workflows(workflow_id, username, True, True, 1, 1, (None, None))
+    data = backend.list_workflows([workflow_id], username, True, True, 1, 1, (None, None))
     return jsonify(data)
 
 @app.route("/prominence/v1/workflows/<int:workflow_id>/<string:job>/stdout", methods=['GET'])
@@ -251,7 +258,24 @@ def delete_workflow(username, group, workflow_id):
     """
     app.logger.info('%s DeleteWorkflow user:%s group:%s id:%d' % (get_remote_addr(request), username, group, workflow_id))
 
-    (return_code, data) = backend.delete_workflow(username, workflow_id)
+    (return_code, data) = backend.delete_workflows(username, [workflow_id])
+
+    if return_code == 0:
+        return jsonify(data), 200
+    return jsonify(data), 400
+
+@app.route("/prominence/v1/workflows", methods=['DELETE'])
+@requires_auth
+def delete_workflows(username, group):
+    """
+    Delete the specified workflow(s)
+    """
+    if 'id' not in request.args:
+        return jsonify({'error':'a workflow id or list of workflow ids must be provided'}), 400
+
+    app.logger.info('%s DeleteWorkflows user:%s group:%s id:%s' % (get_remote_addr(request), username, group, request.args.get('id')))
+
+    (return_code, data) = backend.delete_workflows(username, request.args.get('id').split(','))
 
     if return_code == 0:
         return jsonify(data), 200
