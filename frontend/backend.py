@@ -459,10 +459,10 @@ class ProminenceBackend(object):
             jjob_mapped['outputDirs'] = output_dirs_new
 
         # Set max runtime
-        max_run_time = 43200
+        max_run_time = 43200.0*3
         if 'walltime' in jjob['resources']:
             if jjob['resources']['walltime'] > -1:
-                max_run_time = int(jjob['resources']['walltime'])*60
+                max_run_time = int(jjob['resources']['walltime'])*60*3
         cjob['periodic_hold'] = str('JobStatus == 2 && CurrentTime - EnteredCurrentStatus > %d && isUndefined(RouteName)' % max_run_time)
         cjob['periodic_hold_subcode'] = str('ifThenElse(JobStatus == 2 && CurrentTime - EnteredCurrentStatus > %d && isUndefined(RouteName), 1001, 1000)' % max_run_time)
         cjob['+ProminenceMaxRunTime'] = str("%d" % (max_run_time/60))
@@ -885,6 +885,13 @@ class ProminenceBackend(object):
                         jobj['status'] = 'killed'
                 jobj['statusReason'] = reason
 
+            # Return status as failed if walltime limit execeed
+            if tasks_u:
+                for task_u in tasks_u:
+                    if 'error' in task_u:
+                        jobj['status'] = 'failed'
+                        jobj['statusReason'] = 'Walltime limit exceeded'
+
             if 'ProminencePreemptible' in job:
                 jobj['preemptible'] = True
 
@@ -955,6 +962,8 @@ class ProminenceBackend(object):
                         for task_u in tasks_u:
                             if 'maxMemoryUsageKB' in task_u:
                                 execution['maxMemoryUsageKB'] = task_u['maxMemoryUsageKB']
+                            elif 'error' in task_u:
+                                job_wall_time_limit_exceeded = True
                             else:
                                 new_tasks_u.append(task_u)
                         execution['tasks'] = new_tasks_u

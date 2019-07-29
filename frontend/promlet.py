@@ -7,13 +7,34 @@ import json
 import logging
 import os
 import re
+import shlex
 import subprocess
 import sys
 import tarfile
 import time
 from functools import wraps
 from resource import getrusage, RUSAGE_CHILDREN
+from threading import Timer
 import requests
+
+def kill_proc(proc, timeout):
+    """
+    Helper function used by run_with_timeout
+    """
+    timeout["value"] = True
+    proc.kill()
+
+def run_with_timeout(cmd, env, timeout_sec):
+    """
+    Run a process with a timeout
+    """
+    proc = subprocess.Popen(shlex.split(cmd), env=env)
+    timeout = {"value": False}
+    timer = Timer(timeout_sec, kill_proc, [proc, timeout])
+    timer.start()
+    proc.wait()
+    timer.cancel()
+    return proc.returncode, timeout["value"]
 
 def retry(tries=4, delay=3, backoff=2):
     """
@@ -108,14 +129,14 @@ def monitor(function, *args, **kwargs):
     Monitor CPU and wall time usage of a function which runs a child process
     """
     start_time, start_resources = time.time(), getrusage(RUSAGE_CHILDREN)
-    exit_code = function(*args, **kwargs)
+    exit_code, timed_out = function(*args, **kwargs)
     end_time, end_resources = time.time(), getrusage(RUSAGE_CHILDREN)
 
     time_real = end_time - start_time
     time_user = end_resources.ru_utime - start_resources.ru_utime
     time_sys = end_resources.ru_stime - start_resources.ru_stime
 
-    return (exit_code, time_real, time_user, time_sys, end_resources.ru_maxrss)
+    return (exit_code, timed_out, time_real, time_user, time_sys, end_resources.ru_maxrss)
 
 def get_info():
     """
@@ -206,13 +227,13 @@ def download_singularity(image, image_new, location, base_dir):
                             file_image.write(chunk)
             else:
                 logging.error('Unable to download Singularity image')
-                return 1
+                return 1, False
         except requests.exceptions.RequestException as ex:
             logging.error('Unable to download Singularity image due to a RequestException: %s', ex)
-            return 1
+            return 1, False
         except IOError as ex:
             logging.error('Unable to download Singularity image due to an IOError: %s', ex)
-            return 1
+            return 1, False
     else:
         # We set SINGULARITY_LOCALCACHEDIR & SINGULARITY_TMPDIR in order to avoid Singularity errors
         if not os.path.isdir(base_dir + '/.singularity'):
@@ -220,13 +241,13 @@ def download_singularity(image, image_new, location, base_dir):
                 os.mkdir(base_dir + '/.singularity')
             except Exception as ex:
                 logging.error('Unable to create .singularity directory due to: %s', ex)
-                return 1
+                return 1, False
         if not os.path.isdir(base_dir + '/.tmp'):
             try:
                 os.mkdir(base_dir + '/.tmp')
             except Exception as ex:
                 logging.error('Unable to create .tmp directory due to: %s', ex)
-                return 1
+                return 1, False
 
         # Handle both Singularity Hub & Docker Hub, with Docker Hub the default
         if re.match(r'^shub:', image):
@@ -250,12 +271,12 @@ def download_singularity(image, image_new, location, base_dir):
         logging.info('singularity pull stderr: "%s"', stderr)
 
         if return_code != 0:
-            return 1
+            return 1, False
 
     update_classad('ProminenceImagePullTime', time.time() - start)
     logging.info('Time to pull image: %d', time.time() - start)
 
-    return 0
+    return 0, False
 
 def download_udocker(image, location, label, base_dir):
     """
@@ -267,7 +288,7 @@ def download_udocker(image, location, label, base_dir):
             os.mkdir(base_dir + '/.udocker')
         except Exception as ex:
             logging.error('Unable to create .udocker directory due to: %s', ex)
-            return 1
+            return 1, False
 
     start = time.time()
     if re.match(r'^http', image):
@@ -281,13 +302,13 @@ def download_udocker(image, location, label, base_dir):
                             tar_file.write(chunk)
             else:
                 logging.error('Unable to download udocker image')
-                return 1
+                return 1, False
         except requests.exceptions.RequestException as e:
             logging.error('Unable to download udocker image due to: %s', e)
-            return 1
+            return 1, False
         except IOError as e:
             logging.error('Unable to download udocker image due to: %s', e)
-            return 1
+            return 1, False
 
         # Install udocker
         process = subprocess.Popen('udocker install',
@@ -317,7 +338,7 @@ def download_udocker(image, location, label, base_dir):
 
         if return_code != 0:
             logging.error('Unable to load udocker tarball')
-            return 1
+            return 1, False
 
         # Determine image name
         process = subprocess.Popen('udocker images',
@@ -330,7 +351,7 @@ def download_udocker(image, location, label, base_dir):
 
         if return_code != 0:
             logging.error('Unable to determine container image name')
-            return 1
+            return 1, False
 
         image = None
         for line in stdout.split('\n'):
@@ -340,7 +361,7 @@ def download_udocker(image, location, label, base_dir):
 
         if image is None:
             logging.error('No image found')
-            return 1
+            return 1, False
 
         # Delete tarball
         os.unlink('%s/image.tar' % location)
@@ -359,7 +380,7 @@ def download_udocker(image, location, label, base_dir):
         logging.info('udocker pull stderr: "%s"', stderr)
 
         if return_code != 0:
-            return 1
+            return 1, False
 
     # Create container
     process = subprocess.Popen('udocker create --name=image%d %s' % (label, image),
@@ -375,14 +396,14 @@ def download_udocker(image, location, label, base_dir):
     logging.info('udocker create stderr: "%s"', stderr)
 
     if return_code != 0:
-        return 1
+        return 1, False
 
     update_classad('ProminenceImagePullTime', time.time() - start)
     logging.info('Time to pull image: %d', time.time() - start)
 
-    return 0
+    return 0, False
 
-def run_udocker(image, cmd, workdir, env, path, base_dir, mpi, mpi_processes, mpi_procs_per_node, artifacts):
+def run_udocker(image, cmd, workdir, env, path, base_dir, mpi, mpi_processes, mpi_procs_per_node, artifacts, walltime_limit):
     """
     Execute a task using udocker
     """
@@ -479,25 +500,20 @@ def run_udocker(image, cmd, workdir, env, path, base_dir, mpi, mpi_processes, mp
     logging.info('Running: "%s"', run_command)
 
     start = time.time()
-    try:
-        process = subprocess.Popen(run_command,
-                                   env=dict(os.environ,
-                                            UDOCKER_DIR='%s/.udocker' % base_dir,
-                                            PROMINENCE_CPUS='%d' % job_cpus,
-                                            PROMINENCE_MEMORY='%d' % job_memory),
-                                   shell=True)
-        process.wait()
-        return_code = process.returncode
-    except Exception as err:
-        logging.error('Exception running udocker: ', err)
-    logging.info('Task had exit code %d', return_code)
+    return_code, timed_out = run_with_timeout(run_command,
+                                              dict(os.environ,
+                                                   UDOCKER_DIR='%s/.udocker' % base_dir,
+                                                   PROMINENCE_CPUS='%d' % job_cpus,
+                                                   PROMINENCE_MEMORY='%d' % job_memory),
+                                              walltime_limit)
 
+    logging.info('Task had exit code %d', return_code)
     update_classad('ProminenceExecuteTime', time.time() - start)
     update_classad('ProminenceExitCode', return_code)
 
-    return return_code
+    return return_code, timed_out
 
-def run_singularity(image, cmd, workdir, env, path, base_dir, mpi, mpi_processes, mpi_procs_per_node, artifacts):
+def run_singularity(image, cmd, workdir, env, path, base_dir, mpi, mpi_processes, mpi_procs_per_node, artifacts, walltime_limit):
     """
     Execute a task using Singularity
     """
@@ -557,26 +573,23 @@ def run_singularity(image, cmd, workdir, env, path, base_dir, mpi, mpi_processes
     logging.info('Running: "%s"', run_command)
 
     start = time.time()
-    process = subprocess.Popen(run_command,
-                               env=dict(env,
-                                        PATH='/usr/local/bin:/usr/bin:/usr/local/sbin:/usr/sbin',
-                                        TMP='%s' % path,
-                                        TEMP='%s' % path,
-                                        TMPDIR='%s' % path,
-                                        PROMINENCE_CONTAINER_LOCATION='%s' % os.path.dirname(image),
-                                        PROMINENCE_PWD='%s' % workdir,
-                                        PROMINENCE_CPUS='%d' % job_cpus,
-                                        PROMINENCE_MEMORY='%d' % job_memory),
-                               shell=True)
-    process.wait()
-    return_code = process.returncode
+    return_code, timed_out = run_with_timeout(run_command,
+                                              dict(os.environ,
+                                                   PATH='/usr/local/bin:/usr/bin:/usr/local/sbin:/usr/sbin',
+                                                   TMP='%s' % path,
+                                                   TEMP='%s' % path,
+                                                   TMPDIR='%s' % path,
+                                                   PROMINENCE_CONTAINER_LOCATION='%s' % os.path.dirname(image),
+                                                   PROMINENCE_PWD='%s' % workdir,
+                                                   PROMINENCE_CPUS='%d' % job_cpus,
+                                                   PROMINENCE_MEMORY='%d' % job_memory),
+                                              walltime_limit)
 
     logging.info('Task had exit code %d', return_code)
-
     update_classad('ProminenceExecuteTime', time.time() - start)
     update_classad('ProminenceExitCode', return_code)
 
-    return return_code
+    return return_code, timed_out
 
 def run_tasks(job_file, path, base_dir, is_batch):
     """
@@ -605,6 +618,11 @@ def run_tasks(job_file, path, base_dir, is_batch):
     # MPI processes
     mpi_processes = num_cpus*num_nodes
 
+    # Walltime limit
+    walltime_limit = 12*60*60
+    if 'walltime' in job['resources']:
+        walltime_limit = job['resources']['walltime']*60
+
     # Artifact mounts
     artifacts = {}
     if 'artifacts' in job:
@@ -617,6 +635,7 @@ def run_tasks(job_file, path, base_dir, is_batch):
     count = 0
     tasks_u = []
     success = True
+    job_start_time = time.time()
 
     for task in job['tasks']:
         logging.info('Working on task %d', count)
@@ -662,6 +681,9 @@ def run_tasks(job_file, path, base_dir, is_batch):
         if procs_per_node > 0:
             mpi_processes = procs_per_node*num_nodes
 
+        # Determine the time limit for this task
+        task_time_limit = walltime_limit - (time.time() - job_start_time)
+
         exit_code = 1
         download_exit_code = -1
         retry_count = 0
@@ -671,6 +693,7 @@ def run_tasks(job_file, path, base_dir, is_batch):
         time_sys = -1
         max_rss = -1
         task_was_run = False
+        timed_out = False
         image_pull_status = 'completed'
 
         # Check if a previous task used the same image: in that case use the previous image if the same container
@@ -683,7 +706,7 @@ def run_tasks(job_file, path, base_dir, is_batch):
                 logging.info('Will use cached image from task %d for this task', image_count)
                 break
             image_count += 1
-  
+
         if task['runtime'] == 'udocker':
             # Pull image if necessary or use a previously pulled image
             if found_image:
@@ -691,7 +714,7 @@ def run_tasks(job_file, path, base_dir, is_batch):
                 image_pull_status = 'cached'
             else:
                 logging.info('Pulling image for task')
-                (download_exit_code, image_pull_time, _, _, _) = monitor(download_udocker, image, location, count, base_dir)
+                (download_exit_code, _, image_pull_time, _, _, _) = monitor(download_udocker, image, location, count, base_dir)
                 if download_exit_code != 0:
                     update_classad('ProminenceImagePullSuccess', 1)
                     logging.error('Unable to pull image')
@@ -701,9 +724,9 @@ def run_tasks(job_file, path, base_dir, is_batch):
             # Run task
             if found_image or download_exit_code == 0:
                 task_was_run = True
-                while exit_code != 0 and retry_count < num_retries + 1:
+                while exit_code != 0 and retry_count < num_retries + 1 and not timed_out:
                     logging.info('Running task, attempt %d', retry_count + 1)
-                    (exit_code, time_real, time_user, time_sys, max_rss) = monitor(run_udocker, image, cmd, workdir, env, path, base_dir, mpi, mpi_processes, procs_per_node, artifacts)
+                    (exit_code, timed_out, time_real, time_user, time_sys, max_rss) = monitor(run_udocker, image, cmd, workdir, env, path, base_dir, mpi, mpi_processes, procs_per_node, artifacts, task_time_limit)
                     logging.info('Resources real: %d, user: %d, sys: %d, maxrss: %d', time_real, time_user, time_sys, max_rss)
                     retry_count += 1
             else:
@@ -717,15 +740,15 @@ def run_tasks(job_file, path, base_dir, is_batch):
             else:
                 image_new = '%s/image.simg' % location
                 logging.info('Pulling image for task')
-                (download_exit_code, image_pull_time, _, _, _) = monitor(download_singularity, image, image_new, location, base_dir)
+                (download_exit_code, _, image_pull_time, _, _, _) = monitor(download_singularity, image, image_new, location, base_dir)
                 if download_exit_code != 0:
                     update_classad('ProminenceImagePullSuccess', 1)
                     logging.error('Unable to pull image')
                     image_pull_status = 'failed'
             if found_image or download_exit_code == 0:
                 task_was_run = True
-                while exit_code != 0 and retry_count < num_retries + 1:
-                    (exit_code, time_real, time_user, time_sys, max_rss) = monitor(run_singularity, image_new, cmd, workdir, env, path, base_dir, mpi, mpi_processes, procs_per_node, artifacts)
+                while exit_code != 0 and retry_count < num_retries + 1 and not timed_out:
+                    (exit_code, timed_out, time_real, time_user, time_sys, max_rss) = monitor(run_singularity, image_new, cmd, workdir, env, path, base_dir, mpi, mpi_processes, procs_per_node, artifacts, task_time_limit)
                     logging.info('Resources real: %d, user: %d, sys: %d, maxrss: %d', time_real, time_user, time_sys, max_rss)
                     retry_count += 1
             else:
@@ -746,7 +769,7 @@ def run_tasks(job_file, path, base_dir, is_batch):
 
         count += 1
 
-        if exit_code != 0:
+        if exit_code != 0 or timed_out:
             success = False
             break
 
@@ -755,6 +778,12 @@ def run_tasks(job_file, path, base_dir, is_batch):
     if max_usage_in_bytes > -1:
         task_u = {}
         task_u['maxMemoryUsageKB'] = max_usage_in_bytes/1000
+        tasks_u.append(task_u)
+
+    # Handle timeout
+    if timed_out:
+        task_u = {}
+        task_u['error'] = 'WallTimeLimitExceeded'
         tasks_u.append(task_u)
 
     # Write json job details
