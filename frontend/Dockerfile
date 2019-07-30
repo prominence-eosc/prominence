@@ -8,7 +8,6 @@ RUN yum -y install epel-release && \
                 flask \
                 requests \
                 boto3 && \
-    chmod a+xr /usr/local/libexec/promlet.py && \
     useradd prominence
                    
 COPY restapi.py /usr/local/bin/
@@ -16,6 +15,8 @@ COPY backend.py /usr/local/bin/
 COPY validate.py /usr/local/bin/
 COPY retry.py /usr/local/bin/
 COPY promlet.py /usr/local/libexec/
+
+RUN chmod a+xr /usr/local/libexec/promlet.py
 
 ENTRYPOINT ["uwsgi", \
             "--http-socket", "localhost:8080", \
