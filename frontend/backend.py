@@ -1156,5 +1156,3 @@ class ProminenceBackend(object):
             with open(filename) as fd:
                 return fd.read()
         return None
-
-
