@@ -124,19 +124,34 @@ def get_usage_from_cgroup():
             max_usage_in_bytes = int(cgroup.read())
     return max_usage_in_bytes
 
+class ProcessMetrics(object):
+    """ 
+    Class for storing metrics associated with running a process
+    """
+    def __init__(self):
+        self.exit_code = None
+        self.timed_out = False
+        self.time_wall = None
+        self.time_user = None
+        self.time_sys = None
+        self.max_rss = None
+
 def monitor(function, *args, **kwargs):
     """
-    Monitor CPU and wall time usage of a function which runs a child process
+    Monitor CPU, wall time and memory usage of a function which runs a child process
     """
+    metrics = ProcessMetrics()
+
     start_time, start_resources = time.time(), getrusage(RUSAGE_CHILDREN)
-    exit_code, timed_out = function(*args, **kwargs)
+    metrics.exit_code, metrics.timed_out = function(*args, **kwargs)
     end_time, end_resources = time.time(), getrusage(RUSAGE_CHILDREN)
 
-    time_real = end_time - start_time
-    time_user = end_resources.ru_utime - start_resources.ru_utime
-    time_sys = end_resources.ru_stime - start_resources.ru_stime
+    metrics.time_wall = end_time - start_time
+    metrics.time_user = end_resources.ru_utime - start_resources.ru_utime
+    metrics.time_sys = end_resources.ru_stime - start_resources.ru_stime
+    metrics.max_rss = end_resources.ru_maxrss
 
-    return (exit_code, timed_out, time_real, time_user, time_sys, end_resources.ru_maxrss)
+    return metrics
 
 def get_info():
     """
@@ -681,16 +696,11 @@ def run_tasks(job_file, path, base_dir, is_batch):
         if procs_per_node > 0:
             mpi_processes = procs_per_node*num_nodes
 
-        exit_code = 1
-        download_exit_code = -1
+        metrics_download = ProcessMetrics()
+        metrics_task = ProcessMetrics()
+
         retry_count = 0
-        image_pull_time = -1
-        time_real = -1
-        time_user = -1
-        time_sys = -1
-        max_rss = -1
         task_was_run = False
-        timed_out = False
         image_pull_status = 'completed'
 
         # Check if a previous task used the same image: in that case use the previous image if the same container
@@ -711,21 +721,19 @@ def run_tasks(job_file, path, base_dir, is_batch):
                 image_pull_status = 'cached'
             else:
                 logging.info('Pulling image for task')
-                (download_exit_code, _, image_pull_time, _, _, _) = monitor(download_udocker, image, location, count, base_dir)
-                if download_exit_code != 0:
-                    update_classad('ProminenceImagePullSuccess', 1)
+                metrics_download = monitor(download_udocker, image, location, count, base_dir)
+                if metrics_download.exit_code != 0:
                     logging.error('Unable to pull image')
                     image_pull_status = 'failed'
                 else:
                     image = 'image%d' % count
             # Run task
-            if found_image or download_exit_code == 0:
+            if found_image or metrics_download.exit_code == 0:
                 task_was_run = True
-                while exit_code != 0 and retry_count < num_retries + 1 and not timed_out:
+                while exit_code != 0 and retry_count < num_retries + 1 and not metrics_task.timed_out:
                     logging.info('Running task, attempt %d', retry_count + 1)
                     task_time_limit = walltime_limit - (time.time() - job_start_time)
-                    (exit_code, timed_out, time_real, time_user, time_sys, max_rss) = monitor(run_udocker, image, cmd, workdir, env, path, base_dir, mpi, mpi_processes, procs_per_node, artifacts, task_time_limit)
-                    logging.info('Resources real: %d, user: %d, sys: %d, maxrss: %d', time_real, time_user, time_sys, max_rss)
+                    metrics_task = monitor(run_udocker, image, cmd, workdir, env, path, base_dir, mpi, mpi_processes, procs_per_node, artifacts, task_time_limit)
                     retry_count += 1
             else:
                 # If we didn't try running the task, set exit code to fill value
@@ -738,19 +746,17 @@ def run_tasks(job_file, path, base_dir, is_batch):
             else:
                 image_new = '%s/image.simg' % location
                 logging.info('Pulling image for task')
-                (download_exit_code, _, image_pull_time, _, _, _) = monitor(download_singularity, image, image_new, location, base_dir)
-                if download_exit_code != 0:
-                    update_classad('ProminenceImagePullSuccess', 1)
+                metrics_download = monitor(download_singularity, image, image_new, location, base_dir)
+                if metrics_download.exit_code != 0:
                     logging.error('Unable to pull image')
                     image_pull_status = 'failed'
             # Run task
-            if found_image or download_exit_code == 0:
+            if found_image or metrics.download.exit_code == 0:
                 task_was_run = True
-                while exit_code != 0 and retry_count < num_retries + 1 and not timed_out:
+                while exit_code != 0 and retry_count < num_retries + 1 and not metrics_task.timed_out:
                     logging.info('Running task, attempt %d', retry_count + 1)
                     task_time_limit = walltime_limit - (time.time() - job_start_time)
-                    (exit_code, timed_out, time_real, time_user, time_sys, max_rss) = monitor(run_singularity, image_new, cmd, workdir, env, path, base_dir, mpi, mpi_processes, procs_per_node, artifacts, task_time_limit)
-                    logging.info('Resources real: %d, user: %d, sys: %d, maxrss: %d', time_real, time_user, time_sys, max_rss)
+                    metrics_task = monitor(run_singularity, image_new, cmd, workdir, env, path, base_dir, mpi, mpi_processes, procs_per_node, artifacts, task_time_limit)
                     retry_count += 1
             else:
                 # If we didn't try running the task, set exit code to fill value
@@ -758,14 +764,14 @@ def run_tasks(job_file, path, base_dir, is_batch):
 
         task_u = {}
         task_u['imagePullStatus'] = image_pull_status
-        task_u['imagePullTime'] = image_pull_time
+        task_u['imagePullTime'] = metrics_download.time_wall
         if task_was_run:
-            task_u['exitCode'] = exit_code
-            task_u['wallTimeUsage'] = time_real
-            task_u['maxResidentSetSizeKB'] = max_rss
+            task_u['exitCode'] = metrics_task.exit_code
+            task_u['wallTimeUsage'] = metrics_task.time_wall
+            task_u['maxResidentSetSizeKB'] = metrics_task.max_rss
             task_u['retries'] = retry_count - 1
-            if time_user > -1 and time_sys > -1:
-                task_u['cpuTimeUsage'] = time_user + time_sys
+            if metrics_task.time_user > -1 and metrics_task.time_sys > -1:
+                task_u['cpuTimeUsage'] = metrics_task.time_user + metrics_task.time_sys
         tasks_u.append(task_u)
 
         count += 1
@@ -782,7 +788,7 @@ def run_tasks(job_file, path, base_dir, is_batch):
         tasks_u.append(task_u)
 
     # Handle timeout
-    if timed_out:
+    if metrics_task.timed_out:
         task_u = {}
         task_u['error'] = 'WallTimeLimitExceeded'
         tasks_u.append(task_u)
