@@ -16,8 +16,6 @@ COPY validate.py /usr/local/bin/
 COPY retry.py /usr/local/bin/
 COPY promlet.py /usr/local/libexec/
 
-RUN chmod a+xr /usr/local/libexec/promlet.py
-
 ENTRYPOINT ["uwsgi", \
             "--http-socket", "localhost:8080", \
             "--threads", "2", \
