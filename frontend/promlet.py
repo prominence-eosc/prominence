@@ -681,9 +681,6 @@ def run_tasks(job_file, path, base_dir, is_batch):
         if procs_per_node > 0:
             mpi_processes = procs_per_node*num_nodes
 
-        # Determine the time limit for this task
-        task_time_limit = walltime_limit - (time.time() - job_start_time)
-
         exit_code = 1
         download_exit_code = -1
         retry_count = 0
@@ -726,6 +723,7 @@ def run_tasks(job_file, path, base_dir, is_batch):
                 task_was_run = True
                 while exit_code != 0 and retry_count < num_retries + 1 and not timed_out:
                     logging.info('Running task, attempt %d', retry_count + 1)
+                    task_time_limit = walltime_limit - (time.time() - job_start_time)
                     (exit_code, timed_out, time_real, time_user, time_sys, max_rss) = monitor(run_udocker, image, cmd, workdir, env, path, base_dir, mpi, mpi_processes, procs_per_node, artifacts, task_time_limit)
                     logging.info('Resources real: %d, user: %d, sys: %d, maxrss: %d', time_real, time_user, time_sys, max_rss)
                     retry_count += 1
@@ -745,9 +743,12 @@ def run_tasks(job_file, path, base_dir, is_batch):
                     update_classad('ProminenceImagePullSuccess', 1)
                     logging.error('Unable to pull image')
                     image_pull_status = 'failed'
+            # Run task
             if found_image or download_exit_code == 0:
                 task_was_run = True
                 while exit_code != 0 and retry_count < num_retries + 1 and not timed_out:
+                    logging.info('Running task, attempt %d', retry_count + 1)
+                    task_time_limit = walltime_limit - (time.time() - job_start_time)
                     (exit_code, timed_out, time_real, time_user, time_sys, max_rss) = monitor(run_singularity, image_new, cmd, workdir, env, path, base_dir, mpi, mpi_processes, procs_per_node, artifacts, task_time_limit)
                     logging.info('Resources real: %d, user: %d, sys: %d, maxrss: %d', time_real, time_user, time_sys, max_rss)
                     retry_count += 1
@@ -870,4 +871,3 @@ if __name__ == "__main__":
 
     logging.info('Exiting promlet with success')
     exit(0)
-
