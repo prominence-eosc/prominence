@@ -36,7 +36,7 @@ def get_user_details(token):
         response = requests.get(app.config['OIDC_URL']+'/userinfo', timeout=app.config['OIDC_TIMEOUT'], headers=headers)
     except requests.exceptions.RequestException:
         app.logger.warning('%s AuthenticationFailure no response from identity provider' % get_remote_addr(request))
-        return None
+        return (False, None, None)
 
     username = None
     if 'preferred_username' in response.json():
@@ -49,7 +49,7 @@ def get_user_details(token):
         if len(response.json()['groups']) > 0:
             groups = ','.join(str(group) for group in response.json()['groups'])
 
-    return (username, groups)
+    return (True, username, groups)
 
 def get_remote_addr(req):
     """
@@ -87,7 +87,9 @@ def requires_auth(function):
         except:
             app.logger.warning('%s AuthenticationFailure no token specified' % get_remote_addr(request))
             return authenticate()
-        (username, group) = get_user_details(token)
+        (success, username, group) = get_user_details(token)
+        if not success:
+            return jsonify({'error':'Unable to connect to OIDC server'}), 401
         if not username:
             app.logger.warning('%s AuthenticationFailure username not returned from identity provider' % get_remote_addr(request))
             return authenticate()
