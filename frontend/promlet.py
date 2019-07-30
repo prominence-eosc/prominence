@@ -651,6 +651,7 @@ def run_tasks(job_file, path, base_dir, is_batch):
     tasks_u = []
     success = True
     job_start_time = time.time()
+    total_pull_time = 0
 
     for task in job['tasks']:
         logging.info('Working on task %d', count)
@@ -722,6 +723,8 @@ def run_tasks(job_file, path, base_dir, is_batch):
             else:
                 logging.info('Pulling image for task')
                 metrics_download = monitor(download_udocker, image, location, count, base_dir)
+                if metrics_download.time_wall > 0:
+                    total_pull_time += metrics_download.time_wall
                 if metrics_download.exit_code != 0:
                     logging.error('Unable to pull image')
                     image_pull_status = 'failed'
@@ -730,14 +733,11 @@ def run_tasks(job_file, path, base_dir, is_batch):
             # Run task
             if found_image or metrics_download.exit_code == 0:
                 task_was_run = True
-                while exit_code != 0 and retry_count < num_retries + 1 and not metrics_task.timed_out:
+                while metrics_task.exit_code != 0 and retry_count < num_retries + 1 and not metrics_task.timed_out:
                     logging.info('Running task, attempt %d', retry_count + 1)
-                    task_time_limit = walltime_limit - (time.time() - job_start_time)
+                    task_time_limit = walltime_limit - (time.time() - job_start_time) + total_pull_time
                     metrics_task = monitor(run_udocker, image, cmd, workdir, env, path, base_dir, mpi, mpi_processes, procs_per_node, artifacts, task_time_limit)
                     retry_count += 1
-            else:
-                # If we didn't try running the task, set exit code to fill value
-                exit_code = -1
         else:
             # Pull image if necessary or use a previously pulled image
             if found_image:
@@ -747,20 +747,19 @@ def run_tasks(job_file, path, base_dir, is_batch):
                 image_new = '%s/image.simg' % location
                 logging.info('Pulling image for task')
                 metrics_download = monitor(download_singularity, image, image_new, location, base_dir)
+                if metrics_download.time_wall > 0:
+                    total_pull_time += metrics_download.time_wall
                 if metrics_download.exit_code != 0:
                     logging.error('Unable to pull image')
                     image_pull_status = 'failed'
             # Run task
-            if found_image or metrics.download.exit_code == 0:
+            if found_image or metrics_download.exit_code == 0:
                 task_was_run = True
-                while exit_code != 0 and retry_count < num_retries + 1 and not metrics_task.timed_out:
+                while metrics_task.exit_code != 0 and retry_count < num_retries + 1 and not metrics_task.timed_out:
                     logging.info('Running task, attempt %d', retry_count + 1)
-                    task_time_limit = walltime_limit - (time.time() - job_start_time)
+                    task_time_limit = walltime_limit - (time.time() - job_start_time) + total_pull_time
                     metrics_task = monitor(run_singularity, image_new, cmd, workdir, env, path, base_dir, mpi, mpi_processes, procs_per_node, artifacts, task_time_limit)
                     retry_count += 1
-            else:
-                # If we didn't try running the task, set exit code to fill value
-                exit_code = -1
 
         task_u = {}
         task_u['imagePullStatus'] = image_pull_status
@@ -776,7 +775,7 @@ def run_tasks(job_file, path, base_dir, is_batch):
 
         count += 1
 
-        if exit_code != 0 or timed_out:
+        if metrics_task.exit_code != 0 or metrics_task.timed_out:
             success = False
             break
 
