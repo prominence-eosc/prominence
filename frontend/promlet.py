@@ -8,6 +8,7 @@ import logging
 import os
 import re
 import shlex
+import signal
 import subprocess
 import sys
 import tarfile
@@ -16,6 +17,19 @@ from functools import wraps
 from resource import getrusage, RUSAGE_CHILDREN
 from threading import Timer
 import requests
+
+CURRENT_SUBPROCS = set()
+FINISH_NOW = False
+
+def handle_signal(signum, frame):
+    """
+    Send signal to current subprocesses
+    """
+    global FINISH_NOW
+    FINISH_NOW = True
+    for proc in CURRENT_SUBPROCS:
+        if proc.poll() is None:
+            proc.send_signal(signum)
 
 def kill_proc(proc, timeout):
     """
@@ -32,7 +46,9 @@ def run_with_timeout(cmd, env, timeout_sec):
     timeout = {"value": False}
     timer = Timer(timeout_sec, kill_proc, [proc, timeout])
     timer.start()
+    CURRENT_SUBPROCS.add(proc)
     proc.wait()
+    CURRENT_SUBPROCS.remove(proc)
     timer.cancel()
     return proc.returncode, timeout["value"]
 
@@ -720,7 +736,7 @@ def run_tasks(job_file, path, base_dir, is_batch):
             if found_image:
                 image = 'image%d' % image_count
                 image_pull_status = 'cached'
-            else:
+            elif not FINISH_NOW:
                 logging.info('Pulling image for task')
                 metrics_download = monitor(download_udocker, image, location, count, base_dir)
                 if metrics_download.time_wall > 0:
@@ -731,9 +747,9 @@ def run_tasks(job_file, path, base_dir, is_batch):
                 else:
                     image = 'image%d' % count
             # Run task
-            if found_image or metrics_download.exit_code == 0:
+            if (found_image or metrics_download.exit_code == 0) and not FINISH_NOW:
                 task_was_run = True
-                while metrics_task.exit_code != 0 and retry_count < num_retries + 1 and not metrics_task.timed_out:
+                while metrics_task.exit_code != 0 and retry_count < num_retries + 1 and not metrics_task.timed_out and not FINISH_NOW:
                     logging.info('Running task, attempt %d', retry_count + 1)
                     task_time_limit = walltime_limit - (time.time() - job_start_time) + total_pull_time
                     metrics_task = monitor(run_udocker, image, cmd, workdir, env, path, base_dir, mpi, mpi_processes, procs_per_node, artifacts, task_time_limit)
@@ -743,7 +759,7 @@ def run_tasks(job_file, path, base_dir, is_batch):
             if found_image:
                 image_new = '%s/%d/image.simg' % (base_dir, image_count)
                 image_pull_status = 'cached'
-            else:
+            elif not FINISH_NOW:
                 image_new = '%s/image.simg' % location
                 logging.info('Pulling image for task')
                 metrics_download = monitor(download_singularity, image, image_new, location, base_dir)
@@ -753,9 +769,9 @@ def run_tasks(job_file, path, base_dir, is_batch):
                     logging.error('Unable to pull image')
                     image_pull_status = 'failed'
             # Run task
-            if found_image or metrics_download.exit_code == 0:
+            if (found_image or metrics_download.exit_code == 0) and not FINISH_NOW:
                 task_was_run = True
-                while metrics_task.exit_code != 0 and retry_count < num_retries + 1 and not metrics_task.timed_out:
+                while metrics_task.exit_code != 0 and retry_count < num_retries + 1 and not metrics_task.timed_out and not FINISH_NOW:
                     logging.info('Running task, attempt %d', retry_count + 1)
                     task_time_limit = walltime_limit - (time.time() - job_start_time) + total_pull_time
                     metrics_task = monitor(run_singularity, image_new, cmd, workdir, env, path, base_dir, mpi, mpi_processes, procs_per_node, artifacts, task_time_limit)
@@ -775,9 +791,12 @@ def run_tasks(job_file, path, base_dir, is_batch):
 
         count += 1
 
-        if metrics_task.exit_code != 0 or metrics_task.timed_out:
+        if metrics_task.exit_code != 0 or metrics_task.timed_out or FINISH_NOW:
             success = False
             break
+
+    if FINISH_NOW:
+        logging.info('Received signal, aborting')
 
     # Get overall max memory usage
     max_usage_in_bytes = get_usage_from_cgroup()
@@ -820,6 +839,10 @@ def create_parser():
 if __name__ == "__main__":
     # Extract arguments from the command line
     args = create_parser()
+
+    # Handle signals
+    signal.signal(signal.SIGINT, handle_signal)
+    signal.signal(signal.SIGTERM, handle_signal)
 
     # Initial directory
     path = os.getcwd()
