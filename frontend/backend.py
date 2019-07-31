@@ -976,7 +976,7 @@ class ProminenceBackend(object):
                     outputs = []
                     for output_file in job_json_file['outputFiles']:
                         filename = os.path.basename(output_file)
-                        if job['JobStatus'] == 4:
+                        if job['JobStatus'] == 4 or job['JobStatus'] == 3:
                             url = self.create_presigned_url('get', self._config['S3_BUCKET'], 'scratch/%s/%s' % (uid, filename), 600)
                         else:
                             url = ''
@@ -988,7 +988,7 @@ class ProminenceBackend(object):
                     for output_dir in job_json_file['outputDirs']:
                         dirs = output_dir.split('/')
                         dirname_base = dirs[len(dirs) - 1]
-                        if job['JobStatus'] == 4:
+                        if job['JobStatus'] == 4 or job['JobStatus'] == 3:
                             url = self.create_presigned_url('get', self._config['S3_BUCKET'], 'scratch/%s/%s.tgz' % (uid, dirname_base), 600)
                         else:
                             url = ''
