@@ -1052,8 +1052,11 @@ class ProminenceBackend(object):
             wfj = {}
 
             if detail > 0:
-                with open('%s/workflow.json' % wf['Iwd'], 'r') as json_file:
-                    wfj = json.load(json_file)
+                try:
+                    with open('%s/workflow.json' % wf['Iwd'], 'r') as json_file:
+                        wfj = json.load(json_file)
+                except IOError:
+                    continue
             else:
                 wfj['name'] = wf['JobBatchName']
 
