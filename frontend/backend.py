@@ -786,6 +786,8 @@ class ProminenceBackend(object):
             jobj['id'] = job['ClusterId']
             jobj['status'] = jobs_state_map[job['JobStatus']]
             jobj['tasks'] = job_json_file['tasks']
+ 
+            # Job name - for jobs from workflows, use the name "<workflow name>/<job name>"
             jobj['name'] = ''
             if 'name' in job_json_file:
                 jobj['name'] = job_json_file['name']
@@ -806,7 +808,7 @@ class ProminenceBackend(object):
                         if job['GridJobStatus'] == "IDLE" and job['JobStatus'] == 1:
                             jobj['status'] = 'idle'
 
-            # Get promlet output if exists
+            # Get promlet output if exists (only for completed jobs)
             tasks_u = []
             try:
                 with open(job['Iwd'] + '/promlet.json') as json_file:
