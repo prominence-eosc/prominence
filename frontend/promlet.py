@@ -690,6 +690,11 @@ def run_tasks(job_file, path, base_dir, is_batch):
         env = {}
         if 'env' in task:
             env = task['env']
+        if args.env:
+            for pair in args.env:
+                key = pair.split('=')[0]
+                value = pair.split('=')[1]
+                env[key] = value
 
         location = '%s/%d' % (base_dir, count)
         try:
@@ -833,6 +838,10 @@ def create_parser():
     parser.add_argument('--job',
                         dest='job',
                         help='JSON job description file')
+    parser.add_argument('--env',
+                        dest='env',
+                        action='append',
+                        help='Additional environment variable for the job')
 
     return parser.parse_args()
 
