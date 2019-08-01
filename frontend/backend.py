@@ -596,10 +596,15 @@ class ProminenceBackend(object):
         if 'name' in jjob:
             wf_name = str(jjob['name'])
 
-        dag = []
-        if 'jobs' in jjob:
-            with open(job_sandbox + '/workflow.json', 'w') as fd:
-                json.dump(jjob, fd)
+        if 'dependencies' in jjob:
+
+            # Handle DAG
+            dag = []
+            try:
+                with open(job_sandbox + '/workflow.json', 'w') as fd:
+                    json.dump(jjob, fd)
+            except IOError:
+                return (1, {"error":"Unable to write workflow.json"})
 
             for job in jjob['jobs']:
                 # If a job name is not defined, create one as we require all jobs to have a name
@@ -630,47 +635,50 @@ class ProminenceBackend(object):
                 copyfile(self._config['PROMLET_FILE'], os.path.join(job_sandbox, job['name'], 'promlet.py'))
                 os.chmod(job_sandbox + '/' + job['name'] + '/promlet.py', 0775)
 
-        # Create dag
-        dag.append('NODE_STATUS_FILE workflow.dag.status')
-        if 'dependencies' in jjob:
+            # Create dag
+            dag.append('NODE_STATUS_FILE workflow.dag.status')
             for parent in jjob['dependencies']:
                 children = " ".join(jjob['dependencies'][parent])
                 dag.append('PARENT ' + parent + ' CHILD ' + children)
 
-        # Write dag definition file
-        try:
-            with open(job_sandbox + '/job.dag', 'w') as fd:
-                fd.write('\n'.join(dag))
-        except IOError:
-            return (1, {"error":"Unable to write DAG file for job"})
+            # Write dag definition file
+            try:
+                with open(job_sandbox + '/job.dag', 'w') as fd:
+                    fd.write('\n'.join(dag))
+            except IOError:
+                return (1, {"error":"Unable to write DAG file for job"})
 
-        # Handle labels
-        dag_appends = []
-        if 'labels' in jjob:
-            for label in jjob['labels']:
-                value = jjob['labels'][label]
-                dag_appends.append("'+ProminenceUserMetadata_%s=\"%s\"'" % (label, value))
+            # Handle labels
+            dag_appends = []
+            if 'labels' in jjob:
+                for label in jjob['labels']:
+                    value = jjob['labels'][label]
+                    dag_appends.append("'+ProminenceUserMetadata_%s=\"%s\"'" % (label, value))
 
-        # Create command to submit dag
-        dag_appends.append("'+ProminenceType=\"workflow\"'")
-        dag_appends.append("'+ProminenceIdentity=\"%s\"'" % username)
-        dag_appends.append("'+ProminenceJobUniqueIdentifier=\"%s\"'" % uid)
+            # Create command to submit dag
+            dag_appends.append("'+ProminenceType=\"workflow\"'")
+            dag_appends.append("'+ProminenceIdentity=\"%s\"'" % username)
+            dag_appends.append("'+ProminenceJobUniqueIdentifier=\"%s\"'" % uid)
 
-        cmd = "condor_submit_dag -batch-name %s " % wf_name
-        for dag_append in dag_appends:
-            cmd += " -append %s " % dag_append
-        cmd += " job.dag "
+            cmd = "condor_submit_dag -batch-name %s " % wf_name
+            for dag_append in dag_appends:
+                cmd += " -append %s " % dag_append
+            cmd += " job.dag "
 
-        # Submit dag
-        (return_code, stdout, stderr, timedout) = run(cmd, job_sandbox, 30)
-        m = re.search(r'submitted to cluster\s(\d+)', stdout)
-        data = {}
-        if m:
-            retval = 201
-            data['id'] = int(m.group(1))
+            # Submit dag
+            (return_code, stdout, stderr, timedout) = run(cmd, job_sandbox, 30)
+            m = re.search(r'submitted to cluster\s(\d+)', stdout)
+            data = {}
+            if m:
+                retval = 201
+                data['id'] = int(m.group(1))
+            else:
+                retval = 1
+                data = {"error":"Workflow submission failed"}
+
         else:
-            retval = 1
-            data = {"error":"Workflow submission failed"}
+            # Handle bags of jobs
+            return (1, {"error":"Not yet supported"})
 
         return (retval, data)
 
