@@ -24,14 +24,14 @@ JOB_SUBMIT = \
 """
 universe = vanilla
 executable = promlet.py
-arguments = --job .job.mapped.json
-output = job.$(ProcId).out
-error = job.$(ProcId).err
-log = job.$(ProcId).log
+arguments = --job .job.mapped.json %(extra_args)s
+output = job.$(prominencecount).out
+error = job.$(prominencecount).err
+log = job.$(prominencecount).log
 should_transfer_files = YES
 when_to_transfer_output = ON_EXIT_OR_EVICT
 transfer_output_files = promlet.log
-transfer_output_remaps = "promlet.log=promlet.$(ProcId).log"
+transfer_output_remaps = "promlet.log=promlet.$(prominencecount).log"
 requirements = false
 transfer_executable = true
 stream_output = true
@@ -63,6 +63,7 @@ def write_htcondor_job(cjob, filename):
             '+ProminenceStorageCredentials',
             '+ProminenceWantJobRouter',
             '+remote_cerequirements_default',
+            '+ProminenceFactoryId',
             '+ProminenceWorkflowName']
     extras = "\n"
     for key in keys:
@@ -81,6 +82,10 @@ def write_htcondor_job(cjob, filename):
     info['wantmpi'] = cjob['+ProminenceWantMPI']
     info['maxidle'] = 0
     info['extras']  = extras
+    if 'extra_args' in cjob:
+        info['extra_args'] = cjob['extra_args']
+    else:
+        info['extra_args'] = ''
 
     try:
         with open(filename, 'w') as fd:
@@ -596,20 +601,26 @@ class ProminenceBackend(object):
         if 'name' in jjob:
             wf_name = str(jjob['name'])
 
+        # Write the workflow JSON description to disk
+        try:
+            with open(job_sandbox + '/workflow.json', 'w') as fd:
+                json.dump(jjob, fd)
+        except IOError:
+            return (1, {"error":"Unable to write workflow.json"})
+
+
+        dag = []
+
+        # Retries
+        if 'numberOfRetries' in jjob:
+            dag.append('RETRY ALL_NODES %d' % jjob['numberOfRetries'])
+
         if 'dependencies' in jjob:
 
             # Handle DAG
-            dag = []
-            try:
-                with open(job_sandbox + '/workflow.json', 'w') as fd:
-                    json.dump(jjob, fd)
-            except IOError:
-                return (1, {"error":"Unable to write workflow.json"})
-
             for job in jjob['jobs']:
-                # If a job name is not defined, create one as we require all jobs to have a name
                 if 'name' not in job:
-                    job['name'] = str(uuid.uuid4())
+                    return (1, {"error":"All jobs in a DAG must have names"})
 
                 # Create job sandbox
                 os.makedirs(job_sandbox + '/' + job['name'])
@@ -626,59 +637,89 @@ class ProminenceBackend(object):
 
                 # Append job to DAG description
                 dag.append('JOB ' + job['name'] + ' job.jdl DIR ' + job['name'])
-
-                # Retries
-                if 'numberOfRetries' in jjob:
-                    dag.append('RETRY ALL_NODES %d' % jjob['numberOfRetries'])
+                dag.append('VARS ' + job['name'] + ' prominencecount="0"')
 
                 # Copy executable to job sandbox
                 copyfile(self._config['PROMLET_FILE'], os.path.join(job_sandbox, job['name'], 'promlet.py'))
                 os.chmod(job_sandbox + '/' + job['name'] + '/promlet.py', 0775)
 
-            # Create dag
-            dag.append('NODE_STATUS_FILE workflow.dag.status')
-            for parent in jjob['dependencies']:
-                children = " ".join(jjob['dependencies'][parent])
-                dag.append('PARENT ' + parent + ' CHILD ' + children)
+        elif 'factory' in jjob:
+            # Handle job factories
+            if jjob['factory']['type'] == 'parametricSweep':
+                ps_name = jjob['factory']['parameterSets'][0]['name']
+                ps_start = jjob['factory']['parameterSets'][0]['start']
+                ps_end = jjob['factory']['parameterSets'][0]['end']
+                ps_step = jjob['factory']['parameterSets'][0]['step']
+                
+                job_filename = '%s/job.jdl' % job_sandbox
 
-            # Write dag definition file
-            try:
-                with open(job_sandbox + '/job.dag', 'w') as fd:
-                    fd.write('\n'.join(dag))
-            except IOError:
-                return (1, {"error":"Unable to write DAG file for job"})
+                # Copy executable to job sandbox
+                copyfile(self._config['PROMLET_FILE'], os.path.join(job_sandbox, 'promlet.py'))
+                os.chmod(job_sandbox + '/promlet.py', 0775)
 
-            # Handle labels
-            dag_appends = []
-            if 'labels' in jjob:
-                for label in jjob['labels']:
-                    value = jjob['labels'][label]
-                    dag_appends.append("'+ProminenceUserMetadata_%s=\"%s\"'" % (label, value))
+                # Create dict containing HTCondor job
+                (status, msg, cjob) = self._create_htcondor_job(username, groups, uid, jjob['jobs'][0], job_sandbox)
+                cjob['+ProminenceWorkflowName'] = condor_str(wf_name)
+                cjob['extra_args'] = '--env PROMINENCE_PARAMETER_%s=$(prominencevalue)' % ps_name
+                cjob['+ProminenceFactoryId'] = '$(prominencecount)'
 
-            # Create command to submit dag
-            dag_appends.append("'+ProminenceType=\"workflow\"'")
-            dag_appends.append("'+ProminenceIdentity=\"%s\"'" % username)
-            dag_appends.append("'+ProminenceJobUniqueIdentifier=\"%s\"'" % uid)
+                # Write JDL
+                if not write_htcondor_job(cjob, job_filename):
+                    return (1, {"error":"Unable to write JDL for job"})
 
-            cmd = "condor_submit_dag -batch-name %s " % wf_name
-            for dag_append in dag_appends:
-                cmd += " -append %s " % dag_append
-            cmd += " job.dag "
-
-            # Submit dag
-            (return_code, stdout, stderr, timedout) = run(cmd, job_sandbox, 30)
-            m = re.search(r'submitted to cluster\s(\d+)', stdout)
-            data = {}
-            if m:
-                retval = 201
-                data['id'] = int(m.group(1))
-            else:
-                retval = 1
-                data = {"error":"Workflow submission failed"}
+                value = ps_start 
+                job_count = 0
+                while value <= ps_end:
+                    # Append job to DAG description
+                    dag.append('JOB job%d job.jdl' % job_count)
+                    if ps_step == 1:
+                        dag.append('VARS job%d prominencevalue="%d" prominencecount="%d"' % (job_count, value, job_count))
+                    else:
+                        dag.append('VARS job%d prominencevalue="%f" prominencecount="%d"' % (job_count, value, job_count))
+                    value += ps_step
+                    job_count += 1           
 
         else:
             # Handle bags of jobs
             return (1, {"error":"Not yet supported"})
+
+        # DAGMan status file
+        dag.append('NODE_STATUS_FILE workflow.dag.status')
+
+        # Write DAGMan definition file
+        try:
+            with open(job_sandbox + '/job.dag', 'w') as fd:
+                fd.write('\n'.join(dag))
+        except IOError:
+            return (1, {"error":"Unable to write DAG file for job"})
+
+        # Handle labels
+        dag_appends = []
+        if 'labels' in jjob:
+            for label in jjob['labels']:
+                value = jjob['labels'][label]
+                dag_appends.append("'+ProminenceUserMetadata_%s=\"%s\"'" % (label, value))
+
+        # Create command to submit to DAGMan
+        dag_appends.append("'+ProminenceType=\"workflow\"'")
+        dag_appends.append("'+ProminenceIdentity=\"%s\"'" % username)
+        dag_appends.append("'+ProminenceJobUniqueIdentifier=\"%s\"'" % uid)
+
+        cmd = "condor_submit_dag -maxidle 5 -batch-name %s " % wf_name
+        for dag_append in dag_appends:
+            cmd += " -append %s " % dag_append
+        cmd += " job.dag "
+
+        # Submit to DAGMan
+        (return_code, stdout, stderr, timedout) = run(cmd, job_sandbox, 30)
+        m = re.search(r'submitted to cluster\s(\d+)', stdout)
+        data = {}
+        if m:
+            retval = 201
+            data['id'] = int(m.group(1))
+        else:
+            retval = 1
+            data = {"error":"Workflow submission failed"}
 
         return (retval, data)
 
@@ -741,6 +782,7 @@ class ProminenceBackend(object):
                           'TransferInput',
                           'ProminenceJobUniqueIdentifier',
                           'ProminenceName',
+                          'ProminenceFactoryId',
                           'ProminenceWorkflowName',
                           'ProminenceExitCode',
                           'ProminencePreemptible',
@@ -795,12 +837,14 @@ class ProminenceBackend(object):
             jobj['status'] = jobs_state_map[job['JobStatus']]
             jobj['tasks'] = job_json_file['tasks']
  
-            # Job name - for jobs from workflows, use the name "<workflow name>/<job name>"
+            # Job name - for jobs from workflows, use the name "<workflow name>/<job name>/(<number>)"
             jobj['name'] = ''
             if 'name' in job_json_file:
                 jobj['name'] = job_json_file['name']
                 if 'ProminenceWorkflowName' in job:
                     jobj['name'] = '%s/%s' % (job['ProminenceWorkflowName'], jobj['name'])
+                    if 'ProminenceFactoryId' in job:
+                        jobj['name'] = '%s/%s' % (jobj['name'], job['ProminenceFactoryId'])
 
             # If job is idle and infrastructure is ready, set status to 'idle'
             if 'ProminenceInfrastructureState' in job:
