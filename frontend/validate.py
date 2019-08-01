@@ -1,4 +1,4 @@
-import json
+""" Functions for validating jobs and workflows"""
 import re
 import requests
 
@@ -67,6 +67,21 @@ def validate_workflow(workflow):
         if workflow['numberOfRetries'] > 6:
             return (False, 'the number of retries must be less than 6')
 
+    # Labels
+    if 'labels' in workflow:
+        if not isinstance(workflow['labels'], dict):
+            return (False, 'labels must be defined as a dict')
+        for label in workflow['labels']:
+            if len(label) > 64:
+                return (False, 'label names must be less than 64 characters in length')
+            if len(workflow['labels'][label]) > 64:
+                return (False, 'label values must be less than 64 characters in length')
+
+            if not re.match(r'^[a-zA-Z0-9]+$', label):
+                return (False, 'label name "%s" is invalid' % label)
+            if not re.match(r'^[\w\-\_\.\/]+$', workflow['labels'][label]):
+                return (False, 'label value "%s" is invalid' % workflow['labels'][label])
+
     return (True, '')
 
 def validate_job(job):
@@ -126,11 +141,6 @@ def validate_job(job):
                 return (False, 'label name "%s" is invalid' % label)
             if not re.match(r'^[\w\-\_\.\/]+$', job['labels'][label]):
                 return (False, 'label value "%s" is invalid' % job['labels'][label])
-
-    # Preemptible
-    if 'preemptible' in job:
-        if job['preemptible'] != True and job['preemptible'] != False:
-            return (False, 'preemptible must be either true or false')
 
     # Resources
     if 'resources' in job:
@@ -247,10 +257,10 @@ def validate_job(job):
     if 'inputs' in job:
         if not isinstance(job['inputs'], list):
             return (False, 'an array of inputs must be provided')
-        for input in job['inputs']:
-            if 'filename' not in input:
+        for inpt in job['inputs']:
+            if 'filename' not in inpt:
                 return (False, 'each input must contain a filename')
-            if 'content' not in input:
+            if 'content' not in inpt:
                 return (False, 'each input must contain base64 encoded content')
 
     # Storage
@@ -263,7 +273,7 @@ def validate_job(job):
             return (False, 'a mount point must be defined')
         if not job['storage']['mountpoint'].startswith('/'):
             return (False, 'the mountpoint must be an absolute path')
-            
+
         if job['storage']['type'] == 'b2drop':
             if 'b2drop' not in job['storage']:
                 return (False, 'b2drop storage details must be defined')
@@ -299,10 +309,9 @@ def validate_presigned_url(url):
     """
     try:
         response = requests.get(url, timeout=30)
-    except requests.exceptions.RequestException as err:
+    except requests.exceptions.RequestException:
         return False
 
     if response.status_code != 200:
         return False
     return True
-
