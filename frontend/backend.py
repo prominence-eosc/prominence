@@ -1,3 +1,4 @@
+""" HTCondor backend"""
 import base64
 import boto3
 import json
@@ -24,11 +25,9 @@ JOB_SUBMIT = \
 universe = vanilla
 executable = promlet.py
 arguments = --job .job.mapped.json
-
-output = job.%(name)s.$(ProcId).out
-error = job.%(name)s.$(ProcId).err
-log = job.%(name)s.$(ProcId).log
-
+output = job.$(ProcId).out
+error = job.$(ProcId).err
+log = job.$(ProcId).log
 should_transfer_files = YES
 when_to_transfer_output = ON_EXIT_OR_EVICT
 transfer_output_files = promlet.log
@@ -37,32 +36,59 @@ requirements = false
 transfer_executable = true
 stream_output = true
 stream_error = true
-
 RequestCpus = %(cpus)s
 RequestMemory = %(reqmemory)s
-
-+remote_cerequirements_default = RequiredTasks == 1 && RequiredMemoryPerCpu == 1 && RequiredCpusPerTask == 1 && RequiredTime == 10
-
-+ProminenceWantJobRouter = ProminenceMaxIdleTime =?= 0 || (ProminenceMaxIdleTime > 0 && JobStatus == 1 && CurrentTime - EnteredCurrentStatus > ProminenceMaxIdleTime)
-+ProminenceJobUniqueIdentifier = "%(uuid)s"
-+ProminenceIdentity = "%(username)s"
-+ProminenceName = "%(name)s"
++ProminenceJobUniqueIdentifier = %(uuid)s
++ProminenceIdentity = %(username)s
++ProminenceName = %(name)s
 +ProminenceMemoryPerNode = %(memory)s
 +ProminenceCpusPerNode = %(cpus)s
 +ProminenceNumNodes = %(nodes)s
 +ProminenceSharedDiskSize = %(disk)s
 +ProminenceMaxIdleTime = %(maxidle)s
 +ProminenceWantMPI = %(wantmpi)s
-+ProminenceStorageType = "%(storagetype)s"
-+ProminenceStorageMountPoint = "%(storagemountpoint)s"
-+ProminenceStorageCredentials = "%(storagecreds)s"
-
++ProminenceType = "job"
 +WantIOProxy = true
-
 %(extras)s
-
-queue %(instances)s
+queue 1
 """
+
+def write_htcondor_job(cjob, filename):
+    """
+    Write a HTCondor JDL
+    """
+    keys = ['transfer_input_files',
+            '+ProminenceStorageType',
+            '+ProminenceStorageMountPoint',
+            '+ProminenceStorageCredentials',
+            '+ProminenceWantJobRouter',
+            '+remote_cerequirements_default',
+            '+ProminenceWorkflowName']
+    extras = "\n"
+    for key in keys:
+        if key in cjob:
+            extras += "%s = %s\n" % (key, cjob[key])
+
+    info = {}
+    info['name'] = cjob['+ProminenceName']
+    info['uuid'] = cjob['+ProminenceJobUniqueIdentifier']
+    info['username'] = cjob['+ProminenceIdentity']
+    info['memory'] = cjob['+ProminenceMemoryPerNode']
+    info['reqmemory'] = cjob['RequestMemory']
+    info['cpus'] = cjob['+ProminenceCpusPerNode']
+    info['nodes'] = cjob['+ProminenceNumNodes']
+    info['disk'] = cjob['+ProminenceSharedDiskSize']
+    info['wantmpi'] = cjob['+ProminenceWantMPI']
+    info['maxidle'] = 0
+    info['extras']  = extras
+
+    try:
+        with open(filename, 'w') as fd:
+            fd.write(JOB_SUBMIT % info)
+    except IOError:
+        return False
+
+    return True
 
 def condor_str(str_in):
     """
@@ -71,10 +97,16 @@ def condor_str(str_in):
     return str('"%s"' % str_in)
 
 def kill_proc(proc, timeout):
+    """
+    Helper function used by "run"
+    """
     timeout["value"] = True
     proc.kill()
 
 def run(cmd, cwd, timeout_sec):
+    """
+    Run a subprocess, capturing stdout & stderr, with a timeout
+    """
     proc = subprocess.Popen(shlex.split(cmd), stdout=subprocess.PIPE, stderr=subprocess.PIPE, cwd=cwd)
     timeout = {"value": False}
     timer = Timer(timeout_sec, kill_proc, [proc, timeout])
@@ -203,7 +235,7 @@ class ProminenceBackend(object):
             prefix_to_remove = ['uploads']
 
         objects = []
-         
+
         try:
             keys = get_matching_s3_objects(self._config['S3_URL'],
                                            self._config['S3_ACCESS_KEY_ID'],
@@ -266,136 +298,137 @@ class ProminenceBackend(object):
                     identity = job['ProminenceIdentity']
         return (uid, identity)
 
-    def create_job(self, username, groups, uid, jjob):
+    def _create_htcondor_job(self, username, groups, uid, jjob, job_path):
         """
-        Create a job
+        Create a dict representing a HTCondor job & write the JSON job description
+        (original & mapped) files to disk
         """
-        # Create the job sandbox
-        job_sandbox = self.create_sandbox(uid)
-        if job_sandbox is None:
-            return (1, {"error":"Unable to create job sandbox"})
-
         cjob = {}
-
-        # Copy executable to sandbox, change current working directory to the sandbox
-        copyfile(self._config['PROMLET_FILE'], os.path.join(job_sandbox, 'promlet.py'))
-
-        os.chdir(job_sandbox)
-        os.chmod(os.path.join(job_sandbox, 'promlet.py'), 0775)
 
         # Copy of job (mapped version)
         jjob_mapped = jjob.copy()
 
-        # Write input files to sandbox
+        # Write any input files to sandbox directory
         input_files = []
         if 'inputs' in jjob:
             filenames = []
             for file_input in jjob['inputs']:
-                filename_new = os.path.join(job_sandbox + '/input', os.path.basename(file_input['filename']))
-                with open(filename_new, 'w') as file:
-                    file.write(base64.b64decode(file_input['content']))
-                    filenames.append(file_input['filename'])
-                    input_files.append(filename_new)
+                filename_new = os.path.join(job_path + '/input', os.path.basename(file_input['filename']))
+                try:
+                    with open(filename_new, 'w') as file:
+                        file.write(base64.b64decode(file_input['content']))
+                except IOError:
+                    return (1, {"error":"Unable to write input file to disk"}, cjob)
+                filenames.append(file_input['filename'])
+                input_files.append(filename_new)
 
-        # Default number of nodes
+        # Set default number of nodes if not already specified
         if 'nodes' not in jjob['resources']:
             jjob['resources']['nodes'] = 1
 
         # Write original job.json
-        with open(os.path.join(job_sandbox, '.job.json'), 'w') as file:
-            json.dump(jjob, file)
+        try:
+            with open(os.path.join(job_path, '.job.json'), 'w') as file:
+                json.dump(jjob, file)
+        except IOError:
+            return (1, {"error":"Unable to write .job.json"}, cjob)
 
-        # Write tasks definition to file
-        if 'tasks' in jjob:
+        # Replace image identifiers with S3 presigned URLs if necessary
+        tasks_mapped = []
+        count_task = 0
+        for task in jjob['tasks']:
+            if 'http' not in task['image'] and ('.tar' in task['image'] or
+                                                '.tgz' in task['image'] or
+                                                '.simg' in task['image'] or
+                                                '.sif' in task['image']):
+                image = task['image']
 
-            # Replace image identifiers with S3 presigned URLs
-            tasks_new = []
-            count_task = 0
-            for task in jjob['tasks']:
+                # Check if image is the same as a previous task
+                count_task_check = 0
+                found = False
+                for task_check in jjob['tasks']:
+                    if image == task_check['image'] and count_task_check < count_task:
+                        found = True
+                        break
+                    count_task_check += 1
 
-                if 'http' not in task['image'] and ('.tar' in task['image'] or '.tgz' in task['image'] or '.simg' in task['image'] or '.sif' in task['image']):
-                    image = task['image']
-
-                    # Check if image is the same as a previous task
-                    count_task_check = 0
-                    found = False
-                    for task_check in jjob['tasks']:
-                        if image == task_check['image'] and count_task_check < count_task:
-                            found = True
-                            break
-                        count_task_check += 1
-
-                    # Replace image name as necessary
-                    if found and count_task_check < count_task:
-                        task['image'] = tasks_new[count_task_check]
+                # Replace image name as necessary
+                if found and count_task_check < count_task:
+                    task['image'] = tasks_mapped[count_task_check]
+                else:
+                    if '/' in task['image']:
+                        path = task['image']
                     else:
-                        if '/' in task['image']:
-                            path = task['image']
-                        else:
-                            path = '%s/%s' % (username, task['image'])
-                        task['image'] = self.create_presigned_url('get', self._config['S3_BUCKET'], 'uploads/%s' % path, 6000)
-                        url_exists = validate.validate_presigned_url(task['image'])
-                        if not url_exists:
-                            return (1, {"error":"Image %s does not exist" % image})
+                       path = '%s/%s' % (username, task['image'])
+                    task['image'] = self.create_presigned_url('get', self._config['S3_BUCKET'], 'uploads/%s' % path, 6000)
+                    url_exists = validate.validate_presigned_url(task['image'])
+                    if not url_exists:
+                        return (1, {"error":"Image %s does not exist" % image}, cjob)
 
-                tasks_new.append(task)
-                count_task += 1
+            tasks_mapped.append(task)
+            count_task += 1
 
-            jjob_mapped['tasks'] = tasks_new
+        jjob_mapped['tasks'] = tasks_mapped
 
-            input_files.append(os.path.join(job_sandbox, '.job.mapped.json'))
-        else:
-            return (1, {"error":"No tasks or workflow specified"})
+        # Include the mapped JSON job description as an input file
+        input_files.append(os.path.join(job_path, '.job.mapped.json'))
 
+        # Standard defaults
+        cjob['universe'] = 'vanilla'
+        cjob['transfer_executable'] = 'true'
+        cjob['executable'] = 'promlet.py'
+        cjob['arguments'] = '--job .job.mapped.json'
+
+        cjob['Log'] = job_path + '/job.$(Cluster).$(Process).log'
+        cjob['Output'] = job_path + '/job.$(Cluster).$(Process).out'
+        cjob['Error'] = job_path +  '/job.$(Cluster).$(Process).err'
+        cjob['should_transfer_files'] = 'YES'
+        cjob['when_to_transfer_output'] = 'ON_EXIT_OR_EVICT'
+        cjob['transfer_output_files'] = 'promlet.log,promlet.json'
+        cjob['+WantIOProxy'] = 'true'
+        cjob['+ProminenceType'] = condor_str('job')
+
+        cjob['stream_error'] = 'true'
+        cjob['stream_output'] = 'true'
+
+        # Job name
         if 'name' in jjob:
             cjob['+ProminenceName'] = condor_str(jjob['name'])
         else:
             cjob['+ProminenceName'] = condor_str('')
 
+        # Job uid
         cjob['+ProminenceJobUniqueIdentifier'] = condor_str(uid)
-        cjob['executable'] = 'promlet.py'
-        cjob['transfer_executable'] = 'true'
-        cjob['+ProminenceIdentity'] = condor_str(username)
-        cjob['+ProminenceType'] = condor_str('job')
 
+        # Username
+        cjob['+ProminenceIdentity'] = condor_str(username)
+
+        # Group
+        if groups is not None:
+            cjob['+ProminenceGroup'] = condor_str(groups)
+
+        # Memory required
         cjob['+ProminenceMemoryPerNode'] = str(jjob['resources']['memory'])
         cjob['RequestMemory'] = str(1000*int(jjob['resources']['memory']))
 
+        # CPUs required
         cjob['+ProminenceCpusPerNode'] = str(jjob['resources']['cpus'])
         cjob['RequestCpus'] = str(jjob['resources']['cpus'])
 
-        if 'nodes' not in jjob['resources']:
-            cjob['+ProminenceNumNodes'] = str(1)
-        else:
-            cjob['+ProminenceNumNodes'] = str(jjob['resources']['nodes'])
+        # Nodes
+        cjob['+ProminenceNumNodes'] = str(jjob['resources']['nodes'])
 
+        # Disk
         if 'disk' not in jjob['resources']:
             cjob['+ProminenceSharedDiskSize'] = str(10)
         else:
             cjob['+ProminenceSharedDiskSize'] = str(jjob['resources']['disk'])
 
-        cjob['arguments'] = '--job .job.mapped.json'
-
-        cjob['universe'] = 'vanilla'
-        cjob['Log'] = job_sandbox + '/job.$(Cluster).$(Process).log'
-        cjob['Output'] = job_sandbox + '/job.$(Cluster).$(Process).out'
-        cjob['Error'] = job_sandbox +  '/job.$(Cluster).$(Process).err'
-        cjob['should_transfer_files'] = 'YES'
-        cjob['when_to_transfer_output'] = 'ON_EXIT_OR_EVICT'
-        cjob['transfer_output_files'] = 'promlet.log,promlet.json'
-        cjob['+WantIOProxy'] = 'true'
-
-        if groups is not None:
-            cjob['+ProminenceGroup'] = condor_str(groups)
-
-        # Stream stdout/err
-        cjob['stream_error'] = 'true'
-        cjob['stream_output'] = 'true'
-
         # Preemptible
         if 'preemptible' in jjob:
             cjob['+ProminencePreemptible'] = 'true'
 
+        # Handle B2DROP or OneData storage mounts
         if 'storage' in jjob:
             if 'type' in jjob['storage']:
                 cjob['+ProminenceStorageType'] = condor_str(jjob['storage']['type'])
@@ -407,21 +440,6 @@ class ProminenceBackend(object):
 
         # Job router
         cjob['+ProminenceWantJobRouter'] = str('(ProminenceMaxIdleTime =?= 0 || (ProminenceMaxIdleTime > 0 && JobStatus == 1 && CurrentTime - EnteredCurrentStatus > ProminenceMaxIdleTime)) && Preemptible =!= True')
-
-        # Output files
-        if 'outputFiles' in jjob:
-            output_files_new = []
-            output_locations_put = []
-
-            for filename in jjob['outputFiles']:
-                url_put = self.create_presigned_url('put',
-                                                    self._config['S3_BUCKET'],
-                                                    'scratch/%s/%s' % (uid, os.path.basename(filename)),
-                                                    604800)
-                output_locations_put.append(url_put)
-                output_files_new.append({'name':filename, 'url':url_put})
-
-            jjob_mapped['outputFiles'] = output_files_new
 
         # Artifacts
         artifacts = []
@@ -440,10 +458,24 @@ class ProminenceBackend(object):
                     if not url_exists:
                         return (1, {"error":"Artifact %s does not exist" % artifact_original})
                 input_files.append(artifact_url)
-            cjob['+ProminenceArtifacts'] = condor_str(",".join(artifacts))
-
         cjob['transfer_input_files'] = str(','.join(input_files))
 
+        # Output files
+        if 'outputFiles' in jjob:
+            output_files_new = []
+            output_locations_put = []
+
+            for filename in jjob['outputFiles']:
+                url_put = self.create_presigned_url('put',
+                                                    self._config['S3_BUCKET'],
+                                                    'scratch/%s/%s' % (uid, os.path.basename(filename)),
+                                                    604800)
+                output_locations_put.append(url_put)
+                output_files_new.append({'name':filename, 'url':url_put})
+
+            jjob_mapped['outputFiles'] = output_files_new
+
+        # Output directories    
         if 'outputDirs' in jjob:
             output_dirs_new = []
             output_locations_put = []
@@ -458,7 +490,8 @@ class ProminenceBackend(object):
 
             jjob_mapped['outputDirs'] = output_dirs_new
 
-        # Set max runtime
+        # Set max walltime, noting that the promlet will kill jobs anyway when the max
+        # walltime has been exceeded
         max_run_time = 43200.0*3
         if 'walltime' in jjob['resources']:
             if jjob['resources']['walltime'] > -1:
@@ -468,6 +501,7 @@ class ProminenceBackend(object):
         cjob['+ProminenceMaxRunTime'] = str("%d" % (max_run_time/60))
 
         # Is job MPI?
+        cjob['+ProminenceWantMPI'] = 'false'
         if 'tasks' in jjob:
             if 'type' in jjob['tasks'][0]:
                 if jjob['tasks'][0]['type'] == 'openmpi':
@@ -491,25 +525,48 @@ class ProminenceBackend(object):
                 cjob['+ProminenceWantCloud'] = condor_str(jjob['constraints']['site'])
         cjob['+ProminenceMaxIdleTime'] = str("%d" % max_idle_time)
 
+        # Handle labels
         if 'labels' in jjob:
             valid = True
             labels_list = []
             for label in jjob['labels']:
                 value = jjob['labels'][label]
-                match_obj_label = re.match(r'([\w]+)', label)
-                match_obj_value = re.match(r'([\w\-\_\.\/]+)', value)
-                if match_obj_label and match_obj_value and len(label) < 64 and len(value) < 64:
-                    cjob[str('+ProminenceUserMetadata_%s' % label)] = str('"%s"' % value)
-                    labels_list.append('%s=%s' % (label, value))
-                else:
-                    return (1, {"error":"Invalid label specified"})
+                cjob[str('+ProminenceUserMetadata_%s' % label)] = str('"%s"' % value)
+                labels_list.append('%s=%s' % (label, value))
 
             cjob['+ProminenceUserMetadata'] = condor_str(','.join(labels_list))
 
         # Write mapped job.json
-        with open(os.path.join(job_sandbox, '.job.mapped.json'), 'w') as file:
-            json.dump(jjob_mapped, file)
+        try:
+            with open(os.path.join(job_path, '.job.mapped.json'), 'w') as file:
+                json.dump(jjob_mapped, file)
+        except IOError as err:
+            return (1, {"error":"Unable to write .job.mapped.json due to %s" % err}, cjob)
 
+        return (0, {}, cjob)
+
+    def create_job(self, username, groups, uid, jjob):
+        """
+        Create a job
+        """
+        # Create the job sandbox
+        job_sandbox = self.create_sandbox(uid)
+        if job_sandbox is None:
+            return (1, {"error":"Unable to create job sandbox"})
+
+        # Copy executable to sandbox, change current working directory to the sandbox
+        copyfile(self._config['PROMLET_FILE'], os.path.join(job_sandbox, 'promlet.py'))
+        os.chdir(job_sandbox)
+        os.chmod(os.path.join(job_sandbox, 'promlet.py'), 0775)
+
+        # Create dict containing HTCondor job
+        (status, msg, cjob) = self._create_htcondor_job(username, groups, uid, jjob, job_sandbox)
+
+        # Check if we have an error
+        if status != 0:
+            return (0, msg)
+
+        # Submit the job to HTCondor
         data = {}
         retval = 0
 
@@ -529,162 +586,47 @@ class ProminenceBackend(object):
         """
         Create a workflow
         """
-        # Firstly, create the job sandbox
+        # Firstly, create the workflow sandbox
         job_sandbox = self.create_sandbox(uid)
         if job_sandbox is None:
-            return (1, {"error":"Unable to create job sandbox"})
+            return (1, {"error":"Unable to create workflow sandbox"})
+
+        # Workflow name
+        wf_name = ''
+        if 'name' in jjob:
+            wf_name = str(jjob['name'])
 
         dag = []
         if 'jobs' in jjob:
             with open(job_sandbox + '/workflow.json', 'w') as fd:
                 json.dump(jjob, fd)
 
-            # Generate unique Swift temporary URLs for output/input files
-            file_maps = {}
             for job in jjob['jobs']:
-                if 'outputFiles' in job:
-                    for filename in job['outputFiles']:
-                        filename_base = os.path.basename(filename)
-                        url_put = self.create_presigned_url('put', self._config['S3_BUCKET'], 'scratch/%s/%s' % (uid, filename_base), 604800)
-                        url_get = self.create_presigned_url('get', self._config['S3_BUCKET'], 'scratch/%s/%s' % (uid, filename_base), 604800)
-                        file_maps[filename_base] = (filename, url_put, url_get)
-
-            # Check for storage specified in workflow, to be applied to all jobs
-            storage_type = None
-            storage_creds = None
-            if 'storage' in jjob:
-                if 'type' in jjob['storage']:
-                    storage_type = jjob['storage']['type']
-                    if jjob['storage']['type'] == 'b2drop':
-                        storage_creds = '%s/%s' % (jjob['storage']['b2drop']['app-username'], jjob['storage']['b2drop']['app-password'])
-                        storage_mountpoint = jjob['storage']['mountpoint']
-
-            for job in jjob['jobs']:
-                info = {}
-
                 # If a job name is not defined, create one as we require all jobs to have a name
                 if 'name' not in job:
                     job['name'] = str(uuid.uuid4())
-
-                info['name'] = job['name']
 
                 # Create job sandbox
                 os.makedirs(job_sandbox + '/' + job['name'])
                 os.makedirs(job_sandbox + '/' + job['name'] + '/input')
                 job_filename = job_sandbox + '/' + job['name'] + '/job.jdl'
 
-                info['uuid'] = uid
-                info['username'] = username
-
-                if 'memory' in job['resources']:
-                    info['memory'] = job['resources']['memory']
-                    info['reqmemory'] = 1000*int(job['resources']['memory'])
-
-                if 'cpus' in job['resources']:
-                    info['cpus'] = job['resources']['cpus']
-
-                if 'nodes' in job['resources']:
-                    info['nodes'] = job['resources']['nodes']
-                else:
-                    info['nodes'] = 1
-
-                if 'disk' in job and int(job['resources']['disk']) > 1:
-                    info['disk'] = job['resources']['disk']
-                elif int(job['resources']['disk']) > 1:
-                    info['disk'] = job['resources']['disk']
-                else:
-                    info['disk'] = 10
-
-                info['wantmpi'] = 'False'
-
-                if 'storage' in job:
-                    if 'type' in job['storage']:
-                        info['storagetype'] = job['storage']['type']
-                        if job['storage']['type'] == 'b2drop':
-                            info['storagecreds'] = '%s/%s' % (job['storage']['b2drop']['app-username'], job['storage']['b2drop']['app-password'])
-                            info['storagemountpoint'] = job['storage']['b2drop']['mountpoint']
-                elif storage_type is not None and storage_creds is not None and storage_mountpoint is not None:
-                    info['storagetype'] = storage_type
-                    info['storagecreds'] = storage_creds
-                    info['storagemountpoint'] = storage_mountpoint
-                else:
-                    info['storagetype'] = 'None'
-                    info['storagecreds'] = 'None'
-                    info['storagemountpoint'] = 'None'
-
-                # If more than 1 node has been requested, assume MPI
-                if int(info['nodes']) > 1:
-                    info['wantmpi'] = 'True'
-
-                # Check if MPI was explicitly requested
-                if 'type' in job:
-                    if job['type'] == 'mpi':
-                        info['wantmpi'] = 'True'
-
-                if info['wantmpi'] == 'True':
-                    info['processes'] = int(job['resources']['cpus'])*int(job['resources']['nodes'])
-                else:
-                    info['processes'] = 1
-
-                info['maxidle'] = 0
-
-                cjob = {}
-                input_files = ['.job.mapped.json']
-
-                instances = 1
-                if 'instances' in job:
-                    instances = int(job['instances'])
-                info['instances'] = instances
-
-                # Artifacts
-                artifacts = []
-                if 'artifacts' in job:
-                    for artifact in job['artifacts']:
-                        artifacts.append(artifact)
-                        if artifact in file_maps:
-                            artifact = (file_maps[filename_base])[2]
-                        elif 'http' not in artifact and artifact not in file_maps:
-                            artifact = self.create_presigned_url('get', self._config['S3_BUCKET'], 'uploads/%s/%s' % (username, artifact), 604800)
-                        input_files.append(artifact)
-                    cjob['+ProminenceArtifacts'] = condor_str(",".join(artifacts))
-                cjob['transfer_input_files'] = str(','.join(input_files))
-
-                # Output files
-                if 'outputFiles' in job:
-                    output_locations_put = []
-
-                    for filename in job['outputFiles']:
-                        filename_base = os.path.basename(filename)
-                        url_put = (file_maps[filename_base])[1]
-                        output_locations_put.append(url_put)
-
-                    if job['outputFiles']:
-                        cjob['+ProminenceOutputLocations'] = condor_str(",".join(output_locations_put))
-
-                contents_additional = "\n"
-                for key in cjob:
-                    contents_additional += "%s = %s\n" % (key, cjob[key])
-                info['extras'] = contents_additional
+                # Create dict containing HTCondor job
+                (status, msg, cjob) = self._create_htcondor_job(username, groups, uid, job, job_sandbox + '/' + job['name'])
+                cjob['+ProminenceWorkflowName'] = condor_str(wf_name)
 
                 # Write JDL
-                with open(job_filename, 'w') as fd:
-                    fd.write(JOB_SUBMIT % info)
+                if not write_htcondor_job(cjob, job_filename):
+                    return (1, {"error":"Unable to write JDL for job"})
+
+                # Append job to DAG description
                 dag.append('JOB ' + job['name'] + ' job.jdl DIR ' + job['name'])
 
                 # Retries
                 if 'numberOfRetries' in jjob:
                     dag.append('RETRY ALL_NODES %d' % jjob['numberOfRetries'])
 
-                # Write .job.json
-                filename = job_sandbox + '/' + job['name'] + '/.job.json'
-                with open(filename, 'w') as file:
-                    json.dump(job, file)
-
-                filename = job_sandbox + '/' + job['name'] + '/.job.mapped.json'
-                with open(filename, 'w') as file:
-                    json.dump(job, file)
-
-                # Copy executable
+                # Copy executable to job sandbox
                 copyfile(self._config['PROMLET_FILE'], os.path.join(job_sandbox, job['name'], 'promlet.py'))
                 os.chmod(job_sandbox + '/' + job['name'] + '/promlet.py', 0775)
 
@@ -696,25 +638,39 @@ class ProminenceBackend(object):
                 dag.append('PARENT ' + parent + ' CHILD ' + children)
 
         # Write dag definition file
-        with open(job_sandbox + '/job.dag', 'w') as fd:
-            fd.write('\n'.join(dag))
+        try:
+            with open(job_sandbox + '/job.dag', 'w') as fd:
+                fd.write('\n'.join(dag))
+        except IOError:
+            return (1, {"error":"Unable to write DAG file for job"})
 
-        wf_name = ''
-        if 'name' in jjob:
-            wf_name = str(jjob['name'])
+        # Handle labels
+        dag_appends = []
+        if 'labels' in jjob:
+            for label in jjob['labels']:
+                value = jjob['labels'][label]
+                dag_appends.append("'+ProminenceUserMetadata_%s=\"%s\"'" % (label, value))
 
-        data = {}
+        # Create command to submit dag
+        dag_appends.append("'+ProminenceType=\"workflow\"'")
+        dag_appends.append("'+ProminenceIdentity=\"%s\"'" % username)
+        dag_appends.append("'+ProminenceJobUniqueIdentifier=\"%s\"'" % uid)
+
+        cmd = "condor_submit_dag -batch-name %s " % wf_name
+        for dag_append in dag_appends:
+            cmd += " -append %s " % dag_append
+        cmd += " job.dag "
 
         # Submit dag
-        cmd = "condor_submit_dag -batch-name %s -append '+ProminenceType=\"workflow\"' -append '+ProminenceIdentity=\"%s\"' -append '+ProminenceJobUniqueIdentifier=\"%s\"' job.dag" % (wf_name, username, uid)
         (return_code, stdout, stderr, timedout) = run(cmd, job_sandbox, 30)
         m = re.search(r'submitted to cluster\s(\d+)', stdout)
+        data = {}
         if m:
             retval = 201
             data['id'] = int(m.group(1))
         else:
             retval = 1
-            data = {"error":"Job submission failed"}
+            data = {"error":"Workflow submission failed"}
 
         return (retval, data)
 
@@ -725,7 +681,7 @@ class ProminenceBackend(object):
         constraints = []
         for job_id in job_ids:
             constraints.append('ClusterId == %d' % int(job_id))
-        constraint = '(%s) && ProminenceIdentity == "%s" && Cmd != "/bin/condor_dagman"' % (' || '.join(constraints), username)
+        constraint = '(%s) && ProminenceIdentity == "%s" && ProminenceType == "job"' % (' || '.join(constraints), username)
 
         schedd = htcondor.Schedd()
         ret = schedd.act(htcondor.JobAction.Remove, constraint)
@@ -741,7 +697,7 @@ class ProminenceBackend(object):
         constraints = []
         for workflow_id in workflow_ids:
             constraints.append('ClusterId == %d' % int(workflow_id))
-        constraint = '(%s) && ProminenceIdentity == "%s" && Cmd == "/usr/bin/condor_dagman"' % (' || '.join(constraints), username)
+        constraint = '(%s) && ProminenceIdentity == "%s" && ProminenceType == "workflow"' % (' || '.join(constraints), username)
 
         schedd = htcondor.Schedd()
         ret = schedd.act(htcondor.JobAction.Remove, constraint)
@@ -761,7 +717,9 @@ class ProminenceBackend(object):
                           'DAGManJobId',
                           'ProminenceInfrastructureSite',
                           'ProminenceInfrastructureState',
+                          'ProminenceInfrastructureType',
                           'QDate',
+                          'GridJobStatus',
                           'JobStartDate',
                           'JobRunCount',
                           'JobCurrentStartExecutingDate',
@@ -775,6 +733,7 @@ class ProminenceBackend(object):
                           'TransferInput',
                           'ProminenceJobUniqueIdentifier',
                           'ProminenceName',
+                          'ProminenceWorkflowName',
                           'ProminenceExitCode',
                           'ProminencePreemptible',
                           'ProminenceImagePullSuccess',
@@ -830,13 +789,22 @@ class ProminenceBackend(object):
             jobj['name'] = ''
             if 'name' in job_json_file:
                 jobj['name'] = job_json_file['name']
+                if 'ProminenceWorkflowName' in job:
+                    jobj['name'] = '%s/%s' % (job['ProminenceWorkflowName'], jobj['name'])
 
-            # If job is idle and infrastructure is ready, set status to 'ready'
+            # If job is idle and infrastructure is ready, set status to 'idle'
             if 'ProminenceInfrastructureState' in job:
                 if job['JobStatus'] == 1 and job['ProminenceInfrastructureState'] == 'configured':
                     jobj['status'] = 'idle'
                 if job['JobStatus'] == 1 and (job['ProminenceInfrastructureState'] == 'deployment-init' or job['ProminenceInfrastructureState'] == 'creating'):
                     jobj['status'] = 'deploying'
+
+            # Handle idle jobs on remote batch systems
+            if 'ProminenceInfrastructureType' in job:
+                if job['ProminenceInfrastructureType'] == 'batch':
+                    if 'GridJobStatus' in job:
+                        if job['GridJobStatus'] == "IDLE" and job['JobStatus'] == 1:
+                            jobj['status'] = 'idle'
 
             # Get promlet output if exists
             tasks_u = []
@@ -845,7 +813,7 @@ class ProminenceBackend(object):
                     tasks_u = json.load(json_file)
             except:
                 pass
-            
+
             # Return status as failed if container image pull failed
             if 'ProminenceImagePullSuccess' in job:
                 if job['ProminenceImagePullSuccess'] == 1:
@@ -1141,7 +1109,7 @@ class ProminenceBackend(object):
         if job_name is None:
             filename = self._config['SANDBOX_PATH'] + '/%s/job.%d.0.out' % (uid, job_id)
         else:
-            filename = self._config['SANDBOX_PATH'] + '/%s/%s/job.%s.0.out' % (uid, job_name, job_name)
+            filename = self._config['SANDBOX_PATH'] + '/%s/%s/job.0.out' % (uid, job_name)
         if os.path.isfile(filename):
             with open(filename) as fd:
                 return fd.read()
@@ -1154,8 +1122,9 @@ class ProminenceBackend(object):
         if job_name is None:
             filename = self._config['SANDBOX_PATH'] + '/%s/job.%d.0.err' % (uid, job_id)
         else:
-            filename = self._config['SANDBOX_PATH'] + '/%s/%s/job.%s.0.err' % (uid, job_name, job_name)
+            filename = self._config['SANDBOX_PATH'] + '/%s/%s/job.0.err' % (uid, job_name)
         if os.path.isfile(filename):
             with open(filename) as fd:
                 return fd.read()
         return None
+
