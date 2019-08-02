@@ -694,16 +694,10 @@ def run_tasks(job_file, path, base_dir, is_batch):
 
         if args.param:
             for pair in args.param:
-                cmd_tmplt = Template(cmd)
                 key = pair.split('=')[0]
                 value = pair.split('=')[1]
-                env[key] = value
-                key = key.replace('PROMINENCE_PARAMETER_', '')
-                try:
-                    cmd = cmd_tmplt.substitute(key=value)
-                except KeyError as err:
-                    logging.error('Unable to substitue parameter into command due to:', err)
-                    return False
+                env['PROMINENCE_PARAMETER_%s' % key] = value
+                cmd = Template(cmd).safe_substitute({key:value})
 
         location = '%s/%d' % (base_dir, count)
         try:
@@ -826,8 +820,11 @@ def run_tasks(job_file, path, base_dir, is_batch):
         tasks_u.append(task_u)
 
     # Write json job details
+    promlet_json = 'promlet.json'
+    if args.param:
+        promlet_json = 'promlet.%d.json' % args.id
     try:
-        with open('promlet.json', 'w') as file:
+        with open(promlet_json, 'w') as file:
             json.dump(tasks_u, file)
     except Exception as exc:
         logging.critical('Unable to write promlet.json due to: %s', exc)
@@ -847,6 +844,11 @@ def create_parser():
     parser.add_argument('--job',
                         dest='job',
                         help='JSON job description file')
+    parser.add_argument('--id',
+                        dest='id',
+                        default=0,
+                        type=int,
+                        help='Id for this job')
     parser.add_argument('--param',
                         dest='param',
                         action='append',
@@ -867,7 +869,7 @@ if __name__ == "__main__":
     base_dir = '/home/prominence'
 
     # Setup logging
-    logging.basicConfig(filename='%s/promlet.log' % path, level=logging.INFO, format='%(asctime)s %(message)s')
+    logging.basicConfig(filename='%s/promlet.%d.log' % (path, args.id), level=logging.INFO, format='%(asctime)s %(message)s')
     logging.info('Started promlet using path "%s"' % path)
 
     # Handle BeeOND
