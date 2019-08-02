@@ -619,8 +619,12 @@ class ProminenceBackend(object):
                     return (1, {"error":"All jobs in a DAG must have names"})
 
                 # Create job sandbox
-                os.makedirs(job_sandbox + '/' + job['name'])
-                os.makedirs(job_sandbox + '/' + job['name'] + '/input')
+                try:
+                    os.makedirs(job_sandbox + '/' + job['name'])
+                    os.makedirs(job_sandbox + '/' + job['name'] + '/input')
+                except IOError:
+                    return (1, {"error":"Unable to create job sandbox directories"})
+
                 job_filename = job_sandbox + '/' + job['name'] + '/job.jdl'
 
                 # Create dict containing HTCondor job
