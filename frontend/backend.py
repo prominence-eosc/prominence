@@ -645,33 +645,34 @@ class ProminenceBackend(object):
 
         elif 'factory' in jjob:
             # Handle job factories
+
+            job_filename = '%s/job.jdl' % job_sandbox
+
+            # Copy executable to job sandbox
+            copyfile(self._config['PROMLET_FILE'], os.path.join(job_sandbox, 'promlet.py'))
+            os.chmod(job_sandbox + '/promlet.py', 0775)
+
+            # Create dict containing HTCondor job
+            (status, msg, cjob) = self._create_htcondor_job(username, groups, uid, jjob['jobs'][0], job_sandbox)
+            cjob['+ProminenceWorkflowName'] = condor_str(wf_name)
+            cjob['+ProminenceFactoryId'] = '$(prominencecount)'
+
+            # Write JDL
+            if not write_htcondor_job(cjob, job_filename):
+                return (1, {"error":"Unable to write JDL for job"})
+
             if jjob['factory']['type'] == 'parametricSweep':
                 ps_name = jjob['factory']['parameterSets'][0]['name']
                 ps_start = jjob['factory']['parameterSets'][0]['start']
                 ps_end = jjob['factory']['parameterSets'][0]['end']
                 ps_step = jjob['factory']['parameterSets'][0]['step']
-                
-                job_filename = '%s/job.jdl' % job_sandbox
 
-                # Copy executable to job sandbox
-                copyfile(self._config['PROMLET_FILE'], os.path.join(job_sandbox, 'promlet.py'))
-                os.chmod(job_sandbox + '/promlet.py', 0775)
-
-                # Create dict containing HTCondor job
-                (status, msg, cjob) = self._create_htcondor_job(username, groups, uid, jjob['jobs'][0], job_sandbox)
-                cjob['+ProminenceWorkflowName'] = condor_str(wf_name)
                 cjob['extra_args'] = '--param %s=$(prominencevalue)' % ps_name
-                cjob['+ProminenceFactoryId'] = '$(prominencecount)'
-
-                # Write JDL
-                if not write_htcondor_job(cjob, job_filename):
-                    return (1, {"error":"Unable to write JDL for job"})
- 
+                
                 # 1D parameter sweep
                 value = ps_start 
                 job_count = 0
                 while value <= ps_end:
-                    # Append job to DAG description
                     dag.append('JOB job%d job.jdl' % job_count)
                     if ps_step == 1:
                         dag.append('VARS job%d prominencevalue="%d" prominencecount="%d"' % (job_count, value, job_count))
