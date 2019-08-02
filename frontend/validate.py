@@ -59,28 +59,30 @@ def validate_workflow(workflow):
 
     # Factories
     if 'factory' in workflow:
+        valid_factories = ['parametricSweep']
+
         if 'type' not in workflow['factory']:
             return (False, 'a factory type must be specified')
 
-        if workflow['factory']['type'] not in ('parametricSweep'):
-            return (False, 'factory type must be one of: parametricSweep')
+        if workflow['factory']['type'] not in valid_factories:
+            return (False, 'invalid factory type')
 
         if workflow['factory']['type'] == 'parametricSweep':
             if 'parameterSets' not in workflow['factory']:
                 return (False, 'a factory of type parametricSweep must have parameterSets specified')
-            else:
-                if not isinstance(workflow['factory']['parameterSets'], list):
-                    return (False, 'parameterSets must be a list')
-                else:
-                    for parameter_set in workflow['factory']['parameterSets']:
-                        if 'name' not in parameter_set:
-                            return (False, 'a parameterSet must contain a name')
-                        if 'start' not in parameter_set:
-                            return (False, 'a parameterSet must contain a start value')
-                        if 'end' not in parameter_set:
-                            return (False, 'a parameterSet must contain an end value')
-                        if 'step' not in parameter_set:
-                            return (False, 'a parameterSet must contain a step')
+
+            if not isinstance(workflow['factory']['parameterSets'], list):
+                return (False, 'parameterSets must be a list')
+
+            for parameter_set in workflow['factory']['parameterSets']:
+                if 'name' not in parameter_set:
+                    return (False, 'a parameterSet must contain a name')
+                if 'start' not in parameter_set:
+                    return (False, 'a parameterSet must contain a start value')
+                if 'end' not in parameter_set:
+                    return (False, 'a parameterSet must contain an end value')
+                if 'step' not in parameter_set:
+                    return (False, 'a parameterSet must contain a step')
 
     # Retries
     if 'numberOfRetries' in workflow:
