@@ -37,6 +37,10 @@ def validate_workflow(workflow):
     else:
         return (False, 'a workflow must contain jobs')
 
+    # Allow only depdencies or a factory
+    if 'dependencies' in workflow and 'factory' in workflow:
+        return (False, 'a workflow cannot include both dependencies and a factory')
+
     # Dependencies
     if 'dependencies' in workflow:
         if not isinstance(workflow['dependencies'], dict):
