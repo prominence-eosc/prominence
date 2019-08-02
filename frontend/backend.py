@@ -1020,6 +1020,7 @@ class ProminenceBackend(object):
                         file_map = {'name':output_file, 'url':url}
                         outputs.append(file_map)
                     jobj['outputFiles'] = outputs
+
                 if 'outputDirs' in job_json_file:
                     outputs = []
                     for output_dir in job_json_file['outputDirs']:
