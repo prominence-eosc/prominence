@@ -9,6 +9,7 @@ import subprocess
 import uuid
 import hmac
 from hashlib import sha1
+import re
 import time
 
 from shutil import copyfile
@@ -24,14 +25,13 @@ JOB_SUBMIT = \
 """
 universe = vanilla
 executable = promlet.py
-arguments = --job .job.mapped.json %(extra_args)s
+arguments = --job .job.mapped.json --id $(prominencecount) %(extra_args)s
 output = job.$(prominencecount).out
 error = job.$(prominencecount).err
 log = job.$(prominencecount).log
 should_transfer_files = YES
 when_to_transfer_output = ON_EXIT_OR_EVICT
-transfer_output_files = promlet.log
-transfer_output_remaps = "promlet.log=promlet.$(ClusterId).log"
+transfer_output_files = promlet.$(prominencecount).log,promlet.$(prominencecount).json
 requirements = false
 transfer_executable = true
 stream_output = true
@@ -389,7 +389,7 @@ class ProminenceBackend(object):
         cjob['Error'] = job_path +  '/job.$(Cluster).$(Process).err'
         cjob['should_transfer_files'] = 'YES'
         cjob['when_to_transfer_output'] = 'ON_EXIT_OR_EVICT'
-        cjob['transfer_output_files'] = 'promlet.log,promlet.json'
+        cjob['transfer_output_files'] = 'promlet.0.log,promlet.json'
         cjob['+WantIOProxy'] = 'true'
         cjob['+ProminenceType'] = condor_str('job')
 
@@ -660,7 +660,7 @@ class ProminenceBackend(object):
                 # Create dict containing HTCondor job
                 (status, msg, cjob) = self._create_htcondor_job(username, groups, uid, jjob['jobs'][0], job_sandbox)
                 cjob['+ProminenceWorkflowName'] = condor_str(wf_name)
-                cjob['extra_args'] = '--env PROMINENCE_PARAMETER_%s=$(prominencevalue)' % ps_name
+                cjob['extra_args'] = '--param %s=$(prominencevalue)' % ps_name
                 cjob['+ProminenceFactoryId'] = '$(prominencecount)'
 
                 # Write JDL
@@ -790,7 +790,8 @@ class ProminenceBackend(object):
                           'ProminenceStorageType',
                           'ProminenceStorageCredentials',
                           'ProminenceStorageMountPoint',
-                          'Iwd']
+                          'Iwd',
+                          'Args']
         jobs_state_map = {1:'created',
                           2:'running',
                           3:'failed',
@@ -861,12 +862,24 @@ class ProminenceBackend(object):
                             jobj['status'] = 'idle'
 
             # Get promlet output if exists (only for completed jobs)
+            promlet_json_filename = '%s/promlet.json' % job['Iwd']
+            if 'ProminenceFactoryId' in job:
+                promlet_json_filename = '%s/promlet.%d.json' % (job['Iwd'], int(job['ProminenceFactoryId']))
+  
             tasks_u = []
             try:
-                with open(job['Iwd'] + '/promlet.json') as json_file:
-                    tasks_u = json.load(json_file)
+                with open(promlet_json_filename) as promlet_json_file:
+                    tasks_u = json.load(promlet_json_file)
             except:
                 pass
+
+            # Job parameters
+            parameters = {}
+            if 'ProminenceFactoryId' in job:
+                match_obj = re.search(r'--param ([\w]+)=([\w+])', job['Args'])
+                if match_obj:
+                    parameters[match_obj.group(1)] = match_obj.group(2)
+                jobj['parameters'] = parameters
 
             # Return status as failed if container image pull failed
             if 'ProminenceImagePullSuccess' in job:
@@ -1156,12 +1169,14 @@ class ProminenceBackend(object):
 
         return wfs
 
-    def get_stdout(self, uid, job_id, job_name=None):
+    def get_stdout(self, uid, job_id, job_name=None, instance_id=-1):
         """
         Return the stdout from the specified job
         """
         if job_name is None:
-            filename = self._config['SANDBOX_PATH'] + '/%s/job.%d.0.out' % (uid, job_id)
+            filename = self._config['SANDBOX_PATH'] + '/%s/job.%d.out' % (uid, job_id)
+        elif instance_id > -1:
+            filename = self._config['SANDBOX_PATH'] + '/%s/%s/job.%d.out' % (uid, job_name, instance_id)
         else:
             filename = self._config['SANDBOX_PATH'] + '/%s/%s/job.0.out' % (uid, job_name)
         if os.path.isfile(filename):
@@ -1169,12 +1184,14 @@ class ProminenceBackend(object):
                 return fd.read()
         return None
 
-    def get_stderr(self, uid, job_id, job_name=None):
+    def get_stderr(self, uid, job_id, job_name=None, instance_id=-1):
         """
         Return the stdout from the specified job
         """
         if job_name is None:
-            filename = self._config['SANDBOX_PATH'] + '/%s/job.%d.0.err' % (uid, job_id)
+            filename = self._config['SANDBOX_PATH'] + '/%s/job.%d.err' % (uid, job_id)
+        elif instance_id > -1:
+            filename = self._config['SANDBOX_PATH'] + '/%s/%s/job.%d.err' % (uid, job_name, instance_id)
         else:
             filename = self._config['SANDBOX_PATH'] + '/%s/%s/job.0.err' % (uid, job_name)
         if os.path.isfile(filename):
