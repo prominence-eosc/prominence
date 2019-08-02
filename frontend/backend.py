@@ -1113,6 +1113,19 @@ class ProminenceBackend(object):
             events['createTime'] = int(wf['QDate'])
             if 'JobStartDate' in wf:
                 events['startTime'] = int(wf['JobStartDate'])
+
+            # The end time of a DAG job does not appear to be in the job's ClassAd, so instead we
+            # get the end time from the job.dag.metrics file
+            dag_metrics = {}
+            try:
+                with open('%s/job.dag.metrics' % wf['Iwd'], 'r') as json_file:
+                    dag_metrics = json.load(json_file)
+            except IOError:
+                continue
+
+            if 'end_time' in dag_metrics:
+                events['endTime'] = int(dag_metrics['end_time'])
+
             wfj['events'] = events
 
             nodes_total = 0
