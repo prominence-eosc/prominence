@@ -1049,6 +1049,7 @@ class ProminenceBackend(object):
                           'DAGManJobId',
                           'JobBatchName',
                           'QDate',
+                          'JobStartDate',
                           'Cmd',
                           'Iwd'
                           ]
@@ -1110,6 +1111,8 @@ class ProminenceBackend(object):
 
             events = {}
             events['createTime'] = int(wf['QDate'])
+            if 'JobStartDate' in wf:
+                events['startTime'] = int(wf['JobStartDate'])
             wfj['events'] = events
 
             nodes_total = 0
