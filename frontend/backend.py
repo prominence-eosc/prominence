@@ -1121,7 +1121,7 @@ class ProminenceBackend(object):
                 with open('%s/job.dag.metrics' % wf['Iwd'], 'r') as json_file:
                     dag_metrics = json.load(json_file)
             except IOError:
-                continue
+                pass
 
             if 'end_time' in dag_metrics:
                 events['endTime'] = int(dag_metrics['end_time'])
