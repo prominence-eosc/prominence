@@ -31,7 +31,7 @@ log = job.$(prominencecount).log
 should_transfer_files = YES
 when_to_transfer_output = ON_EXIT_OR_EVICT
 transfer_output_files = promlet.log
-transfer_output_remaps = "promlet.log=promlet.$(prominencecount).log"
+transfer_output_remaps = "promlet.log=promlet.$(ClusterId).log"
 requirements = false
 transfer_executable = true
 stream_output = true
