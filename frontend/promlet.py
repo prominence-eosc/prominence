@@ -606,7 +606,7 @@ def run_singularity(image, cmd, workdir, env, path, base_dir, mpi, mpi_processes
 
     start = time.time()
     return_code, timed_out = run_with_timeout(run_command,
-                                              dict(os.environ,
+                                              dict(env,
                                                    PATH='/usr/local/bin:/usr/bin:/usr/local/sbin:/usr/sbin',
                                                    TMP='%s' % path,
                                                    TEMP='%s' % path,
