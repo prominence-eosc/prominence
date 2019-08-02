@@ -605,7 +605,6 @@ class ProminenceBackend(object):
         except IOError:
             return (1, {"error":"Unable to write workflow.json"})
 
-
         dag = []
 
         # Retries
