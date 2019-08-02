@@ -1,19 +1,16 @@
 """ HTCondor backend"""
 import base64
 import boto3
+import hmac
 import json
 import os
 import re
 import shlex
+import shutil
 import subprocess
-import uuid
-import hmac
-from hashlib import sha1
-import re
+import threading
 import time
-
-from shutil import copyfile
-from threading import Timer
+import uuid
 
 import classad
 import htcondor
@@ -114,7 +111,7 @@ def run(cmd, cwd, timeout_sec):
     """
     proc = subprocess.Popen(shlex.split(cmd), stdout=subprocess.PIPE, stderr=subprocess.PIPE, cwd=cwd)
     timeout = {"value": False}
-    timer = Timer(timeout_sec, kill_proc, [proc, timeout])
+    timer = threading.Timer(timeout_sec, kill_proc, [proc, timeout])
     timer.start()
     stdout, stderr = proc.communicate()
     timer.cancel()
@@ -560,7 +557,7 @@ class ProminenceBackend(object):
             return (1, {"error":"Unable to create job sandbox"})
 
         # Copy executable to sandbox, change current working directory to the sandbox
-        copyfile(self._config['PROMLET_FILE'], os.path.join(job_sandbox, 'promlet.py'))
+        shutil.copyfile(self._config['PROMLET_FILE'], os.path.join(job_sandbox, 'promlet.py'))
         os.chdir(job_sandbox)
         os.chmod(os.path.join(job_sandbox, 'promlet.py'), 0775)
 
@@ -640,7 +637,7 @@ class ProminenceBackend(object):
                 dag.append('VARS ' + job['name'] + ' prominencecount="0"')
 
                 # Copy executable to job sandbox
-                copyfile(self._config['PROMLET_FILE'], os.path.join(job_sandbox, job['name'], 'promlet.py'))
+                shutil.copyfile(self._config['PROMLET_FILE'], os.path.join(job_sandbox, job['name'], 'promlet.py'))
                 os.chmod(job_sandbox + '/' + job['name'] + '/promlet.py', 0775)
 
         elif 'factory' in jjob:
@@ -649,7 +646,7 @@ class ProminenceBackend(object):
             job_filename = '%s/job.jdl' % job_sandbox
 
             # Copy executable to job sandbox
-            copyfile(self._config['PROMLET_FILE'], os.path.join(job_sandbox, 'promlet.py'))
+            shutil.copyfile(self._config['PROMLET_FILE'], os.path.join(job_sandbox, 'promlet.py'))
             os.chmod(job_sandbox + '/promlet.py', 0775)
 
             # Create dict containing HTCondor job
