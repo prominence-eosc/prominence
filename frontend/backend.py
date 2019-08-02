@@ -878,7 +878,7 @@ class ProminenceBackend(object):
             # Job parameters
             parameters = {}
             if 'ProminenceFactoryId' in job:
-                match_obj = re.search(r'--param ([\w]+)=([\w+])', job['Args'])
+                match_obj = re.search(r'--param ([\w]+)=([\w]+)', job['Args'])
                 if match_obj:
                     parameters[match_obj.group(1)] = match_obj.group(2)
                 jobj['parameters'] = parameters
