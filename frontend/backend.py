@@ -666,7 +666,8 @@ class ProminenceBackend(object):
                 # Write JDL
                 if not write_htcondor_job(cjob, job_filename):
                     return (1, {"error":"Unable to write JDL for job"})
-
+ 
+                # 1D parameter sweep
                 value = ps_start 
                 job_count = 0
                 while value <= ps_end:
