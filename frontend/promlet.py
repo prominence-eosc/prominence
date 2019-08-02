@@ -9,6 +9,7 @@ import os
 import re
 import shlex
 import signal
+from string import Template
 import subprocess
 import sys
 import tarfile
@@ -690,11 +691,19 @@ def run_tasks(job_file, path, base_dir, is_batch):
         env = {}
         if 'env' in task:
             env = task['env']
-        if args.env:
-            for pair in args.env:
+
+        if args.param:
+            for pair in args.param:
+                cmd_tmplt = Template(cmd)
                 key = pair.split('=')[0]
                 value = pair.split('=')[1]
                 env[key] = value
+                key = key.replace('PROMINENCE_PARAMETER_', '')
+                try:
+                    cmd = cmd_tmplt.substitute(key=value)
+                except KeyError as err:
+                    logging.error('Unable to substitue parameter into command due to:', err)
+                    return False
 
         location = '%s/%d' % (base_dir, count)
         try:
@@ -838,10 +847,10 @@ def create_parser():
     parser.add_argument('--job',
                         dest='job',
                         help='JSON job description file')
-    parser.add_argument('--env',
-                        dest='env',
+    parser.add_argument('--param',
+                        dest='param',
                         action='append',
-                        help='Additional environment variable for the job')
+                        help='Parameters for the job')
 
     return parser.parse_args()
 
