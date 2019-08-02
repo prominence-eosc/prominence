@@ -208,9 +208,9 @@ def get_workflow(username, group, workflow_id):
     data = backend.list_workflows([workflow_id], username, True, True, 1, 1, (None, None))
     return jsonify(data)
 
-@app.route("/prominence/v1/workflows/<int:workflow_id>/<string:job>/stdout", methods=['GET'])
+@app.route("/prominence/v1/workflows/<int:workflow_id>/<string:job>/<int:instance_id>/stdout", methods=['GET'])
 @requires_auth
-def get_stdout_wf(username, group, workflow_id, job):
+def get_stdout_wf(username, group, workflow_id, job, instance_id):
     """
     Return the standard output from the specified job from a workflow
     """
@@ -224,15 +224,15 @@ def get_stdout_wf(username, group, workflow_id, job):
     if username != identity:
         return jsonify({'error':'Not authorized to access this job'}), 403
 
-    stdout = backend.get_stdout(uid, job_id, job)
+    stdout = backend.get_stdout(uid, job_id, job, instance_id)
     if stdout is None:
         return jsonify({'error':'stdout does not exist'}), 400
     else:
         return stdout
 
-@app.route("/prominence/v1/workflows/<int:workflow_id>/<string:job>/stderr", methods=['GET'])
+@app.route("/prominence/v1/workflows/<int:workflow_id>/<string:job>/<int:instance_id>/stderr", methods=['GET'])
 @requires_auth
-def get_stderr_wf(username, group, workflow_id, job):
+def get_stderr_wf(username, group, workflow_id, instance_id, job):
     """
     Return the standard error from the specified job from a workflow
     """
@@ -246,7 +246,7 @@ def get_stderr_wf(username, group, workflow_id, job):
     if username != identity:
         return jsonify({'error':'Not authorized to access this job'}), 403
 
-    stderr = backend.get_stderr(uid, job_id, job)
+    stderr = backend.get_stderr(uid, job_id, instance_id, job)
     if stderr is None:
         return jsonify({'error':'stderr does not exist'}), 400
     else:
