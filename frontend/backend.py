@@ -579,9 +579,9 @@ class ProminenceBackend(object):
             with schedd.transaction() as txn:
                 cid = sub.queue(txn, 1)
             data['id'] = cid
-        except IOError:
+        except:
             retval = 1
-            data = {"error":"Job submission failed"}
+            data = {"error":"Job submission failed with an exception"}
 
         return (retval, data)
 
@@ -612,12 +612,12 @@ class ProminenceBackend(object):
         if 'numberOfRetries' in jjob:
             dag.append('RETRY ALL_NODES %d' % jjob['numberOfRetries'])
 
-        if 'dependencies' in jjob:
-
-            # Handle DAG
+        if 'dependencies' in jjob or 'factory' not in jjob:
+            # Handle DAG workflows & bags of jobs
             for job in jjob['jobs']:
+                # All jobs must have names
                 if 'name' not in job:
-                    return (1, {"error":"All jobs in a DAG must have names"})
+                    return (1, {"error":"All jobs in a workflow must have names"})
 
                 # Create job sandbox
                 try:
@@ -644,11 +644,13 @@ class ProminenceBackend(object):
                 shutil.copyfile(self._promlet_file, os.path.join(job_sandbox, job['name'], 'promlet.py'))
                 os.chmod(job_sandbox + '/' + job['name'] + '/promlet.py', 0775)
 
+                # Define dependencies if necessary
+                if 'dependencies' in jjob:
+                    for parent in jjob['dependencies']:
+                        children = " ".join(jjob['dependencies'][parent])
+                        dag.append('PARENT ' + parent + ' CHILD ' + children)
+
         elif 'factory' in jjob:
-            # Handle job factories
-
-            job_filename = '%s/job.jdl' % job_sandbox
-
             # Copy executable to job sandbox
             shutil.copyfile(self._promlet_file, os.path.join(job_sandbox, 'promlet.py'))
             os.chmod(job_sandbox + '/promlet.py', 0775)
@@ -659,7 +661,7 @@ class ProminenceBackend(object):
             cjob['+ProminenceFactoryId'] = '$(prominencecount)'
 
             # Write JDL
-            if not write_htcondor_job(cjob, job_filename):
+            if not write_htcondor_job(cjob, '%s/job.jdl' % job_sandbox)
                 return (1, {"error":"Unable to write JDL for job"})
 
             if jjob['factory']['type'] == 'parametricSweep':
@@ -681,10 +683,6 @@ class ProminenceBackend(object):
                         dag.append('VARS job%d prominencevalue="%f" prominencecount="%d"' % (job_count, value, job_count))
                     value += ps_step
                     job_count += 1           
-
-        else:
-            # Handle bags of jobs
-            return (1, {"error":"Not yet supported"})
 
         # DAGMan status file
         dag.append('NODE_STATUS_FILE workflow.dag.status')
