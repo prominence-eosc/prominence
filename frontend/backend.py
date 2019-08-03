@@ -708,7 +708,7 @@ class ProminenceBackend(object):
         dag_appends.append("'+ProminenceIdentity=\"%s\"'" % username)
         dag_appends.append("'+ProminenceJobUniqueIdentifier=\"%s\"'" % uid)
 
-        cmd = "condor_submit_dag -maxidle %d -batch-name %s " % (int(self._config['FACTORY_MAX_IDLE']), wf_name)
+        cmd = "condor_submit_dag -maxidle %d -batch-name %s " % (int(self._config['WORKFLOW_MAX_IDLE']), wf_name)
         for dag_append in dag_appends:
             cmd += " -append %s " % dag_append
         cmd += " job.dag "
