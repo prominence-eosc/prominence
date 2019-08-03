@@ -228,22 +228,6 @@ def get_storage_mountpoint():
 
     return None
 
-def update_classad(attr, value):
-    """
-    Update the job's ClassAd if possible
-    """
-    # condor_chirp is installed in different places on CentOS & Ubuntu
-    cmds = ['/usr/libexec/condor/condor_chirp', '/usr/lib/condor/libexec/condor_chirp']
-    for cmd in cmds:
-        if os.path.isfile(cmd):
-            process = subprocess.Popen("%s set_job_attr '%s' '%d'" % (cmd, attr, value),
-                                       shell=True,
-                                       stdout=subprocess.PIPE,
-                                       stderr=subprocess.PIPE)
-            process.wait()
-            return
-    return
-
 def download_singularity(image, image_new, location, base_dir):
     """
     Download a Singularity image from a URL or pull an image from Docker Hub
@@ -305,7 +289,6 @@ def download_singularity(image, image_new, location, base_dir):
         if return_code != 0:
             return 1, False
 
-    update_classad('ProminenceImagePullTime', time.time() - start)
     logging.info('Time to pull image: %d', time.time() - start)
 
     return 0, False
@@ -430,7 +413,6 @@ def download_udocker(image, location, label, base_dir):
     if return_code != 0:
         return 1, False
 
-    update_classad('ProminenceImagePullTime', time.time() - start)
     logging.info('Time to pull image: %d', time.time() - start)
 
     return 0, False
@@ -540,8 +522,6 @@ def run_udocker(image, cmd, workdir, env, path, base_dir, mpi, mpi_processes, mp
                                               walltime_limit)
 
     logging.info('Task had exit code %d', return_code)
-    update_classad('ProminenceExecuteTime', time.time() - start)
-    update_classad('ProminenceExitCode', return_code)
 
     return return_code, timed_out
 
@@ -618,8 +598,6 @@ def run_singularity(image, cmd, workdir, env, path, base_dir, mpi, mpi_processes
                                               walltime_limit)
 
     logging.info('Task had exit code %d', return_code)
-    update_classad('ProminenceExecuteTime', time.time() - start)
-    update_classad('ProminenceExitCode', return_code)
 
     return return_code, timed_out
 
