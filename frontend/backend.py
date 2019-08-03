@@ -186,6 +186,7 @@ class ProminenceBackend(object):
 
     def __init__(self, config):
         self._config = config
+        self._promlet_file = '/usr/local/libexec/promlet.py'
 
     def create_sandbox(self, uid):
         """
@@ -557,7 +558,7 @@ class ProminenceBackend(object):
             return (1, {"error":"Unable to create job sandbox"})
 
         # Copy executable to sandbox, change current working directory to the sandbox
-        shutil.copyfile(self._config['PROMLET_FILE'], os.path.join(job_sandbox, 'promlet.py'))
+        shutil.copyfile(self._promlet_file, os.path.join(job_sandbox, 'promlet.py'))
         os.chdir(job_sandbox)
         os.chmod(os.path.join(job_sandbox, 'promlet.py'), 0775)
 
@@ -640,7 +641,7 @@ class ProminenceBackend(object):
                 dag.append('VARS ' + job['name'] + ' prominencecount="0"')
 
                 # Copy executable to job sandbox
-                shutil.copyfile(self._config['PROMLET_FILE'], os.path.join(job_sandbox, job['name'], 'promlet.py'))
+                shutil.copyfile(self._promlet_file, os.path.join(job_sandbox, job['name'], 'promlet.py'))
                 os.chmod(job_sandbox + '/' + job['name'] + '/promlet.py', 0775)
 
         elif 'factory' in jjob:
@@ -649,7 +650,7 @@ class ProminenceBackend(object):
             job_filename = '%s/job.jdl' % job_sandbox
 
             # Copy executable to job sandbox
-            shutil.copyfile(self._config['PROMLET_FILE'], os.path.join(job_sandbox, 'promlet.py'))
+            shutil.copyfile(self._promlet_file, os.path.join(job_sandbox, 'promlet.py'))
             os.chmod(job_sandbox + '/promlet.py', 0775)
 
             # Create dict containing HTCondor job
