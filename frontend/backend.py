@@ -867,12 +867,20 @@ class ProminenceBackend(object):
             if 'ProminenceFactoryId' in job:
                 promlet_json_filename = '%s/promlet.%d.json' % (job['Iwd'], int(job['ProminenceFactoryId']))
   
-            tasks_u = []
+            # Read in promlet.json
+            job_u = {}
             try:
                 with open(promlet_json_filename) as promlet_json_file:
-                    tasks_u = json.load(promlet_json_file)
+                    job_u = json.load(promlet_json_file)
             except:
                 pass
+
+            tasks_u = []
+            if 'tasks' in job_u:
+                tasks_u = job_u['tasks']
+            elif job_u:
+                # Handle original promlet.json format
+                tasks_u  = job_u
 
             # Job parameters
             parameters = {}
