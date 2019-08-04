@@ -101,34 +101,48 @@ def stageout(job_file, path, base_dir):
             job = json.load(json_file)
     except Exception as ex:
         logging.critical('Unable to read job description due to %s', ex)
-        return False
+        return False, {}
+
+    success = True
 
     # Upload any output files
+    json_out_files = []
     if 'outputFiles' in job:
         for output in job['outputFiles']:
             out_file = glob.glob(output['name'])[0]
+            json_out_file = {'name':output}
             if upload(out_file, output['url']):
                 logging.info('Successfully uploaded file %s to cloud storage', out_file)
+                json_out_file['status'] = 'success'
             else:
                 logging.error('Unable to upload file %s to cloud storage', out_file)
-                return False
+                json_out_file['status'] = 'failed'
+                success = False
+            json_out_files.append(json_out_file)
 
     # Upload any output directories
+    json_out_dirs = []
     if 'outputDirs' in job:
         for output in job['outputDirs']:
             output_filename = os.path.basename(output['name']) + ".tgz"
+            json_out_dir = {'name':output}
             try:
                 with tarfile.open(output_filename, "w:gz") as tar:
                     tar.add(output['name'])
             except Exception as exc:
                 logging.error('Got exception on tar creation for directory %s: %s', output['name'], exc)
-                return False
-            if upload(output_filename, output['url']):
-                logging.info('Successfully uploaded directory %s to cloud storage', output['name'])
-            else:
-                logging.error('Unable to upload directory %s to cloud storage', output['name'])
-                return False
-    return True
+                success = False
+            if os.path.isfile(output_filename):
+                if upload(output_filename, output['url']):
+                    logging.info('Successfully uploaded directory %s to cloud storage', output['name'])
+                    json_out_dir['status'] = 'success'
+                else:
+                    logging.error('Unable to upload directory %s to cloud storage', output['name'])
+                    json_out_dir['status'] = 'failed'
+                    success = False
+                json_out_dirs.append(json_out_dir)
+
+    return success, {'files': json_out_files, 'directories': json_out_dirs}
 
 def get_usage_from_cgroup():
     """
@@ -797,17 +811,7 @@ def run_tasks(job_file, path, base_dir, is_batch):
         task_u['error'] = 'WallTimeLimitExceeded'
         tasks_u.append(task_u)
 
-    # Write json job details
-    promlet_json = 'promlet.json'
-    if args.param:
-        promlet_json = 'promlet.%d.json' % args.id
-    try:
-        with open(promlet_json, 'w') as file:
-            json.dump(tasks_u, file)
-    except Exception as exc:
-        logging.critical('Unable to write promlet.json due to: %s', exc)
-
-    return success
+    return success, tasks_u
 
 def create_parser():
     """
@@ -885,10 +889,24 @@ if __name__ == "__main__":
     mount_storage(args.job)
 
     # Run tasks
-    success_tasks = run_tasks(args.job, path, base_dir, args.batch)
+    (success_tasks, json_tasks) = run_tasks(args.job, path, base_dir, args.batch)
 
     # Upload output files if necessary
-    success_stageout = stageout(args.job, path, base_dir)
+    (success_stageout, json_stageout) = stageout(args.job, path, base_dir)
+
+    # Write json job details
+    json_output = {}
+    json_output['tasks'] = json_tasks
+    json_output['stageout'] = json_stageout
+
+    promlet_json = 'promlet.json'
+    if args.param:
+        promlet_json = 'promlet.%d.json' % args.id
+    try:
+        with open(promlet_json, 'w') as file:
+            json.dump(json_output, file)
+    except Exception as exc:
+        logging.critical('Unable to write promlet.json due to: %s', exc)
 
     # Return appropriate exit code - necessary for retries of DAG nodes
     if not success_tasks or not success_stageout:
