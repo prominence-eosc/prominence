@@ -1200,9 +1200,9 @@ class ProminenceBackend(object):
         Return the stdout from the specified job
         """
         if job_name is None:
-            filename = '%s/%s/job.%d.out' % (self._config['SANDBOX_PATH'], uid, job_id)
+            filename = '%s/%s/job.%d.0.out' % (self._config['SANDBOX_PATH'], uid, job_id)
         elif instance_id > -1:
-            filename = '%s/%s/%s/job.%d.out' % (self._config['SANDBOX_PATH'], uid, job_name, instance_id)
+            filename = '%s/%s/%s/job.%d.0.out' % (self._config['SANDBOX_PATH'], uid, job_name, instance_id)
         else:
             filename = '%s/%s/%s/job.0.out' % (self._config['SANDBOX_PATH'], uid, job_name)
         if os.path.isfile(filename):
@@ -1215,9 +1215,9 @@ class ProminenceBackend(object):
         Return the stdout from the specified job
         """
         if job_name is None:
-            filename = '%s/%s/job.%d.err' % (self._config['SANDBOX_PATH'], uid, job_id)
+            filename = '%s/%s/job.%d.0.err' % (self._config['SANDBOX_PATH'], uid, job_id)
         elif instance_id > -1:
-            filename = '%s/%s/%s/job.%d.err' % (self._config['SANDBOX_PATH'], uid, job_name, instance_id)
+            filename = '%s/%s/%s/job.%d.0.err' % (self._config['SANDBOX_PATH'], uid, job_name, instance_id)
         else:
             filename = '%s/%s/%s/job.0.err' % (self._config['SANDBOX_PATH'], uid, job_name)
         if os.path.isfile(filename):
