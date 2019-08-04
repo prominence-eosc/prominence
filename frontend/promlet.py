@@ -109,15 +109,23 @@ def stageout(job_file, path, base_dir):
     json_out_files = []
     if 'outputFiles' in job:
         for output in job['outputFiles']:
-            out_file = glob.glob(output['name'])[0]
-            json_out_file = {'name':output}
-            if upload(out_file, output['url']):
-                logging.info('Successfully uploaded file %s to cloud storage', out_file)
-                json_out_file['status'] = 'success'
+            json_out_file = {'name':output['name']}
+            out_files = glob.glob(output['name'])
+            if out_files: 
+                out_file = out_files[0]
             else:
-                logging.error('Unable to upload file %s to cloud storage', out_file)
-                json_out_file['status'] = 'failed'
+                logging.error('Output file %s does not exist', output['name'])
+                json_out_file['status'] = 'failedNoSuchFile'
+                out_file = None   
                 success = False
+            if out_file:
+                if upload(out_file, output['url']):
+                    logging.info('Successfully uploaded file %s to cloud storage', out_file)
+                    json_out_file['status'] = 'success'
+                else:
+                    logging.error('Unable to upload file %s to cloud storage', out_file)
+                    json_out_file['status'] = 'failedUpload'
+                    success = False
             json_out_files.append(json_out_file)
 
     # Upload any output directories
@@ -131,6 +139,7 @@ def stageout(job_file, path, base_dir):
                     tar.add(output['name'])
             except Exception as exc:
                 logging.error('Got exception on tar creation for directory %s: %s', output['name'], exc)
+                json_out_dir['status'] = 'failedTarCreation'
                 success = False
             if os.path.isfile(output_filename):
                 if upload(output_filename, output['url']):
@@ -138,7 +147,7 @@ def stageout(job_file, path, base_dir):
                     json_out_dir['status'] = 'success'
                 else:
                     logging.error('Unable to upload directory %s to cloud storage', output['name'])
-                    json_out_dir['status'] = 'failed'
+                    json_out_dir['status'] = 'failedUpload'
                     success = False
                 json_out_dirs.append(json_out_dir)
 
