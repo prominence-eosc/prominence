@@ -661,7 +661,7 @@ class ProminenceBackend(object):
             cjob['+ProminenceFactoryId'] = '$(prominencecount)'
 
             # Write JDL
-            if not write_htcondor_job(cjob, '%s/job.jdl' % job_sandbox)
+            if not write_htcondor_job(cjob, '%s/job.jdl' % job_sandbox):
                 return (1, {"error":"Unable to write JDL for job"})
 
             if jjob['factory']['type'] == 'parametricSweep':
