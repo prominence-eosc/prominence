@@ -380,14 +380,14 @@ class ProminenceBackend(object):
         cjob['universe'] = 'vanilla'
         cjob['transfer_executable'] = 'true'
         cjob['executable'] = 'promlet.py'
-        cjob['arguments'] = '--job .job.mapped.json'
+        cjob['arguments'] = '--job .job.mapped.json --id 0'
 
         cjob['Log'] = job_path + '/job.$(Cluster).$(Process).log'
         cjob['Output'] = job_path + '/job.$(Cluster).$(Process).out'
         cjob['Error'] = job_path +  '/job.$(Cluster).$(Process).err'
         cjob['should_transfer_files'] = 'YES'
         cjob['when_to_transfer_output'] = 'ON_EXIT_OR_EVICT'
-        cjob['transfer_output_files'] = 'promlet.0.log,promlet.json'
+        cjob['transfer_output_files'] = 'promlet.0.log,promlet.0.json'
         cjob['+WantIOProxy'] = 'true'
         cjob['+ProminenceType'] = condor_str('job')
 
@@ -863,9 +863,13 @@ class ProminenceBackend(object):
                             jobj['status'] = 'idle'
 
             # Get promlet output if exists (only for completed jobs)
-            promlet_json_filename = '%s/promlet.json' % job['Iwd']
+            promlet_json_filename = '%s/promlet.0.json' % job['Iwd']
             if 'ProminenceFactoryId' in job:
                 promlet_json_filename = '%s/promlet.%d.json' % (job['Iwd'], int(job['ProminenceFactoryId']))
+
+            # Handle old jobs temporarily
+            if not os.path.isfile(promlet_json_filename) and os.path.isfile('%s/promlet.json' % job['Iwd']):
+                promlet_json_filename = '%s/promlet.json' % job['Iwd']
   
             # Read in promlet.json
             job_u = {}
