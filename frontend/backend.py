@@ -284,22 +284,27 @@ class ProminenceBackend(object):
         """
         uid = None
         identity = None
+        name = None
         schedd = htcondor.Schedd()
         jobs_condor = schedd.history('RoutedBy =?= undefined && ClusterId =?= %s' % job_id,
-                                     ['ProminenceJobUniqueIdentifier', 'ProminenceIdentity'], 1)
+                                     ['ProminenceJobUniqueIdentifier', 'ProminenceIdentity', 'DAGNodeName'], 1)
         for job in jobs_condor:
             if 'ProminenceJobUniqueIdentifier' in job and 'ProminenceIdentity' in job:
                 uid = job['ProminenceJobUniqueIdentifier']
                 identity = job['ProminenceIdentity']
+                if 'DAGNodeName' in job:
+                    name = job['DAGNodeName']
 
         if uid is None or identity is None:
             jobs_condor = schedd.xquery('RoutedBy =?= undefined && ClusterId =?= %s' % job_id,
-                                        ['ProminenceJobUniqueIdentifier', 'ProminenceIdentity'], 1)
+                                        ['ProminenceJobUniqueIdentifier', 'ProminenceIdentity', 'DAGNodeName'], 1)
             for job in jobs_condor:
                 if 'ProminenceJobUniqueIdentifier' in job and 'ProminenceIdentity' in job:
                     uid = job['ProminenceJobUniqueIdentifier']
                     identity = job['ProminenceIdentity']
-        return (uid, identity)
+                    if 'DAGNodeName' in job:
+                        name = job['DAGNodeName']
+        return (uid, identity, name)
 
     def _create_htcondor_job(self, username, groups, uid, jjob, job_path):
         """
@@ -382,9 +387,9 @@ class ProminenceBackend(object):
         cjob['executable'] = 'promlet.py'
         cjob['arguments'] = '--job .job.mapped.json --id 0'
 
-        cjob['Log'] = job_path + '/job.$(Cluster).$(Process).log'
-        cjob['Output'] = job_path + '/job.$(Cluster).$(Process).out'
-        cjob['Error'] = job_path +  '/job.$(Cluster).$(Process).err'
+        cjob['Log'] = job_path + '/job.0.log'
+        cjob['Output'] = job_path + '/job.0.out'
+        cjob['Error'] = job_path +  '/job.0.err'
         cjob['should_transfer_files'] = 'YES'
         cjob['when_to_transfer_output'] = 'ON_EXIT_OR_EVICT'
         cjob['transfer_output_files'] = 'promlet.0.log,promlet.0.json'
@@ -1218,7 +1223,7 @@ class ProminenceBackend(object):
         Return the stdout from the specified job
         """
         if job_name is None:
-            filename = '%s/%s/job.%d.0.out' % (self._config['SANDBOX_PATH'], uid, job_id)
+            filename = '%s/%s/job.0.out' % (self._config['SANDBOX_PATH'], uid)
         elif instance_id > -1:
             filename = '%s/%s/%s/job.%d.0.out' % (self._config['SANDBOX_PATH'], uid, job_name, instance_id)
         else:
@@ -1233,7 +1238,7 @@ class ProminenceBackend(object):
         Return the stdout from the specified job
         """
         if job_name is None:
-            filename = '%s/%s/job.%d.0.err' % (self._config['SANDBOX_PATH'], uid, job_id)
+            filename = '%s/%s/job.0.err' % (self._config['SANDBOX_PATH'], uid)
         elif instance_id > -1:
             filename = '%s/%s/%s/job.%d.0.err' % (self._config['SANDBOX_PATH'], uid, job_name, instance_id)
         else:
