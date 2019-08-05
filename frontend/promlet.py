@@ -876,7 +876,7 @@ if __name__ == "__main__":
 
     # Write empty json job details, so no matter what happens next, at least an empty file exists
     try:
-        with open('promlet.json', 'w') as file:
+        with open('promlet.%d.json' % args.id, 'w') as file:
             json.dump({}, file)
     except Exception as exc:
         logging.critical('Unable to write promlet.json due to: %s', exc)
@@ -908,11 +908,8 @@ if __name__ == "__main__":
     json_output['tasks'] = json_tasks
     json_output['stageout'] = json_stageout
 
-    promlet_json = 'promlet.json'
-    if args.param:
-        promlet_json = 'promlet.%d.json' % args.id
     try:
-        with open(promlet_json, 'w') as file:
+        with open('promlet.%d.json' % args.id, 'w') as file:
             json.dump(json_output, file)
     except Exception as exc:
         logging.critical('Unable to write promlet.json due to: %s', exc)
