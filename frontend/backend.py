@@ -882,6 +882,10 @@ class ProminenceBackend(object):
                 # Handle original promlet.json format
                 tasks_u  = job_u
 
+            stageout_u = {}
+            if 'stageout' in job_u:
+                stageout_u = job_u['stageout']
+
             # Job parameters
             parameters = {}
             if 'ProminenceFactoryId' in job:
@@ -1020,10 +1024,15 @@ class ProminenceBackend(object):
                     outputs = []
                     for output_file in job_json_file['outputFiles']:
                         filename = os.path.basename(output_file)
-                        if job['JobStatus'] == 4 or job['JobStatus'] == 3:
-                            url = self.create_presigned_url('get', self._config['S3_BUCKET'], 'scratch/%s/%s' % (uid, filename), 600)
-                        else:
-                            url = ''
+                        stageout_success = False
+                        url = ''
+                        if 'files' in stageout_u:
+                            for file in stageout_u['files']:
+                                if file['name'] == output_file and file['status'] == 'success':
+                                    url = self.create_presigned_url('get',
+                                                                    self._config['S3_BUCKET'], 
+                                                                    'scratch/%s/%s' % (uid, filename),
+                                                                    600)
                         file_map = {'name':output_file, 'url':url}
                         outputs.append(file_map)
                     jobj['outputFiles'] = outputs
@@ -1033,10 +1042,15 @@ class ProminenceBackend(object):
                     for output_dir in job_json_file['outputDirs']:
                         dirs = output_dir.split('/')
                         dirname_base = dirs[len(dirs) - 1]
-                        if job['JobStatus'] == 4 or job['JobStatus'] == 3:
-                            url = self.create_presigned_url('get', self._config['S3_BUCKET'], 'scratch/%s/%s.tgz' % (uid, dirname_base), 600)
-                        else:
-                            url = ''
+                        stageout_success = False
+                        url = ''
+                        if 'directories' in stageout_u:
+                            for directory in stageout_u['directories']:
+                                if directory['name'] == output_dir and directory['status'] == 'success':
+                                    url = self.create_presigned_url('get',
+                                                                    self._config['S3_BUCKET'],
+                                                                    'scratch/%s/%s.tgz' % (uid, dirname_base),
+                                                                    600)
                         file_map = {'name':output_dir, 'url':url}
                         outputs.append(file_map)
                     jobj['outputDirs'] = outputs
