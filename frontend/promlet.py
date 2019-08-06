@@ -255,7 +255,6 @@ def download_singularity(image, image_new, location, base_dir):
     """
     Download a Singularity image from a URL or pull an image from Docker Hub
     """
-    start = time.time()
     if re.match(r'^http', image):
         try:
             response = requests.get(image, allow_redirects=True, stream=True)
@@ -312,8 +311,6 @@ def download_singularity(image, image_new, location, base_dir):
         if return_code != 0:
             return 1, False
 
-    logging.info('Time to pull image: %d', time.time() - start)
-
     return 0, False
 
 def download_udocker(image, location, label, base_dir):
@@ -341,7 +338,6 @@ def download_udocker(image, location, label, base_dir):
     logging.info('udocker install stdout: "%s"', stdout)
     logging.info('udocker install stderr: "%s"', stderr)
 
-    start = time.time()
     if re.match(r'^http', image):
         # Download tarball
         try:
@@ -435,8 +431,6 @@ def download_udocker(image, location, label, base_dir):
 
     if return_code != 0:
         return 1, False
-
-    logging.info('Time to pull image: %d', time.time() - start)
 
     return 0, False
 
@@ -536,7 +530,6 @@ def run_udocker(image, cmd, workdir, env, path, base_dir, mpi, mpi_processes, mp
 
     logging.info('Running: "%s"', run_command)
 
-    start = time.time()
     return_code, timed_out = run_with_timeout(run_command,
                                               dict(os.environ,
                                                    UDOCKER_DIR='%s/.udocker' % base_dir,
@@ -607,7 +600,6 @@ def run_singularity(image, cmd, workdir, env, path, base_dir, mpi, mpi_processes
 
     logging.info('Running: "%s"', run_command)
 
-    start = time.time()
     return_code, timed_out = run_with_timeout(run_command,
                                               dict(env,
                                                    PATH='/usr/local/bin:/usr/bin:/usr/local/sbin:/usr/sbin',
