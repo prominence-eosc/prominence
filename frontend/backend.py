@@ -292,6 +292,8 @@ class ProminenceBackend(object):
             if 'ProminenceJobUniqueIdentifier' in job and 'ProminenceIdentity' in job:
                 uid = job['ProminenceJobUniqueIdentifier']
                 identity = job['ProminenceIdentity']
+                # If a job has a DAGNodeName it must be part of a workflow, and to get the stdout/err of a such
+                # a job we need to know the job name
                 if 'DAGNodeName' in job:
                     name = job['DAGNodeName']
 
@@ -302,6 +304,8 @@ class ProminenceBackend(object):
                 if 'ProminenceJobUniqueIdentifier' in job and 'ProminenceIdentity' in job:
                     uid = job['ProminenceJobUniqueIdentifier']
                     identity = job['ProminenceIdentity']
+                    # If a job has a DAGNodeName it must be part of a workflow, and to get the stdout/err of a such
+                    # a job we need to know the job name
                     if 'DAGNodeName' in job:
                         name = job['DAGNodeName']
         return (uid, identity, name)
