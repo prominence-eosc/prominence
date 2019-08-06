@@ -328,6 +328,19 @@ def download_udocker(image, location, label, base_dir):
             logging.error('Unable to create .udocker directory due to: %s', ex)
             return 1, False
 
+    # Install udocker
+    process = subprocess.Popen('udocker install',
+                               env=dict(os.environ,
+                                        UDOCKER_DIR='%s/.udocker' % base_dir),
+                               shell=True,
+                               stdout=subprocess.PIPE,
+                               stderr=subprocess.PIPE)
+    stdout, stderr = process.communicate()
+    return_code = process.returncode
+
+    logging.info('udocker install stdout: "%s"', stdout)
+    logging.info('udocker install stderr: "%s"', stderr)
+
     start = time.time()
     if re.match(r'^http', image):
         # Download tarball
@@ -347,19 +360,6 @@ def download_udocker(image, location, label, base_dir):
         except IOError as e:
             logging.error('Unable to download udocker image due to: %s', e)
             return 1, False
-
-        # Install udocker
-        process = subprocess.Popen('udocker install',
-                                   env=dict(os.environ,
-                                            UDOCKER_DIR='%s/.udocker' % base_dir),
-                                   shell=True,
-                                   stdout=subprocess.PIPE,
-                                   stderr=subprocess.PIPE)
-        stdout, stderr = process.communicate()
-        return_code = process.returncode
-
-        logging.info('udocker install stdout: "%s"', stdout)
-        logging.info('udocker install stderr: "%s"', stderr)
 
         # Load image
         process = subprocess.Popen('udocker load -i %s/image.tar' % location,
@@ -898,7 +898,12 @@ if __name__ == "__main__":
     mount_storage(args.job)
 
     # Run tasks
-    (success_tasks, json_tasks) = run_tasks(args.job, path, base_dir, args.batch)
+    try:
+        (success_tasks, json_tasks) = run_tasks(args.job, path, base_dir, args.batch)
+    except OSError as exc:
+        logging.critical('Got exception running tasks: %s', exc)
+        success_tasks = False
+        json_tasks = {}
 
     # Upload output files if necessary
     (success_stageout, json_stageout) = stageout(args.job, path, base_dir)
