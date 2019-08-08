@@ -340,7 +340,7 @@ def validate_presigned_url(url):
     Validate a presigned URL
     """
     try:
-        response = requests.get(url, timeout=30)
+        response = requests.get(url, stream=True, timeout=30)
     except requests.exceptions.RequestException:
         return False
 
