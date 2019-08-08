@@ -563,7 +563,7 @@ def run_singularity(image, cmd, workdir, env, path, base_dir, mpi, mpi_processes
         env_list = ['PROMINENCE_CONTAINER_LOCATION', 'PROMINENCE_PWD', 'HOME', 'TMP', 'TEMP', 'TMPDIR']
         env_list.extend(env.keys())
         mpi_env = ",".join('%s' % item for item in env_list)
-        cmd = ("mpirun --machine /home/user/.hosts-mpich"
+        cmd = ("mpirun -machine /home/user/.hosts-mpich"
                " -np %d"
                " %s"
                " -envlist %s"
