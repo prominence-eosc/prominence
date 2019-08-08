@@ -249,7 +249,7 @@ def validate_job(job):
                         return (False, 'number of processes per node must be less than number of CPU cores per node')
 
             if 'type' in task:
-                if task['type'] != 'openmpi' and task['type'] != 'mpich':
+                if task['type'] != 'openmpi' and task['type'] != 'mpich' and task['type'] != 'intelmpi':
                     return (False, 'invalid task type')
 
     else:
