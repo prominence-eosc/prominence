@@ -468,7 +468,7 @@ class ProminenceBackend(object):
                     artifact_url = self.create_presigned_url('get', self._config['S3_BUCKET'], 'uploads/%s' % path, 604800)
                     url_exists = validate.validate_presigned_url(artifact_url)
                     if not url_exists:
-                        return (1, {"error":"Artifact %s does not exist" % artifact_original})
+                        return (1, {"error":"Artifact %s does not exist" % artifact_original}, cjob)
                 input_files.append(artifact_url)
         cjob['transfer_input_files'] = str(','.join(input_files))
 
