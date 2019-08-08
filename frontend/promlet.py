@@ -452,10 +452,10 @@ def run_udocker(image, cmd, workdir, env, path, base_dir, mpi, mpi_processes, mp
         extras += " -v /home/prominence "
 
     mpi_per_node = ''
-    if mpi_procs_per_node > 0:
-        mpi_per_node = '-N %d' % mpi_procs_per_node
 
     if mpi == 'openmpi':
+        if mpi_procs_per_node > 0:
+            mpi_per_node = '-N %d' % mpi_procs_per_node
         mpi_env = " -x UDOCKER_DIR -x PROMINENCE_PWD -x TMP -x TEMP -x TMPDIR "
         mpi_env += " ".join('-x %s' % key for key in env)
         cmd = ("mpirun --hostfile /home/user/.hosts-openmpi"
@@ -464,6 +464,17 @@ def run_udocker(image, cmd, workdir, env, path, base_dir, mpi, mpi_processes, mp
                " %s"
                " -mca btl_base_warn_component_unused 0"
                " -mca plm_rsh_agent /mnt/beeond/prominence/ssh_container %s") % (mpi_processes, mpi_per_node, mpi_env, cmd)
+    elif mpi == 'intelmpi':
+        if mpi_procs_per_node > 0:
+            mpi_per_node = '-N %d' % mpi_procs_per_node
+        env_list = ['PROMINENCE_PWD', 'UDOCKER_DIR', 'TMP', 'TEMP', 'TMPDIR']
+        env_list.extend(env.keys())
+        mpi_env = ",".join('%s' % item for item in env_list)
+        cmd = ("mpirun -machine /home/user/.hosts-mpich"
+               " -np %d"
+               " %s"
+               " -envlist %s"
+               " -bootstrap-exec /mnt/beeond/prominence/ssh_container %s") % (mpi_processes, mpi_per_node, mpi_env, cmd)
     elif mpi == 'mpich':
         env_list = ['PROMINENCE_PWD', 'UDOCKER_DIR', 'TMP', 'TEMP', 'TMPDIR']
         env_list.extend(env.keys())
