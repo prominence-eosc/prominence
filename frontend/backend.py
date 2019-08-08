@@ -520,6 +520,8 @@ class ProminenceBackend(object):
                     cjob['+ProminenceWantMPI'] = 'true'
                 elif jjob['tasks'][0]['type'] == 'mpich':
                     cjob['+ProminenceWantMPI'] = 'true'
+                elif jjob['tasks'][0]['type'] == 'intelmpi':
+                    cjob['+ProminenceWantMPI'] = 'true'
 
         # Prepare for submission to a remote HPC system
         tasks = jjob['resources']['nodes']
