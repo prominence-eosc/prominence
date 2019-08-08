@@ -546,10 +546,9 @@ def run_singularity(image, cmd, workdir, env, path, base_dir, mpi, mpi_processes
     Execute a task using Singularity
     """
     mpi_per_node = ''
-    if mpi_procs_per_node > 0:
-        mpi_per_node = '-N %d' % mpi_procs_per_node
-
     if mpi == 'openmpi':
+        if mpi_procs_per_node > 0:
+            mpi_per_node = '-N %d' % mpi_procs_per_node
         mpi_env = " -x PROMINENCE_CONTAINER_LOCATION -x PROMINENCE_PWD -x HOME -x TEMP -x TMP "
         mpi_env += " ".join('-x %s' % key for key in env)
         cmd = ("mpirun --hostfile /home/user/.hosts-openmpi"
@@ -558,6 +557,17 @@ def run_singularity(image, cmd, workdir, env, path, base_dir, mpi, mpi_processes
                " %s"
                " -mca btl_base_warn_component_unused 0"
                " -mca plm_rsh_agent /mnt/beeond/prominence/ssh_container %s") % (mpi_processes, mpi_per_node, mpi_env, cmd)
+    elif mpi == 'intelmpi':
+        if mpi_procs_per_node > 0:
+            mpi_per_node = '-perhost %d' % mpi_procs_per_node
+        env_list = ['PROMINENCE_CONTAINER_LOCATION', 'PROMINENCE_PWD', 'HOME', 'TMP', 'TEMP', 'TMPDIR']
+        env_list.extend(env.keys())
+        mpi_env = ",".join('%s' % item for item in env_list)
+        cmd = ("mpirun --machine /home/user/.hosts-mpich"
+               " -np %d"
+               " %s"
+               " -envlist %s"
+               " -bootstrap-exec /mnt/beeond/prominence/ssh_container %s") % (mpi_processes, mpi_per_node, mpi_env, cmd)
     elif mpi == 'mpich':
         env_list = ['PROMINENCE_CONTAINER_LOCATION', 'PROMINENCE_PWD', 'HOME', 'TMP', 'TEMP', 'TMPDIR']
         env_list.extend(env.keys())
@@ -705,6 +715,8 @@ def run_tasks(job_file, path, base_dir, is_batch):
                 mpi = 'openmpi'
             elif task['type'] == 'mpich':
                 mpi = 'mpich'
+            elif task['type'] == 'intelmpi':
+                mpi = 'intelmpi'
 
         if 'procsPerNode' in task:
             procs_per_node = task['procsPerNode']
