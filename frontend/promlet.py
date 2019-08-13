@@ -272,6 +272,8 @@ def download_singularity(image, image_new, location, base_dir):
         except IOError as ex:
             logging.error('Unable to download Singularity image due to an IOError: %s', ex)
             return 1, False
+
+        logging.info('Singularity image downloaded from URL and written to file %s', image_new)
     else:
         # We set SINGULARITY_LOCALCACHEDIR & SINGULARITY_TMPDIR in order to avoid Singularity errors
         if not os.path.isdir(base_dir + '/.singularity'):
@@ -310,6 +312,11 @@ def download_singularity(image, image_new, location, base_dir):
 
         if return_code != 0:
             return 1, False
+
+    if os.path.exists(image_new):
+        logging.info('Image file %s exists', image_new)
+    else:
+        logging.info('Image file %s does not exist', image_new)
 
     return 0, False
 
@@ -498,7 +505,7 @@ def run_udocker(image, cmd, workdir, env, path, base_dir, mpi, mpi_processes, mp
 
     if base_dir in ('/home/prominence', '/mnt/beeond/prominence'):
         # Used on clouds
-        run_command = ("udocker -q run %s"
+        run_command = ("/usr/local/bin/udocker -q run %s"
                        " --env=HOME=%s"
                        " --env=TMP=%s"
                        " --env=TEMP=%s"
@@ -567,6 +574,7 @@ def run_singularity(image, cmd, workdir, env, path, base_dir, mpi, mpi_processes
                " %s"
                " %s"
                " -mca btl_base_warn_component_unused 0"
+               " -mca plm_rsh_no_tree_spawn 1"
                " -mca plm_rsh_agent /mnt/beeond/prominence/ssh_container %s") % (mpi_processes, mpi_per_node, mpi_env, cmd)
     elif mpi == 'intelmpi':
         if mpi_procs_per_node > 0:
