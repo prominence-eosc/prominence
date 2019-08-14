@@ -177,10 +177,14 @@ def workflows(username, group):
             num = request.args.get('num')
     constraint = (None, None)
     if 'constraint' in request.args:
-        cons = request.args.get('constraint')
-        key = cons.split('=')[0]
-        value = cons.split('=')[1]
-        constraint = (key, value)
+        if '=' in request.args.get('constraint'):
+            if len(request.args.get('constraint').split('=')) == 2:
+                constraint = (request.args.get('constraint').split('=')[0],
+                              request.args.get('constraint').split('=')[1])
+            else:
+                return jsonify({'error':'Invalid constraint'}), 400
+        else:
+            return jsonify({'error':'Invalid constraint'}), 400
 
     if 'all' in request.args:
         completed = True
@@ -397,10 +401,14 @@ def jobs(username, group):
             num = request.args.get('num')
     constraint = (None, None)
     if 'constraint' in request.args:
-        cons = request.args.get('constraint')
-        key = cons.split('=')[0]
-        value = cons.split('=')[1]
-        constraint = (key, value)
+        if '=' in request.args.get('constraint'):
+            if len(request.args.get('constraint').split('=')) == 2:
+                constraint = (request.args.get('constraint').split('=')[0],
+                              request.args.get('constraint').split('=')[1])
+            else:
+                return jsonify({'error':'Invalid constraint'}), 400
+        else:
+            return jsonify({'error':'Invalid constraint'}), 400
 
     if 'all' in request.args:
         completed = True
