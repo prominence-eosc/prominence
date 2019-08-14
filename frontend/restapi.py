@@ -139,20 +139,24 @@ def upload_file(username, group):
     """
     app.logger.info('%s UploadData user:%s group:%s' % (get_remote_addr(request), username, group))
 
-    if 'filename' in request.get_json():
-        filename = request.get_json()['filename']
-        if '/' in filename:
-            pieces = filename.split('/')
-            filename_only = pieces[len(pieces) - 1]
-            pieces.remove(filename_only)
-            file_group = '/'.join(pieces)
-            if file_group not in group:
-                return jsonify({'error':'Not authorized to access upload with this path'}), 403
-            url = backend.create_presigned_url('put', app.config['S3_BUCKET'], 'uploads/%s' % request.get_json()['filename'])
-        else:
-            url = backend.create_presigned_url('put', app.config['S3_BUCKET'], 'uploads/%s/%s' % (username, request.get_json()['filename']))
-        return jsonify({'url':url}), 201
-    return jsonify({'error':'invalid JSON content supplied'}), 400
+    if 'name' in request.args:
+        object_name = request.args.get('name')
+    elif 'filename' in request.get_json():
+        object_name = request.get_json()['filename']
+    else:
+        return jsonify({'error':'An object name must be specified'}), 400
+
+    if '/' in object_name:
+        pieces = object_name.split('/')
+        object_name_only = pieces[len(pieces) - 1]
+        pieces.remove(object_name_only)
+        file_group = '/'.join(pieces)
+        if file_group not in group:
+            return jsonify({'error':'Not authorized to access upload with this path'}), 403
+        url = backend.create_presigned_url('put', app.config['S3_BUCKET'], 'uploads/%s' % object_name)
+    else:
+        url = backend.create_presigned_url('put', app.config['S3_BUCKET'], 'uploads/%s/%s' % (username, object_name))
+    return jsonify({'url':url}), 201
 
 @app.route("/prominence/v1/workflows", methods=['GET'])
 @requires_auth
