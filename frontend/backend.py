@@ -37,6 +37,7 @@ RequestCpus = %(cpus)s
 RequestMemory = %(reqmemory)s
 +ProminenceJobUniqueIdentifier = %(uuid)s
 +ProminenceIdentity = %(username)s
++ProminenceGroup = %(group)s
 +ProminenceName = %(name)s
 +ProminenceMemoryPerNode = %(memory)s
 +ProminenceCpusPerNode = %(cpus)s
@@ -71,6 +72,7 @@ def write_htcondor_job(cjob, filename):
     info['name'] = cjob['+ProminenceName']
     info['uuid'] = cjob['+ProminenceJobUniqueIdentifier']
     info['username'] = cjob['+ProminenceIdentity']
+    info['group'] = cjob['+ProminenceGroup']
     info['memory'] = cjob['+ProminenceMemoryPerNode']
     info['reqmemory'] = cjob['RequestMemory']
     info['cpus'] = cjob['+ProminenceCpusPerNode']
