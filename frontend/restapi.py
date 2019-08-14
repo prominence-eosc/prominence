@@ -130,6 +130,7 @@ def delete_object(username, group, obj):
     success = backend.delete_object(username, group, obj)
     return jsonify({}), 204
 
+@app.route("/prominence/v1/data", methods=['POST'])
 @app.route("/prominence/v1/data/upload", methods=['POST'])
 @requires_auth
 def upload_file(username, group):
