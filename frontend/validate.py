@@ -15,7 +15,7 @@ def validate_workflow(workflow):
                        'factory',
                        'policies']
 
-    policies_workflow_valids = ['numberOfRetries']
+    policies_workflow_valids = ['maximumRetries']
 
     # Check for valid items in workflow
     for item in workflow:
@@ -96,25 +96,25 @@ def validate_workflow(workflow):
             if item not in policies_workflow_valids:
                 return (False, 'invalid item "%s" in policies' % item)
 
-        if 'numberOfRetries' in workflow['policies']:
-            if not str(workflow['policies']['numberOfRetries']).isdigit():
+        if 'maximumRetries' in workflow['policies']:
+            if not str(workflow['policies']['maximumRetries']).isdigit():
                 return (False, 'the number of retries must be an integer')
 
-            if workflow['policies']['numberOfRetries'] < 1:
+            if workflow['policies']['maximumRetries'] < 1:
                 return (False, 'the number of retries must be greater than 0')
 
-            if workflow['policies']['numberOfRetries'] > 6:
+            if workflow['policies']['maximumRetries'] > 6:
                 return (False, 'the number of retries must be less than 6')
 
     # Retries
-    if 'numberOfRetries' in workflow:
-        if not str(workflow['numberOfRetries']).isdigit():
+    if 'maximumRetries' in workflow:
+        if not str(workflow['maximumRetries']).isdigit():
             return (False, 'the number of retries must be an integer')
 
-        if workflow['numberOfRetries'] < 1:
+        if workflow['maximumRetries'] < 1:
             return (False, 'the number of retries must be greater than 0')
 
-        if workflow['numberOfRetries'] > 6:
+        if workflow['maximumRetries'] > 6:
             return (False, 'the number of retries must be less than 6')
 
     # Labels
@@ -163,7 +163,7 @@ def validate_job(job):
                         'disk',
                         'walltime']
 
-    policies_valids = ['numberOfRetries',
+    policies_valids = ['maximumRetries',
                        'preemptible',
                        'maximumTimeInQueue']
  
@@ -353,14 +353,14 @@ def validate_job(job):
             if item not in policies_valids:
                 return (False, 'invalid item "%s" in policies' % item)
 
-        if 'numberOfRetries' in job['policies']:
-            if not str(job['policies']['numberOfRetries']).isdigit():
+        if 'maximumRetries' in job['policies']:
+            if not str(job['policies']['maximumRetries']).isdigit():
                 return (False, 'the number of retries must be an integer')
 
-            if job['policies']['numberOfRetries'] < 1:
+            if job['policies']['maximumRetries'] < 1:
                 return (False, 'the number of retries must be greater than 0')
 
-            if job['policies']['numberOfRetries'] > 6:
+            if job['policies']['maximumRetries'] > 6:
                 return (False, 'the number of retries must be less than 6')
 
         if 'maximumTimeInQueue' in job['policies']:

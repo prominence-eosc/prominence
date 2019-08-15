@@ -658,8 +658,8 @@ def run_tasks(job_file, path, base_dir, is_batch):
 
     num_retries = 0
     if 'policies' in job:
-        if 'numberOfRetries' in job['policies']:
-            num_retries = job['policies']['numberOfRetries']
+        if 'maximumRetries' in job['policies']:
+            num_retries = job['policies']['maximumRetries']
 
     # Number of nodes
     if 'nodes' in job['resources']:
