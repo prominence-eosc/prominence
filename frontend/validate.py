@@ -340,6 +340,16 @@ def validate_job(job):
             if job['policies']['numberOfRetries'] > 6:
                 return (False, 'the number of retries must be less than 6')
 
+        if 'maximumTimeInQueue' in job['policies']:
+            if not str(job['policies']['maximumTimeInQueue']).isdigit():
+                return (False, 'the maximum time in queue must be an integer')
+
+            if job['policies']['maximumTimeInQueue'] < 1:
+                return (False, 'the maximum time in queue must be greater than 0')
+
+            if job['policies']['maximumTimeInQueue'] > 44640:
+                return (False, 'the maximum time in queue must be less than 44640')
+
     return (True, '')
 
 @retry.retry(tries=2, delay=1, backoff=1)
