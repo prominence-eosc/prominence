@@ -13,7 +13,9 @@ def validate_workflow(workflow):
                        'jobs',
                        'dependencies',
                        'factory',
-                       'numberOfRetries']
+                       'policies']
+
+    policies_workflow_valids = ['numberOfRetries']
 
     # Check for valid items in workflow
     for item in workflow:
@@ -87,6 +89,22 @@ def validate_workflow(workflow):
                     return (False, 'a parameterSet must contain an end value')
                 if 'step' not in parameter_set:
                     return (False, 'a parameterSet must contain a step')
+
+    # Polices
+    if 'policies' in workflow:
+        for item in workflow['policies']:
+            if item not in policies_workflow_valids:
+                return (False, 'invalid item "%s" in policies' % item)
+
+        if 'numberOfRetries' in workflow['policies']:
+            if not str(workflow['policies']['numberOfRetries']).isdigit():
+                return (False, 'the number of retries must be an integer')
+
+            if workflow['policies']['numberOfRetries'] < 1:
+                return (False, 'the number of retries must be greater than 0')
+
+            if workflow['policies']['numberOfRetries'] > 6:
+                return (False, 'the number of retries must be less than 6')
 
     # Retries
     if 'numberOfRetries' in workflow:
