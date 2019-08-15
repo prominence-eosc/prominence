@@ -122,15 +122,14 @@ def validate_job(job):
     """
     job_valids = ['name',
                   'labels',
-                  'preemptible',
                   'tasks',
                   'resources',
+                  'policies',
                   'inputs',
                   'artifacts',
                   'outputFiles',
                   'outputDirs',
-                  'storage',
-                  'numberOfRetries']
+                  'storage']
 
     task_valids = ['image',
                    'cmd',
@@ -146,6 +145,10 @@ def validate_job(job):
                         'disk',
                         'walltime']
 
+    policies_valids = ['numberOfRetries',
+                       'preemptible',
+                       'maximumTimeInQueue']
+ 
     # Check for valid items in job
     for item in job:
         if item not in job_valids:
@@ -321,16 +324,21 @@ def validate_job(job):
             if 'token' not in job['storage']['onedata']:
                 return (False, 'OneData token must be defined')
 
-    # Retries
-    if 'numberOfRetries' in job:
-        if not str(job['numberOfRetries']).isdigit():
-            return (False, 'the number of retries must be an integer')
+    # Polices
+    if 'policies' in job:
+        for item in job['policies']:
+            if item not in policies_valids:
+                return (False, 'invalid item "%s" in policies' % item)
 
-        if job['numberOfRetries'] < 1:
-            return (False, 'the number of retries must be greater than 0')
+        if 'numberOfRetries' in job['policies']:
+            if not str(job['policies']['numberOfRetries']).isdigit():
+                return (False, 'the number of retries must be an integer')
 
-        if job['numberOfRetries'] > 6:
-            return (False, 'the number of retries must be less than 6')
+            if job['policies']['numberOfRetries'] < 1:
+                return (False, 'the number of retries must be greater than 0')
+
+            if job['policies']['numberOfRetries'] > 6:
+                return (False, 'the number of retries must be less than 6')
 
     return (True, '')
 
