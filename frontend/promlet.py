@@ -464,17 +464,21 @@ def run_udocker(image, cmd, workdir, env, path, base_dir, mpi, mpi_processes, mp
     if '_PROMINENCE_SSH_CONTAINER' in os.environ:
         mpi_ssh = os.environ['_PROMINENCE_SSH_CONTAINER']
 
+    mpi_hosts = '/home/user'
+    if '_PROMINENCE_SSH_HOSTS_DIR' in os.environ:
+        mpi_hosts = os.environ['_PROMINENCE_SSH_HOSTS_DIR']
+
     if mpi == 'openmpi':
         if mpi_procs_per_node > 0:
             mpi_per_node = '-N %d' % mpi_procs_per_node
         mpi_env = " -x UDOCKER_DIR -x PROMINENCE_PWD -x TMP -x TEMP -x TMPDIR "
         mpi_env += " ".join('-x %s' % key for key in env)
-        cmd = ("mpirun --hostfile /home/user/.hosts-openmpi"
+        cmd = ("mpirun --hostfile %s/.hosts-openmpi"
                " -np %d"
                " %s"
                " %s"
                " -mca btl_base_warn_component_unused 0"
-               " -mca plm_rsh_agent %s %s") % (mpi_processes, mpi_per_node, mpi_env, mpi_ssh, cmd)
+               " -mca plm_rsh_agent %s %s") % (mpi_hosts, mpi_processes, mpi_per_node, mpi_env, mpi_ssh, cmd)
     elif mpi == 'intelmpi':
         if mpi_procs_per_node > 0:
             mpi_per_node = '-N %d' % mpi_procs_per_node
@@ -572,19 +576,23 @@ def run_singularity(image, cmd, workdir, env, path, base_dir, mpi, mpi_processes
     if '_PROMINENCE_SSH_CONTAINER' in os.environ:
         mpi_ssh = os.environ['_PROMINENCE_SSH_CONTAINER']
 
+    mpi_hosts = '/home/user'
+    if '_PROMINENCE_SSH_HOSTS_DIR' in os.environ:
+        mpi_hosts = os.environ['_PROMINENCE_SSH_HOSTS_DIR']
+
     mpi_per_node = ''
     if mpi == 'openmpi':
         if mpi_procs_per_node > 0:
             mpi_per_node = '-N %d' % mpi_procs_per_node
         mpi_env = " -x PROMINENCE_CONTAINER_LOCATION -x PROMINENCE_PWD -x HOME -x TEMP -x TMP "
         mpi_env += " ".join('-x %s' % key for key in env)
-        cmd = ("mpirun --hostfile /home/user/.hosts-openmpi"
+        cmd = ("mpirun --hostfile %s/.hosts-openmpi"
                " -np %d"
                " %s"
                " %s"
                " -mca btl_base_warn_component_unused 0"
                " -mca plm_rsh_no_tree_spawn 1"
-               " -mca plm_rsh_agent %s %s") % (mpi_processes, mpi_per_node, mpi_env, mpi_ssh, cmd)
+               " -mca plm_rsh_agent %s %s") % (mpi_hosts, mpi_processes, mpi_per_node, mpi_env, mpi_ssh, cmd)
     elif mpi == 'intelmpi':
         if mpi_procs_per_node > 0:
             mpi_per_node = '-perhost %d' % mpi_procs_per_node
