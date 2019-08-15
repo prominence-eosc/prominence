@@ -1001,8 +1001,8 @@ class ProminenceBackend(object):
             if detail > 0:
                 jobj['resources'] = job_json_file['resources']
 
-                if 'numberOfRetries' in job_json_file:
-                    jobj['numberOfRetries'] = job_json_file['numberOfRetries']
+                if 'policies' in job_json_file:
+                    jobj['policies'] = job_json_file['policies']
 
                 if 'artifacts' in job_json_file:
                     jobj['artifacts'] = job_json_file['artifacts']
