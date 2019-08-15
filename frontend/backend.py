@@ -632,8 +632,9 @@ class ProminenceBackend(object):
         dag = []
 
         # Retries
-        if 'numberOfRetries' in jjob:
-            dag.append('RETRY ALL_NODES %d' % jjob['numberOfRetries'])
+        if 'policies' in jjob:
+            if 'numberOfRetries' in jjob['policies']:
+                dag.append('RETRY ALL_NODES %d' % jjob['numberOfRetries'])
 
         if 'dependencies' in jjob or 'factory' not in jjob:
             # Handle DAG workflows & bags of jobs
