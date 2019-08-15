@@ -460,6 +460,10 @@ def run_udocker(image, cmd, workdir, env, path, base_dir, mpi, mpi_processes, mp
 
     mpi_per_node = ''
 
+    mpi_ssh = '/mnt/beeond/prominence/ssh_container'
+    if '_PROMINENCE_SSH_CONTAINER' in os.environ:
+        mpi_ssh = os.environ['_PROMINENCE_SSH_CONTAINER']
+
     if mpi == 'openmpi':
         if mpi_procs_per_node > 0:
             mpi_per_node = '-N %d' % mpi_procs_per_node
@@ -470,7 +474,7 @@ def run_udocker(image, cmd, workdir, env, path, base_dir, mpi, mpi_processes, mp
                " %s"
                " %s"
                " -mca btl_base_warn_component_unused 0"
-               " -mca plm_rsh_agent /mnt/beeond/prominence/ssh_container %s") % (mpi_processes, mpi_per_node, mpi_env, cmd)
+               " -mca plm_rsh_agent %s %s") % (mpi_processes, mpi_per_node, mpi_env, mpi_ssh, cmd)
     elif mpi == 'intelmpi':
         if mpi_procs_per_node > 0:
             mpi_per_node = '-N %d' % mpi_procs_per_node
@@ -481,7 +485,7 @@ def run_udocker(image, cmd, workdir, env, path, base_dir, mpi, mpi_processes, mp
                " -np %d"
                " %s"
                " -envlist %s"
-               " -bootstrap-exec /mnt/beeond/prominence/ssh_container %s") % (mpi_processes, mpi_per_node, mpi_env, cmd)
+               " -bootstrap-exec %s %s") % (mpi_processes, mpi_per_node, mpi_env, mpi_ssh, cmd)
     elif mpi == 'mpich':
         env_list = ['PROMINENCE_PWD', 'UDOCKER_DIR', 'TMP', 'TEMP', 'TMPDIR']
         env_list.extend(env.keys())
@@ -490,7 +494,7 @@ def run_udocker(image, cmd, workdir, env, path, base_dir, mpi, mpi_processes, mp
                " -np %d"
                " -envlist %s"
                " -launcher ssh"
-               " -launcher-exec /mnt/beeond/prominence/ssh_container %s") % (mpi_processes, mpi_env, cmd)
+               " -launcher-exec %s %s") % (mpi_processes, mpi_env, mpi_ssh, cmd)
 
     # Get storage mountpoint
     mountpoint = get_storage_mountpoint()
@@ -552,7 +556,8 @@ def run_udocker(image, cmd, workdir, env, path, base_dir, mpi, mpi_processes, mp
                                               dict(os.environ,
                                                    UDOCKER_DIR='%s/.udocker' % base_dir,
                                                    PROMINENCE_CPUS='%d' % job_cpus,
-                                                   PROMINENCE_MEMORY='%d' % job_memory),
+                                                   PROMINENCE_MEMORY='%d' % job_memory,
+                                                   PROMINENCE_CONTAINER_RUNTIME='udocker'),
                                               walltime_limit)
 
     logging.info('Task had exit code %d', return_code)
@@ -563,6 +568,10 @@ def run_singularity(image, cmd, workdir, env, path, base_dir, mpi, mpi_processes
     """
     Execute a task using Singularity
     """
+    mpi_ssh = '/mnt/beeond/prominence/ssh_container'
+    if '_PROMINENCE_SSH_CONTAINER' in os.environ:
+        mpi_ssh = os.environ['_PROMINENCE_SSH_CONTAINER']
+
     mpi_per_node = ''
     if mpi == 'openmpi':
         if mpi_procs_per_node > 0:
@@ -575,7 +584,7 @@ def run_singularity(image, cmd, workdir, env, path, base_dir, mpi, mpi_processes
                " %s"
                " -mca btl_base_warn_component_unused 0"
                " -mca plm_rsh_no_tree_spawn 1"
-               " -mca plm_rsh_agent /mnt/beeond/prominence/ssh_container %s") % (mpi_processes, mpi_per_node, mpi_env, cmd)
+               " -mca plm_rsh_agent %s %s") % (mpi_processes, mpi_per_node, mpi_env, mpi_ssh, cmd)
     elif mpi == 'intelmpi':
         if mpi_procs_per_node > 0:
             mpi_per_node = '-perhost %d' % mpi_procs_per_node
@@ -586,7 +595,7 @@ def run_singularity(image, cmd, workdir, env, path, base_dir, mpi, mpi_processes
                " -np %d"
                " %s"
                " -envlist %s"
-               " -bootstrap-exec /mnt/beeond/prominence/ssh_container %s") % (mpi_processes, mpi_per_node, mpi_env, cmd)
+               " -bootstrap-exec %s %s") % (mpi_processes, mpi_per_node, mpi_env, mpi_ssh, cmd)
     elif mpi == 'mpich':
         env_list = ['PROMINENCE_CONTAINER_LOCATION', 'PROMINENCE_PWD', 'HOME', 'TMP', 'TEMP', 'TMPDIR']
         env_list.extend(env.keys())
@@ -595,7 +604,7 @@ def run_singularity(image, cmd, workdir, env, path, base_dir, mpi, mpi_processes
                " -np %d"
                " -envlist %s"
                " -launcher ssh"
-               " -launcher-exec /mnt/beeond/prominence/ssh_container %s") % (mpi_processes, mpi_env, cmd)
+               " -launcher-exec %s %s") % (mpi_processes, mpi_env, mpi_ssh, cmd)
 
     command = 'exec'
     if cmd is None:
@@ -636,6 +645,7 @@ def run_singularity(image, cmd, workdir, env, path, base_dir, mpi, mpi_processes
                                                    TEMP='%s' % path,
                                                    TMPDIR='%s' % path,
                                                    PROMINENCE_CONTAINER_LOCATION='%s' % os.path.dirname(image),
+                                                   PROMINENCE_CONTAINER_RUNTIME='singularity',
                                                    PROMINENCE_PWD='%s' % workdir,
                                                    PROMINENCE_CPUS='%d' % job_cpus,
                                                    PROMINENCE_MEMORY='%d' % job_memory),
