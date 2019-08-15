@@ -44,6 +44,7 @@ RequestMemory = %(reqmemory)s
 +ProminenceNumNodes = %(nodes)s
 +ProminenceSharedDiskSize = %(disk)s
 +ProminenceMaxIdleTime = %(maxidle)s
++ProminenceMaxTimeInQueue = %(maxtimeinqueue)s
 +ProminenceWantMPI = %(wantmpi)s
 +ProminenceType = "job"
 +WantIOProxy = true
@@ -80,6 +81,7 @@ def write_htcondor_job(cjob, filename):
     info['disk'] = cjob['+ProminenceSharedDiskSize']
     info['wantmpi'] = cjob['+ProminenceWantMPI']
     info['maxidle'] = 0
+    info['maxtimeinqueue'] = cjob['+ProminenceMaxTimeInQueue']
     info['extras']  = extras
     if 'extra_args' in cjob:
         info['extra_args'] = cjob['extra_args']
@@ -540,6 +542,14 @@ class ProminenceBackend(object):
             if 'site' in jjob['constraints']:
                 cjob['+ProminenceWantCloud'] = condor_str(jjob['constraints']['site'])
         cjob['+ProminenceMaxIdleTime'] = str("%d" % max_idle_time)
+
+        # Maximum time in queue
+        max_time_in_queue = -1
+        if 'policies' in jjob:
+            if 'maximumTimeInQueue' in jjob['policies']:
+                # Convert mins to secs
+                max_time_in_queue = 60*int(jjob['policies']['maximumTimeInQueue'])
+        cjob['+ProminenceMaxTimeInQueue'] = str("%d" % max_time_in_queue)
 
         # Handle labels
         if 'labels' in jjob:
