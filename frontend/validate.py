@@ -255,6 +255,11 @@ def validate_job(job):
                 if task['type'] != 'openmpi' and task['type'] != 'mpich' and task['type'] != 'intelmpi':
                     return (False, 'invalid task type')
 
+                if task['type'] == 'openmpi' or task['type'] == 'mpich' or task['type'] == 'intelmpi':
+                    if 'cmd' in task:
+                        if task['cmd'].startswith('mpirun -n'):
+                            return (False, 'it is not necessary to include mpirun in the cmd if an MPI flavour has been specified')
+                
     else:
         return (False, 'a job must contain tasks')
 
