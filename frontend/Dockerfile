@@ -18,7 +18,7 @@ COPY promlet.py /usr/local/libexec/
 
 ENTRYPOINT ["uwsgi", \
             "--http-socket", "localhost:8080", \
-            "--threads", "2", \
+            "--threads", "4", \
             "--uid", "prominence", \
             "--gid", "prominence", \
             "--manage-script-name", \
