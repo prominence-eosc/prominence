@@ -1,10 +1,13 @@
 #!/usr/bin/python
 from __future__ import print_function
+import base64
 from functools import wraps
+import json
 import logging
 import os
 import sys
 import uuid
+import time
 import requests
 from flask import Flask, jsonify, request
 
@@ -26,6 +29,17 @@ backend = ProminenceBackend(app.config)
 
 # Logging
 logging.basicConfig(stream=sys.stdout, level=logging.INFO, format='%(asctime)s %(levelname)s %(message)s')
+
+def get_expiry(token):
+    """
+    Get expiry date from a JWT token
+    """
+    expiry = 0
+    try:
+        expiry = json.loads(base64.b64decode(token.split('.')[1]))['exp']
+    except:
+        pass
+    return expiry
 
 def get_user_details(token):
     """
@@ -78,6 +92,7 @@ def requires_auth(function):
     """
     @wraps(function)
     def decorated(*args, **kwargs):
+        start_time = time.time()
         if 'Authorization' not in request.headers:
             app.logger.warning('%s AuthenticationFailure authorization not in headers' % get_remote_addr(request))
             return authenticate()
@@ -87,13 +102,21 @@ def requires_auth(function):
         except:
             app.logger.warning('%s AuthenticationFailure no token specified' % get_remote_addr(request))
             return authenticate()
+
+        # Check token expiry
+        if time.time() > get_expiry(token):
+            app.logger.warning('%s AuthenticationFailure token has already expired' % get_remote_addr(request))
+            return authenticate()
+
+        # Query OIDC server
         (success, username, group) = get_user_details(token)
+
         if not success:
             return jsonify({'error':'Unable to connect to OIDC server'}), 401
         if not username:
             app.logger.warning('%s AuthenticationFailure username not returned from identity provider' % get_remote_addr(request))
             return authenticate()
-        app.logger.info('%s AuthenticationSuccess user:%s group:%s' % (get_remote_addr(request), username, group))
+        app.logger.info('%s AuthenticationSuccess user:%s group:%s duration:%d' % (get_remote_addr(request), username, group, time.time() - start_time))
         return function(username, group, *args, **kwargs)
     return decorated
 
