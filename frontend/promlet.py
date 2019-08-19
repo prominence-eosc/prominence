@@ -22,6 +22,32 @@ import requests
 CURRENT_SUBPROCS = set()
 FINISH_NOW = False
 
+def create_mpi_files(path):
+    """
+    Create MPI hosts file if necessary
+    """
+    if 'PBS_NODEFILE' in os.environ:
+        logging.info('Environment variable PBS_NODEFILE detected')
+        try:
+            with open(os.environ['PBS_NODEFILE'], 'r') as pbs_nodefile:
+                pbs_lines = pbs_nodefile.readlines()
+        except IOError as exc:
+            logger.critical('Unable to open PBS_NODEFILE due to: %s', exc)
+            return False
+  
+        try:
+            with open(os.path.join(path, '.hosts-openmpi'), 'w') as mpi_file:
+                for line in pbs_lines:
+                    #line = line.strip().split('.')[0] + ' slots=1 max_slots=1\n'
+                    mpi_file.write(line)
+        except IOError as exc:
+            logger.critical('Unable to write MPI hosts file')
+            return False
+
+        return True
+
+    return False
+
 def handle_signal(signum, frame):
     """
     Send signal to current subprocesses
@@ -453,6 +479,12 @@ def run_udocker(image, cmd, workdir, env, path, base_dir, mpi, mpi_processes, mp
 
     extras += " ".join('--env=%s=%s' % (key, env[key]) for key in env)
 
+    job_info = get_info()
+    if 'cpus' in job_info:
+        extras += " --env=PROMINENCE_CPUS=%d" % job_info['cpus']
+    if 'memory' in job_info:
+        extras += " --env=PROMINENCE_MEMORY=%d" % job_info['memory']
+
     if base_dir == '/mnt/beeond/prominence':
         extras += " -v /mnt/beeond "
     elif base_dir == '/home/prominence':
@@ -465,8 +497,8 @@ def run_udocker(image, cmd, workdir, env, path, base_dir, mpi, mpi_processes, mp
         mpi_ssh = os.environ['_PROMINENCE_SSH_CONTAINER']
 
     mpi_hosts = '/home/user'
-    if '_PROMINENCE_SSH_HOSTS_DIR' in os.environ:
-        mpi_hosts = os.environ['_PROMINENCE_SSH_HOSTS_DIR']
+    if create_mpi_files(base_dir):
+        mpi_hosts = base_dir
 
     if mpi == 'openmpi':
         if mpi_procs_per_node > 0:
@@ -520,6 +552,7 @@ def run_udocker(image, cmd, workdir, env, path, base_dir, mpi, mpi_processes, mp
                        " --env=TMPDIR=%s"
                        " --env=PROMINENCE_PWD=%s"
                        " --env=UDOCKER_DIR=%s/.udocker"
+                       " --env=PROMINENCE_CONTAINER_RUNTIME=udocker"
                        " --hostauth"
                        " --user=user"
                        " --bindhome"
@@ -535,6 +568,9 @@ def run_udocker(image, cmd, workdir, env, path, base_dir, mpi, mpi_processes, mp
                        " --env=TMP=%s"
                        " --env=TEMP=%s"
                        " --env=TMPDIR=%s"
+                       " --env=PROMINENCE_PWD=%s"
+                       " --env=UDOCKER_DIR=%s/.udocker"
+                       " --env=PROMINENCE_CONTAINER_RUNTIME=udocker"
                        " --hostauth"
                        " --user=%s"
                        " --bindhome"
@@ -543,25 +579,13 @@ def run_udocker(image, cmd, workdir, env, path, base_dir, mpi, mpi_processes, mp
                        " --workdir=%s"
                        " -v /tmp"
                        " -v /var/tmp"
-                       " %s %s") % (extras, path, path, path, path, getpass.getuser(), mounts, path, workdir, image, cmd)
-
-    job_cpus = -1
-    job_memory = -1
-    num_retries = 0
-    job_info = get_info()
-    if 'cpus' in job_info:
-        job_cpus = job_info['cpus']
-    if 'memory' in job_info:
-        job_memory = job_info['memory']
+                       " %s %s") % (extras, path, path, path, path, workdir, base_dir, getpass.getuser(), mounts, path, workdir, image, cmd)
 
     logging.info('Running: "%s"', run_command)
 
     return_code, timed_out = run_with_timeout(run_command,
                                               dict(os.environ,
-                                                   UDOCKER_DIR='%s/.udocker' % base_dir,
-                                                   PROMINENCE_CPUS='%d' % job_cpus,
-                                                   PROMINENCE_MEMORY='%d' % job_memory,
-                                                   PROMINENCE_CONTAINER_RUNTIME='udocker'),
+                                                   UDOCKER_DIR='%s/.udocker' % base_dir),
                                               walltime_limit)
 
     logging.info('Task had exit code %d', return_code)
@@ -577,8 +601,8 @@ def run_singularity(image, cmd, workdir, env, path, base_dir, mpi, mpi_processes
         mpi_ssh = os.environ['_PROMINENCE_SSH_CONTAINER']
 
     mpi_hosts = '/home/user'
-    if '_PROMINENCE_SSH_HOSTS_DIR' in os.environ:
-        mpi_hosts = os.environ['_PROMINENCE_SSH_HOSTS_DIR']
+    if create_mpi_files(base_dir):
+        mpi_hosts = base_dir
 
     mpi_per_node = ''
     if mpi == 'openmpi':
@@ -901,10 +925,6 @@ if __name__ == "__main__":
     path = os.getcwd()
     base_dir = '/home/prominence'
 
-    # Setup logging
-    logging.basicConfig(filename='%s/promlet.%d.log' % (path, args.id), level=logging.INFO, format='%(asctime)s %(message)s')
-    logging.info('Started promlet using path "%s"' % path)
-
     # Handle BeeOND
     if not os.path.isdir(base_dir):
         if os.path.isdir('/mnt/beeond/prominence'):
@@ -912,9 +932,15 @@ if __name__ == "__main__":
 
     # Handle HPC systems
     if args.batch or (not os.path.isdir('/home/prominence') and not os.path.isdir('/mnt/beeond/prominence')):
+        if 'HOME' in os.environ:
+            path = os.environ['HOME']
         base_dir = os.path.join(path, 'prominence')
         os.mkdir(base_dir)
         batch = True
+
+    # Setup logging
+    logging.basicConfig(filename='%s/promlet.%d.log' % (path, args.id), level=logging.INFO, format='%(asctime)s %(message)s')
+    logging.info('Started promlet using path "%s"' % path)
 
     # Write empty json job details, so no matter what happens next, at least an empty file exists
     try:
