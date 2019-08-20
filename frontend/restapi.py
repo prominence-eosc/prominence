@@ -3,6 +3,7 @@ from __future__ import print_function
 import base64
 from functools import wraps
 import json
+import jwt
 import logging
 import os
 import sys
@@ -33,10 +34,11 @@ logging.basicConfig(stream=sys.stdout, level=logging.INFO, format='%(asctime)s %
 def get_expiry(token):
     """
     Get expiry date from a JWT token
+    - this is a just a first basic check of validity (and will be improved later), we still check with the OIDC server
     """
     expiry = 0
     try:
-        expiry = json.loads(base64.b64decode(token.split('.')[1]))['exp']
+        expiry = jwt.decode(token, verify=False)['exp']
     except:
         pass
     return expiry
