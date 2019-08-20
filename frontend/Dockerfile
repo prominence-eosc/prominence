@@ -7,7 +7,8 @@ RUN yum -y install epel-release && \
     pip install uwsgi \
                 flask \
                 requests \
-                boto3 && \
+                boto3 \
+                PyJWT && \
     useradd prominence
                    
 COPY restapi.py /usr/local/bin/
