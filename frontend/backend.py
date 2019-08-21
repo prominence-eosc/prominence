@@ -602,7 +602,8 @@ class ProminenceBackend(object):
             with schedd.transaction() as txn:
                 cid = sub.queue(txn, 1)
             data['id'] = cid
-        except:
+        except Exception as err:
+            print('Exception submitting job to HTCondor:', err)
             retval = 1
             data = {"error":"Job submission failed with an exception"}
 
