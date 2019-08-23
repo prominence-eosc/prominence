@@ -502,7 +502,7 @@ def run_udocker(image, cmd, workdir, env, path, base_dir, mpi, mpi_processes, mp
 
     if mpi == 'openmpi':
         if mpi_procs_per_node > 0:
-            mpi_per_node = '-N %d' % mpi_procs_per_node
+            mpi_per_node = '-N %d --bind-to none' % mpi_procs_per_node
         mpi_env = " -x UDOCKER_DIR -x PROMINENCE_PWD -x TMP -x TEMP -x TMPDIR "
         mpi_env += " ".join('-x %s' % key for key in env)
         cmd = ("mpirun --hostfile %s/.hosts-openmpi"
