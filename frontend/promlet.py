@@ -38,7 +38,25 @@ def create_mpi_files(path):
         try:
             with open(os.path.join(path, '.hosts-openmpi'), 'w') as mpi_file:
                 for line in pbs_lines:
-                    #line = line.strip().split('.')[0] + ' slots=1 max_slots=1\n'
+                    mpi_file.write(line)
+        except IOError as exc:
+            logger.critical('Unable to write MPI hosts file')
+            return False
+
+        return True
+
+    elif 'SLURM_JOB_NODELIST' in os.environ:
+        logging.info('Environment variable SLURM_JOB_NODELIST detected')
+        process = subprocess.Popen('scontrol show hostnames $SLURM_JOB_NODELIST',
+                                   env=os.environ,
+                                   shell=True,
+                                   stdout=subprocess.PIPE,
+                                   stderr=subprocess.PIPE)
+        stdout, stderr = process.communicate()
+    
+        try:
+            with open(os.path.join(path, '.hosts-openmpi'), 'w') as mpi_file:
+                for line in stdout.split('/n'):
                     mpi_file.write(line)
         except IOError as exc:
             logger.critical('Unable to write MPI hosts file')
