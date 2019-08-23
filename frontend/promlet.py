@@ -607,7 +607,7 @@ def run_singularity(image, cmd, workdir, env, path, base_dir, mpi, mpi_processes
     mpi_per_node = ''
     if mpi == 'openmpi':
         if mpi_procs_per_node > 0:
-            mpi_per_node = '-N %d' % mpi_procs_per_node
+            mpi_per_node = '-N %d --bind-to none' % mpi_procs_per_node
         mpi_env = " -x PROMINENCE_CONTAINER_LOCATION -x PROMINENCE_PWD -x HOME -x TEMP -x TMP "
         mpi_env += " ".join('-x %s' % key for key in env)
         cmd = ("mpirun --hostfile %s/.hosts-openmpi"
