@@ -29,6 +29,7 @@ log = job.$(prominencecount).log
 should_transfer_files = YES
 when_to_transfer_output = ON_EXIT_OR_EVICT
 transfer_output_files = promlet.$(prominencecount).log,promlet.$(prominencecount).json
+skip_filechecks = true
 requirements = false
 transfer_executable = true
 stream_output = true
@@ -400,6 +401,7 @@ class ProminenceBackend(object):
         cjob['Error'] = job_path +  '/job.0.err'
         cjob['should_transfer_files'] = 'YES'
         cjob['when_to_transfer_output'] = 'ON_EXIT_OR_EVICT'
+        cjob['skip_filechecks'] = 'true'
         cjob['transfer_output_files'] = 'promlet.0.log,promlet.0.json'
         cjob['+WantIOProxy'] = 'true'
         cjob['+ProminenceType'] = condor_str('job')
@@ -669,11 +671,11 @@ class ProminenceBackend(object):
                 shutil.copyfile(self._promlet_file, os.path.join(job_sandbox, job['name'], 'promlet.py'))
                 os.chmod(job_sandbox + '/' + job['name'] + '/promlet.py', 0775)
 
-                # Define dependencies if necessary
-                if 'dependencies' in jjob:
-                    for parent in jjob['dependencies']:
-                        children = " ".join(jjob['dependencies'][parent])
-                        dag.append('PARENT ' + parent + ' CHILD ' + children)
+            # Define dependencies if necessary
+            if 'dependencies' in jjob:
+                for parent in jjob['dependencies']:
+                    children = " ".join(jjob['dependencies'][parent])
+                    dag.append('PARENT ' + parent + ' CHILD ' + children)
 
         elif 'factory' in jjob:
             # Copy executable to job sandbox
