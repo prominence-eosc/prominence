@@ -4,6 +4,30 @@ import requests
 
 import retry
 
+def validate_placement(placement):
+    """
+    Validate placement policy
+    """
+    for item in placement:
+        if item not in ['requirements', 'preferences']:
+            return (False, 'invalid item "%s" in placement policy' % item)
+
+    if 'requirements' in placement:
+        for item in placement['requirements']:
+            if item not in ['sites', 'regions']:
+                return (False, 'invalid item "%s" in requirements' % item)
+            if not isinstance(placement['requirements'][item], list):
+                return (False, '%s in requirements must be a list' % item)
+
+    if 'preferences' in placement:
+        for item in placement['preferences']:
+            if item not in ['sites', 'regions']:
+                return (False, 'invalid item "%s" in preferences' % item)
+            if not isinstance(placement['preferences'][item], list):
+                return (False, '%s in preferences must be a list' % item)
+
+    return (True, '')
+
 def validate_workflow(workflow):
     """
     Validate JSON workflow description
@@ -15,7 +39,8 @@ def validate_workflow(workflow):
                        'factory',
                        'policies']
 
-    policies_workflow_valids = ['maximumRetries']
+    policies_workflow_valids = ['maximumRetries',
+                                'placement']
 
     # Check for valid items in workflow
     for item in workflow:
@@ -51,6 +76,8 @@ def validate_workflow(workflow):
         jobs = []
         for job in workflow['jobs']:
             if 'name' in job:
+                if job['name'] in jobs:
+                    return (False, 'all jobs must have unique names: "%s" is used more than once' % job['name'])
                 jobs.append(job['name'])
             else:
                 return (False, 'all jobs must have names')
@@ -165,7 +192,8 @@ def validate_job(job):
 
     policies_valids = ['maximumRetries',
                        'preemptible',
-                       'maximumTimeInQueue']
+                       'maximumTimeInQueue',
+                       'placement']
  
     # Check for valid items in job
     for item in job:
@@ -352,6 +380,11 @@ def validate_job(job):
         for item in job['policies']:
             if item not in policies_valids:
                 return (False, 'invalid item "%s" in policies' % item)
+
+        if 'placement' in job['policies']:
+            (status, msg) = validate_placement(job['policies']['placement'])
+            if not status:
+                return (status, msg)
 
         if 'maximumRetries' in job['policies']:
             if not str(job['policies']['maximumRetries']).isdigit():
