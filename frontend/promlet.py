@@ -8,6 +8,7 @@ import logging
 import os
 import re
 import shlex
+import shutil
 import signal
 from string import Template
 import subprocess
@@ -21,6 +22,22 @@ import requests
 
 CURRENT_SUBPROCS = set()
 FINISH_NOW = False
+
+def move_inputs(job, path):
+    """
+    Move any input files to the userhome directory
+    """
+    if 'inputs' in job:
+        for input_file in job['inputs']:
+            if 'filename' in input_file:
+                filename = os.path.basename(input_file['filename'])
+                logger.info('Moving file %s into userhome directory', filename)
+                try:
+                    shutil.move('path/%s' % filename, 'path/userhome/%s' % filename)
+                except:
+                    return False
+
+    return True
 
 def create_mpi_files(path):
     """
@@ -720,6 +737,9 @@ def run_tasks(job_file, path, base_dir, is_batch):
     if 'policies' in job:
         if 'maximumRetries' in job['policies']:
             num_retries = job['policies']['maximumRetries']
+
+    # Move input files into userhome directory
+    #move_inputs(job, path)
 
     # Number of nodes
     if 'nodes' in job['resources']:
