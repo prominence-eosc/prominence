@@ -315,6 +315,17 @@ class ProminenceBackend(object):
                         name = job['DAGNodeName']
         return (uid, identity, name)
 
+    def _get_routed_job_id(self, job_id):
+        """
+        Return the routed job id
+        """
+        schedd = htcondor.Schedd()
+        jobs_condor = schedd.xquery('RoutedBy =?= undefined && ClusterId =?= %s' % job_id, ['RoutedToJobId'], 1)
+        for job in jobs_condor:
+            if 'RoutedToJobId' in job:
+                return int(float(job['RoutedToJobId']))
+        return None
+
     def _create_htcondor_job(self, username, groups, uid, jjob, job_path):
         """
         Create a dict representing a HTCondor job & write the JSON job description
@@ -1274,16 +1285,20 @@ class ProminenceBackend(object):
         """
         Execute a command inside a job
         """
-        args = ['condor_ssh_to_job', '%d' % job_id]
-        args.extend(command)
-        
-        try:
-            process = subprocess.Popen(args, shell=False, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
-            output = process.communicate()[0]
-            return_code = process.returncode
-        except:
+        job_id_routed = self._get_routed_job_id(job_id)
+        if not job_id_routed:
             return None
 
-        if return_code == 0:
+        args = ['condor_ssh_to_job', '%d' % job_id_routed]
+        args.extend(command)
+        
+        process = subprocess.Popen(args, shell=False, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+        timeout = {"value": False}
+        timer = threading.Timer(int(self._config['EXEC_TIMEOUT']), kill_proc, [process, timeout])
+        timer.start()
+        output = process.communicate()[0]
+        timer.cancel()
+
+        if process.returncode == 0:
             return output
         return None
