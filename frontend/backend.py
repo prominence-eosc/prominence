@@ -1270,3 +1270,17 @@ class ProminenceBackend(object):
                 return fd.read()
         return None
 
+    def exec(self, job_id, command):
+        """
+        Execute a command inside a job
+        """
+        args = ['condor_ssh_to_job', '%d' % job_id]
+        args.extend(command)
+        
+        try:
+            process = subprocess.Popen(args, shell=False, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+            output = process.communicate()[0]
+        except:
+            return ''
+
+        return output
