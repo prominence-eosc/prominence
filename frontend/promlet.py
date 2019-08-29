@@ -892,7 +892,8 @@ def run_tasks(job_file, path, base_dir, is_batch):
 
         task_u = {}
         task_u['imagePullStatus'] = image_pull_status
-        task_u['imagePullTime'] = metrics_download.time_wall
+        if metrics_download.time_wall:
+            task_u['imagePullTime'] = metrics_download.time_wall
         if task_was_run:
             task_u['exitCode'] = metrics_task.exit_code
             task_u['wallTimeUsage'] = metrics_task.time_wall
