@@ -466,6 +466,30 @@ def get_job(username, group, job_id):
     data = backend.list_jobs([job_id], username, True, True, 1, 1, (None, None))
     return jsonify(data)
 
+@app.route("/prominence/v1/jobs/<int:job_id>/exec", methods=['POST'])
+@requires_auth
+def exec_in_job(username, group, job_id):
+    """
+    Execute a command in a job
+    """
+    app.logger.info('%s ExecJob user:%s group:%s id:%d' % (get_remote_addr(request), username, group, job_id))
+
+    (uid, identity, name) = backend.get_job_unique_id(job_id)
+    if identity is None:
+        return jsonify({'error':'Job does not exist'}), 400
+    if username != identity:
+        return jsonify({'error':'Not authorized to access this job'}), 403
+
+    command = []
+    if 'command' in request.args:
+        command = request.args.get('command').split(',')
+
+    output = backend.exec(job_id, command), 200
+    if output:
+        return output
+ 
+    return jsonify({'error':'Unable to execute command'}), 400
+
 @app.route("/prominence/v1/jobs", methods=['DELETE'])
 @requires_auth
 def delete_jobs(username, group):
