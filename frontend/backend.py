@@ -1270,7 +1270,7 @@ class ProminenceBackend(object):
                 return fd.read()
         return None
 
-    def exec(self, job_id, command):
+    def execute_command(self, job_id, command):
         """
         Execute a command inside a job
         """

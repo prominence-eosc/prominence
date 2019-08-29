@@ -484,9 +484,9 @@ def exec_in_job(username, group, job_id):
     if 'command' in request.args:
         command = request.args.get('command').split(',')
 
-    output = backend.exec(job_id, command), 200
+    output = backend.execute_command(job_id, command)
     if output:
-        return output
+        return output, 200
  
     return jsonify({'error':'Unable to execute command'}), 400
 
