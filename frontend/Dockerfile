@@ -3,7 +3,8 @@ FROM eoscprominence/htcondor:8.9.2
 RUN yum -y install epel-release && \
     yum -y install python-pip \
                    python-devel \
-                   gcc && \
+                   gcc \
+                   openssh-clients && \
     pip install uwsgi \
                 flask \
                 requests \
