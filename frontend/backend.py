@@ -1280,7 +1280,10 @@ class ProminenceBackend(object):
         try:
             process = subprocess.Popen(args, shell=False, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
             output = process.communicate()[0]
+            return_code = process.returncode
         except:
-            return ''
+            return None
 
-        return output
+        if return_code == 0:
+            return output
+        return None
