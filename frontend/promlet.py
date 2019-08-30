@@ -479,9 +479,6 @@ def download_udocker(image, location, label, base_dir):
         stdout, stderr = process.communicate()
         return_code = process.returncode
 
-        logging.info('udocker load stdout: "%s"', stdout)
-        logging.info('udocker load stderr: "%s"', stderr)
-
         if return_code != 0:
             logging.error('Unable to load udocker tarball')
             return 1, False
@@ -522,9 +519,6 @@ def download_udocker(image, location, label, base_dir):
         stdout, stderr = process.communicate()
         return_code = process.returncode
 
-        logging.info('udocker pull stdout: "%s"', stdout)
-        logging.info('udocker pull stderr: "%s"', stderr)
-
         if return_code != 0:
             return 1, False
 
@@ -537,9 +531,6 @@ def download_udocker(image, location, label, base_dir):
                                stderr=subprocess.PIPE)
     stdout, stderr = process.communicate()
     return_code = process.returncode
-
-    logging.info('udocker create stdout: "%s"', stdout)
-    logging.info('udocker create stderr: "%s"', stderr)
 
     if return_code != 0:
         return 1, False
