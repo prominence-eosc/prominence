@@ -381,30 +381,74 @@ def download_singularity(image, image_new, location, base_dir):
 
     return 0, False
 
+def get_udocker(path):
+    """
+    Check if udocker is installed
+    """
+    if os.path.exists('/home/user/.udocker/bin/proot-x86_64'):
+        logging.info('Found existing udocker installation in /home/user')
+        return '/home/user'
+    elif os.path.isdir('/mnt/beeond/prominence'):
+        if install_udocker('/mnt/beeond/prominence'):
+            return '/mnt/beeond/prominence'
+    else:
+        if install_udocker(path):
+            return path
+
+    return None
+
+def install_udocker(location):
+    """
+    Install  udocker if necessary
+    """
+    if not os.path.exists('%s/.udocker/bin/proot-x86_64' % location):
+        logging.info('Installing udockertools')
+
+        attempt = 0
+        installed = False
+        while not installed and attempt < 10:
+            # Firstly setup the .udocker directory if necessary
+            if not os.path.isdir(location + '/.udocker'):
+                try:
+                    os.mkdir(location + '/.udocker')
+                except Exception as ex:
+                    logging.error('Unable to create .udocker directory due to: %s', ex)
+                    return False
+
+            # Install udocker if necessary
+            process = subprocess.Popen('udocker install',
+                                       env=dict(os.environ,
+                                                UDOCKER_DIR='%s/.udocker' % location),
+                                       shell=True,
+                                       stdout=subprocess.PIPE,
+                                       stderr=subprocess.STDOUT)
+            output = process.communicate()[0]
+            return_code = process.returncode
+
+            if 'Error: installation of udockertools failed' in output or return_code != 0:
+                logging.error('Installation of udockertools failed')
+            else:
+                logging.info('udockertools installation successful')
+                installed = True
+            attempt += 1
+
+    else:
+        logging.info('Found existing udocker installation')
+        installed = True
+
+    if not installed:
+        return False
+
+    return True
+
 def download_udocker(image, location, label, base_dir):
     """
     Download an image from a URL and create a udocker container named 'image'
     """
-    # Firstly setup the .udocker directory
-    if not os.path.isdir(base_dir + '/.udocker'):
-        try:
-            os.mkdir(base_dir + '/.udocker')
-        except Exception as ex:
-            logging.error('Unable to create .udocker directory due to: %s', ex)
-            return 1, False
-
-    # Install udocker
-    process = subprocess.Popen('udocker install',
-                               env=dict(os.environ,
-                                        UDOCKER_DIR='%s/.udocker' % base_dir),
-                               shell=True,
-                               stdout=subprocess.PIPE,
-                               stderr=subprocess.PIPE)
-    stdout, stderr = process.communicate()
-    return_code = process.returncode
-
-    logging.info('udocker install stdout: "%s"', stdout)
-    logging.info('udocker install stderr: "%s"', stderr)
+    udocker_location = get_udocker(path)
+    if not udocker_location:
+        logging.error('Unable to install udockertools')
+        return 1, False
 
     if re.match(r'^http', image):
         # Download tarball
@@ -428,7 +472,7 @@ def download_udocker(image, location, label, base_dir):
         # Load image
         process = subprocess.Popen('udocker load -i %s/image.tar' % location,
                                    env=dict(os.environ,
-                                            UDOCKER_DIR='%s/.udocker' % base_dir),
+                                            UDOCKER_DIR='%s/.udocker' % udocker_location),
                                    shell=True,
                                    stdout=subprocess.PIPE,
                                    stderr=subprocess.PIPE)
@@ -445,7 +489,7 @@ def download_udocker(image, location, label, base_dir):
         # Determine image name
         process = subprocess.Popen('udocker images',
                                    env=dict(os.environ,
-                                            UDOCKER_DIR='%s/.udocker' % base_dir),
+                                            UDOCKER_DIR='%s/.udocker' % udocker_location),
                                    shell=True,
                                    stdout=subprocess.PIPE)
         stdout, stderr = process.communicate()
@@ -471,7 +515,7 @@ def download_udocker(image, location, label, base_dir):
         # Pull image
         process = subprocess.Popen('udocker pull %s' % image,
                                    env=dict(os.environ,
-                                            UDOCKER_DIR='%s/.udocker' % base_dir),
+                                            UDOCKER_DIR='%s/.udocker' % udocker_location),
                                    shell=True,
                                    stdout=subprocess.PIPE,
                                    stderr=subprocess.PIPE)
@@ -487,7 +531,7 @@ def download_udocker(image, location, label, base_dir):
     # Create container
     process = subprocess.Popen('udocker create --name=image%d %s' % (label, image),
                                env=dict(os.environ,
-                                        UDOCKER_DIR='%s/.udocker' % base_dir),
+                                        UDOCKER_DIR='%s/.udocker' % udocker_location),
                                shell=True,
                                stdout=subprocess.PIPE,
                                stderr=subprocess.PIPE)
@@ -506,6 +550,11 @@ def run_udocker(image, cmd, workdir, env, path, base_dir, mpi, mpi_processes, mp
     """
     Execute a task using udocker
     """
+    udocker_location = get_udocker(path)
+    if not udocker_location:
+        logging.error('Unable to install udockertools')
+        return 1, False
+
     extras = ''
     if cmd is None:
         cmd = ''
@@ -620,7 +669,7 @@ def run_udocker(image, cmd, workdir, env, path, base_dir, mpi, mpi_processes, mp
 
     return_code, timed_out = run_with_timeout(run_command,
                                               dict(os.environ,
-                                                   UDOCKER_DIR='%s/.udocker' % base_dir),
+                                                   UDOCKER_DIR='%s/.udocker' % udocker_location),
                                               walltime_limit)
 
     logging.info('Task had exit code %d', return_code)
