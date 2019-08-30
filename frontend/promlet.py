@@ -194,7 +194,7 @@ def stageout(job_file, path, base_dir):
     if 'outputDirs' in job:
         for output in job['outputDirs']:
             output_filename = os.path.basename(output['name']) + ".tgz"
-            json_out_dir = {'name':output}
+            json_out_dir = {'name':output['name']}
             try:
                 with tarfile.open(output_filename, "w:gz") as tar:
                     tar.add(output['name'])
