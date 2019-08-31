@@ -595,8 +595,9 @@ class ProminenceBackend(object):
 
         # Copy executable to sandbox, change current working directory to the sandbox
         shutil.copyfile(self._promlet_file, os.path.join(job_sandbox, 'promlet.py'))
+     
         os.chdir(job_sandbox)
-        os.chmod(os.path.join(job_sandbox, 'promlet.py'), 0775)
+        os.chmod(os.path.join(job_sandbox, 'promlet.py'), 0o775)
 
         # Create dict containing HTCondor job
         (status, msg, cjob) = self._create_htcondor_job(username, groups, uid, jjob, job_sandbox)
@@ -680,7 +681,7 @@ class ProminenceBackend(object):
 
                 # Copy executable to job sandbox
                 shutil.copyfile(self._promlet_file, os.path.join(job_sandbox, job['name'], 'promlet.py'))
-                os.chmod(job_sandbox + '/' + job['name'] + '/promlet.py', 0775)
+                os.chmod(job_sandbox + '/' + job['name'] + '/promlet.py', 0o775)
 
             # Define dependencies if necessary
             if 'dependencies' in jjob:
@@ -691,7 +692,7 @@ class ProminenceBackend(object):
         elif 'factory' in jjob:
             # Copy executable to job sandbox
             shutil.copyfile(self._promlet_file, os.path.join(job_sandbox, 'promlet.py'))
-            os.chmod(job_sandbox + '/promlet.py', 0775)
+            os.chmod(job_sandbox + '/promlet.py', 0o775)
 
             # Create dict containing HTCondor job
             (status, msg, cjob) = self._create_htcondor_job(username, groups, uid, jjob['jobs'][0], job_sandbox)
