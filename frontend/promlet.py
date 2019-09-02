@@ -137,7 +137,7 @@ def upload(filename, url):
         return True
     return None
 
-def stageout(job_file, path, base_dir):
+def stageout(job_file, path):
     """
     Copy any required output files and/or directories to S3 storage
     """
@@ -298,7 +298,7 @@ def get_storage_mountpoint():
 
     return None
 
-def download_singularity(image, image_new, location, base_dir):
+def download_singularity(image, image_new, location, path):
     """
     Download a Singularity image from a URL or pull an image from Docker Hub
     """
@@ -323,15 +323,15 @@ def download_singularity(image, image_new, location, base_dir):
         logging.info('Singularity image downloaded from URL and written to file %s', image_new)
     else:
         # We set SINGULARITY_LOCALCACHEDIR & SINGULARITY_TMPDIR in order to avoid Singularity errors
-        if not os.path.isdir(base_dir + '/.singularity'):
+        if not os.path.isdir(path + '/.singularity'):
             try:
-                os.mkdir(base_dir + '/.singularity')
+                os.mkdir(path + '/.singularity')
             except Exception as ex:
                 logging.error('Unable to create .singularity directory due to: %s', ex)
                 return 1, False
-        if not os.path.isdir(base_dir + '/.tmp'):
+        if not os.path.isdir(path + '/.tmp'):
             try:
-                os.mkdir(base_dir + '/.tmp')
+                os.mkdir(path + '/.tmp')
             except Exception as ex:
                 logging.error('Unable to create .tmp directory due to: %s', ex)
                 return 1, False
@@ -347,8 +347,8 @@ def download_singularity(image, image_new, location, base_dir):
                                    shell=True,
                                    env=dict(os.environ,
                                             PATH='/usr/local/bin:/usr/bin:/usr/local/sbin:/usr/sbin',
-                                            SINGULARITY_LOCALCACHEDIR='%s/.singularity' % base_dir,
-                                            SINGULARITY_TMPDIR='%s/.tmp' % base_dir),
+                                            SINGULARITY_LOCALCACHEDIR='%s/.singularity' % path,
+                                            SINGULARITY_TMPDIR='%s/.tmp' % path),
                                    stdout=subprocess.PIPE,
                                    stderr=subprocess.PIPE)
         stdout, stderr = process.communicate()
@@ -374,9 +374,6 @@ def get_udocker(path):
     if os.path.exists('/home/user/.udocker/bin/proot-x86_64'):
         logging.info('Found existing udocker installation in /home/user')
         return '/home/user'
-    elif os.path.isdir('/mnt/beeond/prominence'):
-        if install_udocker('/mnt/beeond/prominence'):
-            return '/mnt/beeond/prominence'
     else:
         if install_udocker(path):
             return path
@@ -427,7 +424,7 @@ def install_udocker(location):
 
     return True
 
-def download_udocker(image, location, label, base_dir):
+def download_udocker(image, location, label, path):
     """
     Download an image from a URL and create a udocker container named 'image'
     """
@@ -523,7 +520,7 @@ def download_udocker(image, location, label, base_dir):
 
     return 0, False
 
-def run_udocker(image, cmd, workdir, env, path, base_dir, mpi, mpi_processes, mpi_procs_per_node, artifacts, walltime_limit):
+def run_udocker(image, cmd, workdir, env, path, mpi, mpi_processes, mpi_procs_per_node, artifacts, walltime_limit, is_batch):
     """
     Execute a task using udocker
     """
@@ -538,6 +535,11 @@ def run_udocker(image, cmd, workdir, env, path, base_dir, mpi, mpi_processes, mp
 #    else:
 #        extras = '--nometa '
 
+    if os.path.isdir('/mnt/beeond/prominence'):
+        extras += " -v /mnt/beeond "
+    elif os.path.isdir('/home/prominence'):
+        extras += " -v /home/prominence "
+
     extras += " ".join('--env=%s=%s' % (key, env[key]) for key in env)
 
     job_info = get_info()
@@ -546,11 +548,6 @@ def run_udocker(image, cmd, workdir, env, path, base_dir, mpi, mpi_processes, mp
     if 'memory' in job_info:
         extras += " --env=PROMINENCE_MEMORY=%d" % job_info['memory']
 
-    if base_dir == '/mnt/beeond/prominence':
-        extras += " -v /mnt/beeond "
-    elif base_dir == '/home/prominence':
-        extras += " -v /home/prominence "
-
     mpi_per_node = ''
 
     mpi_ssh = '/mnt/beeond/prominence/ssh_container'
@@ -558,8 +555,8 @@ def run_udocker(image, cmd, workdir, env, path, base_dir, mpi, mpi_processes, mp
         mpi_ssh = os.environ['_PROMINENCE_SSH_CONTAINER']
 
     mpi_hosts = '/home/user'
-    if create_mpi_files(base_dir):
-        mpi_hosts = base_dir
+    if create_mpi_files(path):
+        mpi_hosts = path
 
     if mpi == 'openmpi':
         if mpi_procs_per_node > 0:
@@ -609,7 +606,7 @@ def run_udocker(image, cmd, workdir, env, path, base_dir, mpi, mpi_processes, mp
     for artifact in artifacts:
         mounts = mounts + ' -v %s/%s:%s ' % (path, artifact, artifacts[artifact])
 
-    if base_dir in ('/home/prominence', '/mnt/beeond/prominence'):
+    if not is_batch:
         # Used on clouds
         run_command = ("/usr/local/bin/udocker -q run %s"
                        " --env=HOME=%s"
@@ -625,7 +622,7 @@ def run_udocker(image, cmd, workdir, env, path, base_dir, mpi, mpi_processes, mp
                        " %s"
                        " --workdir=%s"
                        " -v %s:/tmp"
-                       " %s %s") % (extras, path, workdir, base_dir, mounts, workdir, user_tmp_dir, image, cmd)
+                       " %s %s") % (extras, path, workdir, path, mounts, workdir, user_tmp_dir, image, cmd)
     else:
         # Used on existing HPC systems
         run_command = ("udocker -q run %s"
@@ -643,7 +640,7 @@ def run_udocker(image, cmd, workdir, env, path, base_dir, mpi, mpi_processes, mp
                        " -v %s"
                        " --workdir=%s"
                        " -v %s:/tmp"
-                       " %s %s") % (extras, path, workdir, base_dir, getpass.getuser(), mounts, path, workdir, user_tmp_dir, image, cmd)
+                       " %s %s") % (extras, path, workdir, path, getpass.getuser(), mounts, path, workdir, user_tmp_dir, image, cmd)
 
     logging.info('Running: "%s"', run_command)
 
@@ -656,7 +653,7 @@ def run_udocker(image, cmd, workdir, env, path, base_dir, mpi, mpi_processes, mp
 
     return return_code, timed_out
 
-def run_singularity(image, cmd, workdir, env, path, base_dir, mpi, mpi_processes, mpi_procs_per_node, artifacts, walltime_limit):
+def run_singularity(image, cmd, workdir, env, path, mpi, mpi_processes, mpi_procs_per_node, artifacts, walltime_limit, is_batch):
     """
     Execute a task using Singularity
     """
@@ -665,8 +662,8 @@ def run_singularity(image, cmd, workdir, env, path, base_dir, mpi, mpi_processes
         mpi_ssh = os.environ['_PROMINENCE_SSH_CONTAINER']
 
     mpi_hosts = '/home/user'
-    if create_mpi_files(base_dir):
-        mpi_hosts = base_dir
+    if create_mpi_files(path):
+        mpi_hosts = path
 
     mpi_per_node = ''
     if mpi == 'openmpi':
@@ -717,7 +714,7 @@ def run_singularity(image, cmd, workdir, env, path, base_dir, mpi, mpi_processes
     if os.path.isdir('/home/user/tmp'):
         user_tmp_dir = '/home/user/tmp'
 
-    if base_dir in ('/home/prominence', '/mnt/beeond/prominence'):
+    if not is_batch:
         run_command = ("singularity %s"
                        " --no-home"
                        " --bind /home"
@@ -757,7 +754,7 @@ def run_singularity(image, cmd, workdir, env, path, base_dir, mpi, mpi_processes
 
     return return_code, timed_out
 
-def run_tasks(job_file, path, base_dir, is_batch):
+def run_tasks(job_file, path, is_batch):
     """
     Execute sequential tasks
     """
@@ -834,9 +831,9 @@ def run_tasks(job_file, path, base_dir, is_batch):
                 env['PROMINENCE_PARAMETER_%s' % key] = value
                 cmd = Template(cmd).safe_substitute({key:value})
 
-        location = '%s/%d' % (base_dir, count)
+        location = '%s/images/%d' % (path, count)
         try:
-            os.mkdir(location)
+            os.makedirs(location)
         except Exception as err:
             logging.error('Unable to create directory %s', location)
             return False
@@ -883,7 +880,7 @@ def run_tasks(job_file, path, base_dir, is_batch):
                 image_pull_status = 'cached'
             elif not FINISH_NOW:
                 logging.info('Pulling image for task')
-                metrics_download = monitor(download_udocker, image, location, count, base_dir)
+                metrics_download = monitor(download_udocker, image, location, count, path)
                 if metrics_download.time_wall > 0:
                     total_pull_time += metrics_download.time_wall
                 if metrics_download.exit_code != 0:
@@ -897,17 +894,17 @@ def run_tasks(job_file, path, base_dir, is_batch):
                 while metrics_task.exit_code != 0 and retry_count < num_retries + 1 and not metrics_task.timed_out and not FINISH_NOW:
                     logging.info('Running task, attempt %d', retry_count + 1)
                     task_time_limit = walltime_limit - (time.time() - job_start_time) + total_pull_time
-                    metrics_task = monitor(run_udocker, image, cmd, workdir, env, path, base_dir, mpi, mpi_processes, procs_per_node, artifacts, task_time_limit)
+                    metrics_task = monitor(run_udocker, image, cmd, workdir, env, path, mpi, mpi_processes, procs_per_node, artifacts, task_time_limit, is_batch)
                     retry_count += 1
         else:
             # Pull image if necessary or use a previously pulled image
             if found_image:
-                image_new = '%s/%d/image.simg' % (base_dir, image_count)
+                image_new = '%s/images/%d/image.simg' % (path, image_count)
                 image_pull_status = 'cached'
             elif not FINISH_NOW:
                 image_new = '%s/image.simg' % location
                 logging.info('Pulling image for task')
-                metrics_download = monitor(download_singularity, image, image_new, location, base_dir)
+                metrics_download = monitor(download_singularity, image, image_new, location, path)
                 if metrics_download.time_wall > 0:
                     total_pull_time += metrics_download.time_wall
                 if metrics_download.exit_code != 0:
@@ -919,7 +916,7 @@ def run_tasks(job_file, path, base_dir, is_batch):
                 while metrics_task.exit_code != 0 and retry_count < num_retries + 1 and not metrics_task.timed_out and not FINISH_NOW:
                     logging.info('Running task, attempt %d', retry_count + 1)
                     task_time_limit = walltime_limit - (time.time() - job_start_time) + total_pull_time
-                    metrics_task = monitor(run_singularity, image_new, cmd, workdir, env, path, base_dir, mpi, mpi_processes, procs_per_node, artifacts, task_time_limit)
+                    metrics_task = monitor(run_singularity, image_new, cmd, workdir, env, path, mpi, mpi_processes, procs_per_node, artifacts, task_time_limit, is_batch)
                     retry_count += 1
 
         task_u = {}
@@ -994,20 +991,13 @@ if __name__ == "__main__":
 
     # Initial directory
     path = os.getcwd()
-    base_dir = '/home/prominence'
-
-    # Handle BeeOND
-    if not os.path.isdir(base_dir):
-        if os.path.isdir('/mnt/beeond/prominence'):
-            base_dir = '/mnt/beeond/prominence'
 
     # Handle HPC systems
+    is_batch = False
     if args.batch or (not os.path.isdir('/home/prominence') and not os.path.isdir('/mnt/beeond/prominence')):
         if 'HOME' in os.environ:
             path = os.environ['HOME']
-        base_dir = os.path.join(path, 'prominence')
-        os.mkdir(base_dir)
-        batch = True
+        is_batch = True
 
     # Setup logging
     logging.basicConfig(filename='%s/promlet.%d.log' % (path, args.id), level=logging.INFO, format='%(asctime)s %(message)s')
@@ -1050,14 +1040,14 @@ if __name__ == "__main__":
 
     # Run tasks
     try:
-        (success_tasks, json_tasks) = run_tasks(args.job, path, base_dir, args.batch)
+        (success_tasks, json_tasks) = run_tasks(args.job, path, is_batch)
     except OSError as exc:
         logging.critical('Got exception running tasks: %s', exc)
         success_tasks = False
         json_tasks = {}
 
     # Upload output files if necessary
-    (success_stageout, json_stageout) = stageout(args.job, path, base_dir)
+    (success_stageout, json_stageout) = stageout(args.job, path)
 
     # Write json job details
     json_output = {}
