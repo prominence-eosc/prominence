@@ -894,7 +894,18 @@ def run_tasks(job_file, path, is_batch):
                 while metrics_task.exit_code != 0 and retry_count < num_retries + 1 and not metrics_task.timed_out and not FINISH_NOW:
                     logging.info('Running task, attempt %d', retry_count + 1)
                     task_time_limit = walltime_limit - (time.time() - job_start_time) + total_pull_time
-                    metrics_task = monitor(run_udocker, image, cmd, workdir, env, path, mpi, mpi_processes, procs_per_node, artifacts, task_time_limit, is_batch)
+                    metrics_task = monitor(run_udocker,
+                                           image,
+                                           cmd,
+                                           workdir,
+                                           env,
+                                           path,
+                                           mpi,
+                                           mpi_processes,
+                                           procs_per_node,
+                                           artifacts,
+                                           task_time_limit,
+                                           is_batch)
                     retry_count += 1
         else:
             # Pull image if necessary or use a previously pulled image
@@ -916,7 +927,18 @@ def run_tasks(job_file, path, is_batch):
                 while metrics_task.exit_code != 0 and retry_count < num_retries + 1 and not metrics_task.timed_out and not FINISH_NOW:
                     logging.info('Running task, attempt %d', retry_count + 1)
                     task_time_limit = walltime_limit - (time.time() - job_start_time) + total_pull_time
-                    metrics_task = monitor(run_singularity, image_new, cmd, workdir, env, path, mpi, mpi_processes, procs_per_node, artifacts, task_time_limit, is_batch)
+                    metrics_task = monitor(run_singularity,
+                                           image_new,
+                                           cmd,
+                                           workdir,
+                                           env,
+                                           path,
+                                           mpi,
+                                           mpi_processes,
+                                           procs_per_node,
+                                           artifacts,
+                                           task_time_limit,
+                                           is_batch)
                     retry_count += 1
 
         task_u = {}
