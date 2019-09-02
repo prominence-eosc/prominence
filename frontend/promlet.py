@@ -23,22 +23,6 @@ import requests
 CURRENT_SUBPROCS = set()
 FINISH_NOW = False
 
-def move_inputs(job, path):
-    """
-    Move any input files to the userhome directory
-    """
-    if 'inputs' in job:
-        for input_file in job['inputs']:
-            if 'filename' in input_file:
-                filename = os.path.basename(input_file['filename'])
-                logger.info('Moving file %s into userhome directory', filename)
-                try:
-                    shutil.move('path/%s' % filename, 'path/userhome/%s' % filename)
-                except:
-                    return False
-
-    return True
-
 def create_mpi_files(path):
     """
     Create MPI hosts file if necessary
@@ -193,6 +177,7 @@ def stageout(job_file, path, base_dir):
     json_out_dirs = []
     if 'outputDirs' in job:
         for output in job['outputDirs']:
+            tar_file_created = True
             output_filename = os.path.basename(output['name']) + ".tgz"
             json_out_dir = {'name':output['name']}
             try:
@@ -202,7 +187,8 @@ def stageout(job_file, path, base_dir):
                 logging.error('Got exception on tar creation for directory %s: %s', output['name'], exc)
                 json_out_dir['status'] = 'failedTarCreation'
                 success = False
-            if os.path.isfile(output_filename):
+                tar_file_created = False
+            if tar_file_created and os.path.isfile(output_filename):
                 if upload(output_filename, output['url']):
                     logging.info('Successfully uploaded directory %s to cloud storage', output['name'])
                     json_out_dir['status'] = 'success'
@@ -210,7 +196,7 @@ def stageout(job_file, path, base_dir):
                     logging.error('Unable to upload directory %s to cloud storage', output['name'])
                     json_out_dir['status'] = 'failedUpload'
                     success = False
-                json_out_dirs.append(json_out_dir)
+            json_out_dirs.append(json_out_dir)
 
     return success, {'files': json_out_files, 'directories': json_out_dirs}
 
@@ -614,6 +600,11 @@ def run_udocker(image, cmd, workdir, env, path, base_dir, mpi, mpi_processes, mp
         logging.info('Mount point is %s', mountpoint)
         mounts = '-v %s ' % mountpoint
 
+    # Set source directory for /tmp in container
+    user_tmp_dir = path + '/usertmp'
+    if os.path.isdir('/home/user/tmp'):
+        user_tmp_dir = '/home/user/tmp'
+
     # Artifact mounts
     for artifact in artifacts:
         mounts = mounts + ' -v %s/%s:%s ' % (path, artifact, artifacts[artifact])
@@ -622,9 +613,9 @@ def run_udocker(image, cmd, workdir, env, path, base_dir, mpi, mpi_processes, mp
         # Used on clouds
         run_command = ("/usr/local/bin/udocker -q run %s"
                        " --env=HOME=%s"
-                       " --env=TMP=%s"
-                       " --env=TEMP=%s"
-                       " --env=TMPDIR=%s"
+                       " --env=TMP=/tmp"
+                       " --env=TEMP=/tmp"
+                       " --env=TMPDIR=/tmp"
                        " --env=PROMINENCE_PWD=%s"
                        " --env=UDOCKER_DIR=%s/.udocker"
                        " --env=PROMINENCE_CONTAINER_RUNTIME=udocker"
@@ -633,16 +624,15 @@ def run_udocker(image, cmd, workdir, env, path, base_dir, mpi, mpi_processes, mp
                        " --bindhome"
                        " %s"
                        " --workdir=%s"
-                       " -v /tmp"
-                       " -v /var/tmp"
-                       " %s %s") % (extras, path, path, path, path, workdir, base_dir, mounts, workdir, image, cmd)
+                       " -v %s:/tmp"
+                       " %s %s") % (extras, path, workdir, base_dir, mounts, workdir, user_tmp_dir, image, cmd)
     else:
         # Used on existing HPC systems
         run_command = ("udocker -q run %s"
                        " --env=HOME=%s"
-                       " --env=TMP=%s"
-                       " --env=TEMP=%s"
-                       " --env=TMPDIR=%s"
+                       " --env=TMP=/tmp"
+                       " --env=TEMP=/tmp"
+                       " --env=TMPDIR=/tmp"
                        " --env=PROMINENCE_PWD=%s"
                        " --env=UDOCKER_DIR=%s/.udocker"
                        " --env=PROMINENCE_CONTAINER_RUNTIME=udocker"
@@ -652,9 +642,8 @@ def run_udocker(image, cmd, workdir, env, path, base_dir, mpi, mpi_processes, mp
                        " %s"
                        " -v %s"
                        " --workdir=%s"
-                       " -v /tmp"
-                       " -v /var/tmp"
-                       " %s %s") % (extras, path, path, path, path, workdir, base_dir, getpass.getuser(), mounts, path, workdir, image, cmd)
+                       " -v %s:/tmp"
+                       " %s %s") % (extras, path, workdir, base_dir, getpass.getuser(), mounts, path, workdir, user_tmp_dir, image, cmd)
 
     logging.info('Running: "%s"', run_command)
 
@@ -723,16 +712,22 @@ def run_singularity(image, cmd, workdir, env, path, base_dir, mpi, mpi_processes
     for artifact in artifacts:
         mounts = mounts + ' --bind %s/%s:%s ' % (path, artifact, artifacts[artifact])
 
+    # Set source directory for /tmp in container
+    user_tmp_dir = path + '/usertmp'
+    if os.path.isdir('/home/user/tmp'):
+        user_tmp_dir = '/home/user/tmp'
+
     if base_dir in ('/home/prominence', '/mnt/beeond/prominence'):
         run_command = ("singularity %s"
                        " --no-home"
                        " --bind /home"
                        " --bind /mnt"
                        " --home %s"
+                       " --bind %s:/tmp"
                        " %s"
-                       " --pwd %s %s %s") % (command, path, mounts, workdir, image, cmd)
+                       " --pwd %s %s %s") % (command, path, user_tmp_dir, mounts, workdir, image, cmd)
     else:
-        run_command = 'singularity %s --home %s %s --pwd %s %s %s' % (command, path, mounts, workdir, image, cmd)
+        run_command = 'singularity %s --home %s %s --pwd %s --bind %s:/tmp %s %s' % (command, path, mounts, workdir, user_tmp_dir, image, cmd)
 
     job_cpus = -1
     job_memory = -1
@@ -748,9 +743,9 @@ def run_singularity(image, cmd, workdir, env, path, base_dir, mpi, mpi_processes
     return_code, timed_out = run_with_timeout(run_command,
                                               dict(env,
                                                    PATH='/usr/local/bin:/usr/bin:/usr/local/sbin:/usr/sbin',
-                                                   TMP='%s' % path,
-                                                   TEMP='%s' % path,
-                                                   TMPDIR='%s' % path,
+                                                   TMP='/tmp',
+                                                   TEMP='/tmp',
+                                                   TMPDIR='/tmp',
                                                    PROMINENCE_CONTAINER_LOCATION='%s' % os.path.dirname(image),
                                                    PROMINENCE_CONTAINER_RUNTIME='singularity',
                                                    PROMINENCE_PWD='%s' % workdir,
@@ -777,9 +772,6 @@ def run_tasks(job_file, path, base_dir, is_batch):
     if 'policies' in job:
         if 'maximumRetries' in job['policies']:
             num_retries = job['policies']['maximumRetries']
-
-    # Move input files into userhome directory
-    #move_inputs(job, path)
 
     # Number of nodes
     if 'nodes' in job['resources']:
@@ -1040,6 +1032,18 @@ if __name__ == "__main__":
     except Exception as exc:
         logging.critical('Unable to write lock file, exiting...')
         exit(1)
+
+    # Create the usertmp directory if necessary
+    if not os.path.isdir('/home/user/tmp'):
+        logging.info('Creating usertmp directory')
+        if not os.path.isdir(path + '/usertmp'):
+            try:
+                os.mkdir(path + '/usertmp')
+            except Exception as ex:
+                logging.error('Unable to create usertmp directory due to: %s', ex)
+                exit(1)
+    else:
+        logging.info('Using existing tmp directory')
 
     # Mount user-specified storage if necessary
     mount_storage(args.job)
