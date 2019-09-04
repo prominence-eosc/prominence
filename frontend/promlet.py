@@ -23,6 +23,25 @@ import requests
 CURRENT_SUBPROCS = set()
 FINISH_NOW = False
 
+def check_beeond():
+    """
+    Ensure each host in a multi-node job has BeeGFS mounted
+    """
+    beeond_valid_hosts = 0
+    total_hosts = 0
+    with open('/home/user/.hosts-openmpi', 'r') as hosts:
+        for mpi_host in hosts.readlines():
+            host = mpi_host.split(' ')[0]
+            process = subprocess.Popen('ssh -i /home/user/.ssh/id_rsa -o LogLevel=quiet -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null %s "df -h | grep beeond"' % host, shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+            output = process.communicate()[0]
+            if 'beegfs_ondemand' in output:
+                beeond_valid_hosts += 1
+            total_hosts += 1
+
+    if beeond_valid_hosts != total_hosts:
+         return False
+    return True
+
 def create_mpi_files(path):
     """
     Create MPI hosts file if necessary
@@ -353,9 +372,6 @@ def download_singularity(image, image_new, location, path):
                                    stderr=subprocess.PIPE)
         stdout, stderr = process.communicate()
         return_code = process.returncode
-
-        logging.info('singularity pull stdout: "%s"', stdout)
-        logging.info('singularity pull stderr: "%s"', stderr)
 
         if return_code != 0:
             return 1, False
@@ -795,6 +811,14 @@ def run_tasks(job_file, path, is_batch):
                 source = artifact['mountpoint'].split(':')[0]
                 dest = artifact['mountpoint'].split(':')[1]
                 artifacts[source] = dest
+
+    # Check shared filesystem for multi-node jobs before doing anything
+    if num_nodes > 1:
+        if check_beeond():
+            logging.info('BeeGFS shared filesystem is mounted on all nodes')
+        else:
+            logging.critical('BeeGFS shared filesystem is not mounted on all nodes')
+            exit(1)
 
     count = 0
     tasks_u = []
