@@ -79,6 +79,8 @@ def validate_workflow(workflow):
                 if job['name'] in jobs:
                     return (False, 'all jobs must have unique names: "%s" is used more than once' % job['name'])
                 jobs.append(job['name'])
+                if job['name'] == '':
+                    return (False, 'names of jobs in workflows cannot be empty')
             else:
                 return (False, 'all jobs must have names')
 
