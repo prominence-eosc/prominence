@@ -668,7 +668,7 @@ class ProminenceBackend(object):
                 job_filename = job_sandbox + '/' + job['name'] + '/job.jdl'
 
                 # Create dict containing HTCondor job
-                (status, msg, cjob) = self._create_htcondor_job(username, groups, uid, job, job_sandbox + '/' + job['name'])
+                (status, msg, cjob) = self._create_htcondor_job(username, groups, str(uuid.uuid4()), job, job_sandbox + '/' + job['name'])
                 cjob['+ProminenceWorkflowName'] = condor_str(wf_name)
 
                 # Write JDL
@@ -695,7 +695,7 @@ class ProminenceBackend(object):
             os.chmod(job_sandbox + '/promlet.py', 0o775)
 
             # Create dict containing HTCondor job
-            (status, msg, cjob) = self._create_htcondor_job(username, groups, uid, jjob['jobs'][0], job_sandbox)
+            (status, msg, cjob) = self._create_htcondor_job(username, groups, str(uuid.uuid4()), jjob['jobs'][0], job_sandbox)
             cjob['+ProminenceWorkflowName'] = condor_str(wf_name)
             cjob['+ProminenceFactoryId'] = '$(prominencecount)'
 
