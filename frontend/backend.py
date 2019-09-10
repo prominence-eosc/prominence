@@ -649,7 +649,7 @@ class ProminenceBackend(object):
         # Retries
         if 'policies' in jjob:
             if 'maximumRetries' in jjob['policies']:
-                dag.append('RETRY ALL_NODES %d' % jjob['maximumRetries'])
+                dag.append('RETRY ALL_NODES %d' % jjob['policies']['maximumRetries'])
 
         if 'dependencies' in jjob or 'factory' not in jjob:
             # Handle DAG workflows & bags of jobs
