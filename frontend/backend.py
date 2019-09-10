@@ -1113,6 +1113,7 @@ class ProminenceBackend(object):
                           'ProcId',
                           'DAGManJobId',
                           'JobBatchName',
+                          'RemoveReason',
                           'QDate',
                           'JobStartDate',
                           'Cmd',
@@ -1245,6 +1246,12 @@ class ProminenceBackend(object):
             # Completed workflows with failed jobs should be reported as failed, not completed
             if wfj['status'] == 'completed' and nodes_failed > 0:
                 wfj['status'] = 'failed'
+
+            # Handle workflow deleted by user
+            if 'RemoveReason' in wf:
+                if 'Python-initiated action' in wf['RemoveReason']:
+                    wfj['statusReason'] = 'Workflow deleted by user'
+                    wfj['status'] = 'deleted'
 
             wfj['progress'] = nodes
 
