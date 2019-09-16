@@ -6,6 +6,7 @@ import glob
 import json
 import logging
 import os
+import posixpath
 import re
 import shlex
 import shutil
@@ -20,8 +21,32 @@ from resource import getrusage, RUSAGE_CHILDREN
 from threading import Timer
 import requests
 
+try:
+    from urlparse import urlsplit
+    from urllib import unquote
+except ImportError: # Python 3
+    from urllib.parse import urlsplit, unquote
+
 CURRENT_SUBPROCS = set()
 FINISH_NOW = False
+
+def image_name(image):
+    """
+    Normalise image names
+    """
+    if image.startswith('http'):
+        return url2filename(image)
+    return image
+
+def url2filename(url):
+    """
+    Return basename corresponding to a URL
+    """
+    urlpath = urlsplit(url).path
+    basename = posixpath.basename(unquote(urlpath))
+    if (os.path.basename(basename) != basename or unquote(posixpath.basename(urlpath)) != basename):
+        raise ValueError
+    return basename
 
 def check_beeond():
     """
@@ -39,7 +64,7 @@ def check_beeond():
             total_hosts += 1
 
     if beeond_valid_hosts != total_hosts:
-         return False
+        return False
     return True
 
 def create_mpi_files(path):
@@ -891,7 +916,7 @@ def run_tasks(job_file, path, is_batch):
         image_count = 0
         found_image = False
         for task_check in job['tasks']:
-            if image == task_check['image'] and image_count < count and task['runtime'] == task_check['runtime']:
+            if image_name(image) == image_name(task_check['image']) and image_count < count and task['runtime'] == task_check['runtime']:
                 found_image = True
                 logging.info('Will use cached image from task %d for this task', image_count)
                 break
