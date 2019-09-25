@@ -493,6 +493,8 @@ def download_udocker(image, location, label, path):
             logging.error('Unable to download udocker image due to: %s', e)
             return 1, False
 
+        logging.info('udocker tarball downloaded from URL and written to file %s/image.tar' % location)
+
         # Load image
         process = subprocess.Popen('udocker load -i %s/image.tar' % location,
                                    env=dict(os.environ,
@@ -505,6 +507,8 @@ def download_udocker(image, location, label, path):
 
         if return_code != 0:
             logging.error('Unable to load udocker tarball')
+            logging.error(stdout)
+            logging.error(stderr)
             return 1, False
 
         # Determine image name
