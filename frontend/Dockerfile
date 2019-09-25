@@ -17,7 +17,6 @@ COPY backend.py /usr/local/bin/
 COPY validate.py /usr/local/bin/
 COPY retry.py /usr/local/bin/
 COPY promlet.py /usr/local/libexec/
-COPY promlet-dev.py /usr/local/libexec/
 
 ENTRYPOINT ["uwsgi", \
             "--http-socket", "localhost:8080", \

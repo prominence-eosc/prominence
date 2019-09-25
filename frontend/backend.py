@@ -534,14 +534,13 @@ class ProminenceBackend(object):
 
         # Is job MPI?
         cjob['+ProminenceWantMPI'] = 'false'
+        if jjob['resources']['nodes'] > 1:
+            cjob['+ProminenceWantMPI'] = 'true'
         if 'tasks' in jjob:
-            if 'type' in jjob['tasks'][0]:
-                if jjob['tasks'][0]['type'] == 'openmpi':
-                    cjob['+ProminenceWantMPI'] = 'true'
-                elif jjob['tasks'][0]['type'] == 'mpich':
-                    cjob['+ProminenceWantMPI'] = 'true'
-                elif jjob['tasks'][0]['type'] == 'intelmpi':
-                    cjob['+ProminenceWantMPI'] = 'true'
+            for task in jjob['tasks']:
+                if 'type' in task:
+                    if task['type'] in ('openmpi', 'mpich', 'intelmpi'):
+                        cjob['+ProminenceWantMPI'] = 'true'
 
         # Prepare for submission to a remote HPC system
         tasks = jjob['resources']['nodes']
@@ -896,6 +895,12 @@ class ProminenceBackend(object):
                     jobj['status'] = 'idle'
                 if job['JobStatus'] == 1 and (job['ProminenceInfrastructureState'] == 'deployment-init' or job['ProminenceInfrastructureState'] == 'creating'):
                     jobj['status'] = 'deploying'
+                if job['JobStatus'] == 1 and job['ProminenceInfrastructureState'] == 'unable':
+                    jobj['status'] = 'waiting'
+                    jobj['statusReason'] = 'No matching resources'
+                if job['JobStatus'] == 1 and job['ProminenceInfrastructureState'] == 'failed':
+                    jobj['status'] = 'waiting'
+                    jobj['statusReason'] = 'Deployment failed'
 
             # Handle idle jobs on remote batch systems
             if 'ProminenceInfrastructureType' in job:
