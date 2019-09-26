@@ -1095,7 +1095,7 @@ if __name__ == "__main__":
             job = json.load(json_file)
     except Exception as ex:
         logging.critical('Unable to read job description due to %s', ex)
-        return False
+        exit(1)
 
     # Mount user-specified storage if necessary
     mount_storage(job)
