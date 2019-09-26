@@ -181,17 +181,10 @@ def upload(filename, url):
         return True
     return None
 
-def stageout(job_file, path):
+def stageout(job, path):
     """
     Copy any required output files and/or directories to S3 storage
     """
-    try:
-        with open(job_file, 'r') as json_file:
-            job = json.load(json_file)
-    except Exception as ex:
-        logging.critical('Unable to read job description due to %s', ex)
-        return False, {}
-
     success = True
 
     # Upload any output files
@@ -296,17 +289,10 @@ def get_info():
         return {}
     return job
  
-def mount_storage(job_file):
+def mount_storage(job):
     """
     Mount user-specified storage
     """
-    try:
-        with open(job_file, 'r') as json_file:
-            job = json.load(json_file)
-    except Exception as ex:
-        logging.critical('Unable to read job description due to %s', ex)
-        return False
-
     if 'storage' in job:
         storage_type = job['storage']['type']
         storage_mountpoint = job['storage']['mountpoint']
@@ -799,17 +785,10 @@ def run_singularity(image, cmd, workdir, env, path, mpi, mpi_processes, mpi_proc
 
     return return_code, timed_out
 
-def run_tasks(job_file, path, is_batch):
+def run_tasks(job, path, is_batch):
     """
     Execute sequential tasks
     """
-    try:
-        with open(job_file, 'r') as json_file:
-            job = json.load(json_file)
-    except Exception as ex:
-        logging.critical('Unable to read job description due to %s', ex)
-        return False
-
     num_retries = 0
     if 'policies' in job:
         if 'maximumRetries' in job['policies']:
@@ -1110,19 +1089,27 @@ if __name__ == "__main__":
     else:
         logging.info('Using existing tmp directory')
 
+    # Read job description
+    try:
+        with open(args.job, 'r') as json_file:
+            job = json.load(json_file)
+    except Exception as ex:
+        logging.critical('Unable to read job description due to %s', ex)
+        return False
+
     # Mount user-specified storage if necessary
-    mount_storage(args.job)
+    mount_storage(job)
 
     # Run tasks
     try:
-        (success_tasks, json_tasks) = run_tasks(args.job, path, is_batch)
+        (success_tasks, json_tasks) = run_tasks(job, path, is_batch)
     except OSError as exc:
         logging.critical('Got exception running tasks: %s', exc)
         success_tasks = False
         json_tasks = {}
 
     # Upload output files if necessary
-    (success_stageout, json_stageout) = stageout(args.job, path)
+    (success_stageout, json_stageout) = stageout(job, path)
 
     # Write json job details
     json_output = {}
