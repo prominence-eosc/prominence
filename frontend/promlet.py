@@ -77,7 +77,7 @@ def create_mpi_files(path):
             with open(os.environ['PBS_NODEFILE'], 'r') as pbs_nodefile:
                 pbs_lines = pbs_nodefile.readlines()
         except IOError as exc:
-            logger.critical('Unable to open PBS_NODEFILE due to: %s', exc)
+            logging.critical('Unable to open PBS_NODEFILE due to: %s', exc)
             return False
   
         try:
@@ -85,7 +85,7 @@ def create_mpi_files(path):
                 for line in pbs_lines:
                     mpi_file.write(line)
         except IOError as exc:
-            logger.critical('Unable to write MPI hosts file')
+            logging.critical('Unable to write MPI hosts file')
             return False
 
         return True
@@ -104,7 +104,7 @@ def create_mpi_files(path):
                 for line in stdout.split('/n'):
                     mpi_file.write(line)
         except IOError as exc:
-            logger.critical('Unable to write MPI hosts file')
+            logging.critical('Unable to write MPI hosts file')
             return False
 
         return True
