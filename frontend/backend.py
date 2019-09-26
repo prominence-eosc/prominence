@@ -388,7 +388,7 @@ class ProminenceBackend(object):
                         path = task['image']
                     else:
                        path = '%s/%s' % (username, task['image'])
-                    task['image'] = self.create_presigned_url('get', self._config['S3_BUCKET'], 'uploads/%s' % path, 600)
+                    task['image'] = self.create_presigned_url('get', self._config['S3_BUCKET'], 'uploads/%s' % path, 604800)
                     url_exists = validate.validate_presigned_url(task['image'])
                     if not url_exists:
                         return (1, {"error":"Image %s does not exist" % image}, cjob)
