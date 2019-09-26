@@ -58,9 +58,6 @@ def write_htcondor_job(cjob, filename):
     Write a HTCondor JDL
     """
     keys = ['transfer_input_files',
-            '+ProminenceStorageType',
-            '+ProminenceStorageMountPoint',
-            '+ProminenceStorageCredentials',
             '+ProminenceWantJobRouter',
             '+remote_cerequirements_default',
             '+ProminenceFactoryId',
@@ -83,7 +80,7 @@ def write_htcondor_job(cjob, filename):
     info['wantmpi'] = cjob['+ProminenceWantMPI']
     info['maxidle'] = 0
     info['maxtimeinqueue'] = cjob['+ProminenceMaxTimeInQueue']
-    info['extras']  = extras
+    info['extras'] = extras
     if 'extra_args' in cjob:
         info['extra_args'] = cjob['extra_args']
     else:
@@ -391,7 +388,7 @@ class ProminenceBackend(object):
                         path = task['image']
                     else:
                        path = '%s/%s' % (username, task['image'])
-                    task['image'] = self.create_presigned_url('get', self._config['S3_BUCKET'], 'uploads/%s' % path, 6000)
+                    task['image'] = self.create_presigned_url('get', self._config['S3_BUCKET'], 'uploads/%s' % path, 600)
                     url_exists = validate.validate_presigned_url(task['image'])
                     if not url_exists:
                         return (1, {"error":"Image %s does not exist" % image}, cjob)
@@ -459,16 +456,6 @@ class ProminenceBackend(object):
         # Preemptible
         if 'preemptible' in jjob:
             cjob['+ProminencePreemptible'] = 'true'
-
-        # Handle B2DROP or OneData storage mounts
-        if 'storage' in jjob:
-            if 'type' in jjob['storage']:
-                cjob['+ProminenceStorageType'] = condor_str(jjob['storage']['type'])
-                cjob['+ProminenceStorageMountPoint'] = condor_str(jjob['storage']['mountpoint'])
-                if jjob['storage']['type'] == 'b2drop':
-                    cjob['+ProminenceStorageCredentials'] = condor_str('%s/%s' % (jjob['storage']['b2drop']['app-username'], jjob['storage']['b2drop']['app-password']))
-                elif jjob['storage']['type'] == 'onedata':
-                    cjob['+ProminenceStorageCredentials'] = condor_str('%s/%s' % (jjob['storage']['onedata']['provider'], jjob['storage']['onedata']['token']))
 
         # Job router
         cjob['+ProminenceWantJobRouter'] = str('(ProminenceMaxIdleTime =?= 0 || (ProminenceMaxIdleTime > 0 && JobStatus == 1 && CurrentTime - EnteredCurrentStatus > ProminenceMaxIdleTime)) && Preemptible =!= True')
@@ -829,9 +816,6 @@ class ProminenceBackend(object):
                           'ProminenceExitCode',
                           'ProminencePreemptible',
                           'ProminenceImagePullSuccess',
-                          'ProminenceStorageType',
-                          'ProminenceStorageCredentials',
-                          'ProminenceStorageMountPoint',
                           'Iwd',
                           'Args']
         jobs_state_map = {1:'created',
@@ -931,7 +915,7 @@ class ProminenceBackend(object):
                 tasks_u = job_u['tasks']
             elif job_u:
                 # Handle original promlet.json format
-                tasks_u  = job_u
+                tasks_u = job_u
 
             stageout_u = {}
             if 'stageout' in job_u:
@@ -1039,10 +1023,10 @@ class ProminenceBackend(object):
                 if 'constraints' in job_json_file:
                     jobj['constraints'] = job_json_file['constraints']
 
-                if 'ProminenceStorageType' in job and 'ProminenceStorageCredentials' in job and 'ProminenceStorageMountPoint' in job:
+                if 'storage' in job_json_file:
                     storage = {}
-                    storage['type'] = job['ProminenceStorageType']
-                    storage['mountpoint'] = job['ProminenceStorageMountPoint']
+                    storage['type'] = job_json_file['storage']['type']
+                    storage['mountpoint'] = job_json_file['storage']['mountpoint']
                     storage[storage['type']] = {}
                     if storage['type'] == 'onedata':
                         storage[storage['type']]['provider'] = '***'
