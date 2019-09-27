@@ -818,7 +818,7 @@ class ProminenceBackend(object):
                           'ProminenceImagePullSuccess',
                           'Iwd',
                           'Args']
-        jobs_state_map = {1:'created',
+        jobs_state_map = {1:'idle',
                           2:'running',
                           3:'failed',
                           4:'completed',
@@ -873,17 +873,17 @@ class ProminenceBackend(object):
                     if 'ProminenceFactoryId' in job:
                         jobj['name'] = '%s/%s' % (jobj['name'], job['ProminenceFactoryId'])
 
-            # If job is idle and infrastructure is ready, set status to 'idle'
+            # Set job status as appropriate
             if 'ProminenceInfrastructureState' in job:
                 if job['JobStatus'] == 1 and job['ProminenceInfrastructureState'] == 'configured':
-                    jobj['status'] = 'idle'
+                    jobj['status'] = 'deploying'
                 if job['JobStatus'] == 1 and (job['ProminenceInfrastructureState'] == 'deployment-init' or job['ProminenceInfrastructureState'] == 'creating'):
                     jobj['status'] = 'deploying'
                 if job['JobStatus'] == 1 and job['ProminenceInfrastructureState'] == 'unable':
-                    jobj['status'] = 'waiting'
+                    jobj['status'] = 'idle'
                     jobj['statusReason'] = 'No matching resources'
                 if job['JobStatus'] == 1 and job['ProminenceInfrastructureState'] == 'failed':
-                    jobj['status'] = 'waiting'
+                    jobj['status'] = 'idle'
                     jobj['statusReason'] = 'Deployment failed'
 
             # Handle idle jobs on remote batch systems
@@ -1111,7 +1111,7 @@ class ProminenceBackend(object):
                           'Cmd',
                           'Iwd'
                           ]
-        jobs_state_map = {1:'created',
+        jobs_state_map = {1:'idle',
                           2:'running',
                           3:'failed',
                           4:'completed',
@@ -1225,9 +1225,9 @@ class ProminenceBackend(object):
             nodes = {}
             jobs = {}
 
-            # If no jobs have been created, report status as created
+            # If no jobs have been created, report status as idle
             if nodes_queued == 0 and wfj['status'] != 'completed' and wfj['status'] != 'failed':
-                wfj['status'] = 'created'
+                wfj['status'] = 'idle'
 
             nodes['total'] = nodes_total
             nodes['done'] = nodes_done
