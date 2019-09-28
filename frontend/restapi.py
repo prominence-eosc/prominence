@@ -52,7 +52,7 @@ def get_user_details(token):
         response = requests.get(app.config['OIDC_URL']+'/userinfo', timeout=app.config['OIDC_TIMEOUT'], headers=headers)
     except requests.exceptions.RequestException:
         app.logger.warning('%s AuthenticationFailure no response from identity provider' % get_remote_addr(request))
-        return (False, None, None)
+        return (False, None, None, False)
 
     username = None
     if 'preferred_username' in response.json():
@@ -65,7 +65,24 @@ def get_user_details(token):
         if len(response.json()['groups']) > 0:
             groups = ','.join(str(group) for group in response.json()['groups'])
 
-    return (True, username, groups)
+    allowed = False
+    if app.config['REQUIRED_ENTITLEMENTS'] != '':
+        if 'edu_person_entitlements' in response.json():
+            for entitlements in app.config['REQUIRED_ENTITLEMENTS']:
+                num_required = len(entitlements)
+                num_have = 0
+                for entitlement in entitlements:
+                    if entitlement in response.json()['edu_person_entitlements']:
+                        if 'member@' in entitlement and not groups:
+                            groups = entitlement.split('@')[1]
+                        num_have += 1
+                if num_required == num_have:
+                    allowed = True
+                    break
+    else:
+        allowed = True
+
+    return (True, username, groups, allowed)
 
 def get_remote_addr(req):
     """
@@ -111,14 +128,21 @@ def requires_auth(function):
             return authenticate()
 
         # Query OIDC server
-        (success, username, group) = get_user_details(token)
+        (success, username, group, allowed) = get_user_details(token)
 
         if not success:
             return jsonify({'error':'Unable to connect to OIDC server'}), 401
+
         if not username:
             app.logger.warning('%s AuthenticationFailure username not returned from identity provider' % get_remote_addr(request))
             return authenticate()
+
+        if not allowed:
+            app.logger.warning('%s AuthenticationFailure user does not have required entitlements' % get_remote_addr(request))
+            return authenticate()
+
         app.logger.info('%s AuthenticationSuccess user:%s group:%s duration:%d' % (get_remote_addr(request), username, group, time.time() - start_time))
+
         return function(username, group, *args, **kwargs)
     return decorated
 
