@@ -215,8 +215,8 @@ def create_worker_credentials(itype=False):
 
     # Proxy for HTCondor auth
     expiry_time = int(time.time()) + 7*24*60*60
-    proxy = makeX509Proxy('/etc/prominence/credentials/hostcert.pem',
-                          '/etc/prominence/credentials/hostkey.pem',
+    proxy = makeX509Proxy(CONFIG.get('credentials', 'host-cert'),
+                          CONFIG.get('credentials', 'host-key'),
                           expiry_time,
                           isLegacyProxy=False,
                           cn=None)
