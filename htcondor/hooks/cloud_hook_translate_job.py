@@ -177,6 +177,9 @@ def create_infrastructure(data):
         response = requests.post('%s' % CONFIG.get('imc', 'url'),
                                  auth=HTTPBasicAuth(CONFIG.get('imc', 'username'),
                                                     CONFIG.get('imc', 'password')),
+                                 cert=(CONFIG.get('imc', 'ssl-cert'),
+                                       CONFIG.get('imc', 'ssl-key')),
+                                 verify=CONFIG.get('imc', 'ssl-cert'),
                                  json=data,
                                  timeout=int(CONFIG.get('imc', 'timeout')))
     except requests.exceptions.Timeout:

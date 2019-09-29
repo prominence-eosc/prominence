@@ -28,6 +28,9 @@ def delete_infrastructure(infra_id):
         response = requests.delete('%s/%s' % (CONFIG.get('imc', 'url'), infra_id),
                                    auth=HTTPBasicAuth(CONFIG.get('imc', 'username'),
                                                       CONFIG.get('imc', 'password')),
+                                   cert=(CONFIG.get('imc', 'ssl-cert'),
+                                         CONFIG.get('imc', 'ssl-key')),
+                                   verify=CONFIG.get('imc', 'ssl-cert'),
                                    timeout=int(CONFIG.get('imc', 'timeout')))
     except requests.exceptions.Timeout:
         return 2
