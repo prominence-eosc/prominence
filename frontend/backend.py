@@ -798,7 +798,7 @@ class ProminenceBackend(object):
                           'ProminenceInfrastructureType',
                           'QDate',
                           'GridJobStatus',
-                          'JobStartDate',
+                          'JobCurrentStartDate',
                           'JobRunCount',
                           'JobCurrentStartExecutingDate',
                           'CompletionDate',
@@ -981,14 +981,14 @@ class ProminenceBackend(object):
             events = {}
             events['createTime'] = int(job['QDate'])
 
-            if 'JobStartDate' in job and int(job['JobStartDate']) > 0:
-                events['startTime'] = int(job['JobStartDate'])
+            if 'JobCurrentStartDate' in job and int(job['JobCurrentStartDate']) > 0:
+                events['startTime'] = int(job['JobCurrentStartDate'])
 
-            # For remote jobs on remote HTC/HPC, JobStartDate doesn't exist
-            if 'JobStartDate' not in job and job['JobStatus'] == 2:
+            # For remote jobs on remote HTC/HPC, JobCurrentStartDate doesn't exist
+            if 'JobCurrentStartDate' not in job and job['JobStatus'] == 2:
                 events['startTime'] = int(job['EnteredCurrentStatus'])
 
-            if 'JobStartDate' not in job and (job['JobStatus'] == 3 or job['JobStatus'] == 4):
+            if 'JobCurrentStartDate' not in job and (job['JobStatus'] == 3 or job['JobStatus'] == 4):
                 if int(job['RemoteWallClockTime']) > 0 and int(job['CompletionDate']) > 0:
                     events['startTime'] = int(job['CompletionDate']) - int(job['RemoteWallClockTime'])
 
@@ -997,7 +997,7 @@ class ProminenceBackend(object):
             if 'CompletionDate' in job and (job['JobStatus'] == 3 or job['JobStatus'] == 4):
                 if int(job['CompletionDate']) > 0:
                     events['endTime'] = int(job['CompletionDate'])
-                elif int(job['CompletionDate']) == 0 and int(job['EnteredCurrentStatus']) > 0 and 'JobStartDate' in job:
+                elif int(job['CompletionDate']) == 0 and int(job['EnteredCurrentStatus']) > 0 and 'JobCurrentStartDate' in job:
                     events['endTime'] = int(job['EnteredCurrentStatus'])
 
             # Set end time for a job which was evicted
