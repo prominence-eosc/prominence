@@ -498,6 +498,9 @@ def exec_in_job(username, group, job_id):
     """
     app.logger.info('%s ExecJob user:%s group:%s id:%d' % (get_remote_addr(request), username, group, job_id))
 
+    if app.config['ENABLE_EXEC'] != 'True':
+        return jsonify({'error':'Functionality disabled'}), 401
+
     (uid, identity, _, name) = backend.get_job_unique_id(job_id)
     if identity is None:
         return jsonify({'error':'Job does not exist'}), 400
