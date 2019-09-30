@@ -368,6 +368,7 @@ def translate_classad():
             exit(1)
 
         use_hostname = '%s-%d' % (uid, epoch)
+        use_uid = use_hostname
     
         try:
             radl_contents = radl_template.substitute(cores_per_node=job_json['resources']['cpus'],
@@ -375,7 +376,7 @@ def translate_classad():
                                                      num_nodes=job_json['resources']['nodes'],
                                                      num_worker_nodes=num_worker_nodes,
                                                      num_total_cores=num_total_cores,
-                                                     cluster=uid,
+                                                     cluster=use_uid,
                                                      use_hostname=use_hostname,
                                                      disk_size=job_json['resources']['disk'],
                                                      job_id=cluster_id,
@@ -464,7 +465,7 @@ def translate_classad():
         else:
             classad_new['ProminenceInfrastructureId'] = str('%s' % infra_id)
             classad_new['ProminenceInfrastructureState'] = 'deployment-init'
-            classad_new['ProminenceWantCluster'] = uid
+            classad_new['ProminenceWantCluster'] = use_uid
             classad_new['Requirements'] = classad.ExprTree('MY.ProminenceInfrastructureState =?= "configured"')
             classad_new['ProminenceProcId'] = str('%d' % proc_id)
 
