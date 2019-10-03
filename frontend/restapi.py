@@ -55,10 +55,10 @@ def get_user_details(token):
         return (False, None, None, False)
 
     username = None
-    if 'preferred_username' in response.json():
-        username = str(response.json()['preferred_username'])
-    elif 'sub' in response.json():
+    if 'sub' in response.json():
         username = str(response.json()['sub'])
+    elif 'preferred_username' in response.json():
+        username = str(response.json()['preferred_username'])
 
     groups = None
     if 'groups' in response.json():
