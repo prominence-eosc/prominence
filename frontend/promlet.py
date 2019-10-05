@@ -739,8 +739,14 @@ def run_singularity(image, cmd, workdir, env, path, mpi, mpi_processes, mpi_proc
         cmd = ''
         command = 'run'
 
-    # Artifact mounts
+    # Get storage mountpoint
+    mountpoint = get_storage_mountpoint()
     mounts = ''
+    if mountpoint is not None:
+        logging.info('Mount point is %s', mountpoint)
+        mounts = '--bind %s ' % mountpoint
+
+    # Artifact mounts
     for artifact in artifacts:
         mounts = mounts + ' --bind %s/%s:%s ' % (path, artifact, artifacts[artifact])
 
