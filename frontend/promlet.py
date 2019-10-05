@@ -332,6 +332,8 @@ def download_singularity(image, image_new, location, path):
     """
     Download a Singularity image from a URL or pull an image from Docker Hub
     """
+    logging.info('Pulling Singularity image for task')
+
     if re.match(r'^http', image):
         try:
             response = requests.get(image, allow_redirects=True, stream=True)
@@ -455,6 +457,8 @@ def download_udocker(image, location, label, path):
     """
     Download an image from a URL and create a udocker container named 'image'
     """
+    logging.info('Pulling udocker image for task')
+
     udocker_location = get_udocker(path)
     if not udocker_location:
         logging.error('Unable to install udockertools')
@@ -911,7 +915,6 @@ def run_tasks(job, path, is_batch):
                 image = 'image%d' % image_count
                 image_pull_status = 'cached'
             elif not FINISH_NOW:
-                logging.info('Pulling image for task')
                 metrics_download = monitor(download_udocker, image, location, count, path)
                 if metrics_download.time_wall > 0:
                     total_pull_time += metrics_download.time_wall
@@ -946,7 +949,6 @@ def run_tasks(job, path, is_batch):
                 image_pull_status = 'cached'
             elif not FINISH_NOW:
                 image_new = '%s/image.simg' % location
-                logging.info('Pulling image for task')
                 metrics_download = monitor(download_singularity, image, image_new, location, path)
                 if metrics_download.time_wall > 0:
                     total_pull_time += metrics_download.time_wall
