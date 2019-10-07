@@ -55,7 +55,10 @@ def get_user_details(token):
         return (False, None, None, False)
 
     username = None
-    if 'sub' in response.json():
+    if 'USERNAME_FROM' in app.config:
+        if app.config['USERNAME_FROM'] in response.json():
+            username = str(response.json()[app.config['USERNAME_FROM']])
+    elif 'sub' in response.json():
         username = str(response.json()['sub'])
     elif 'preferred_username' in response.json():
         username = str(response.json()['preferred_username'])
