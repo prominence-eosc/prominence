@@ -285,7 +285,7 @@ def get_stdout_wf(username, group, workflow_id, job):
     if username != identity:
         return jsonify({'error':'Not authorized to access this job'}), 403
 
-    stdout = backend.get_stdout(uid, iwd, -1, job, -1)
+    stdout = backend.get_stdout(uid, iwd, None, None, -1, job, -1)
     if stdout is None:
         return jsonify({'error':'stdout does not exist'}), 400
     else:
@@ -307,7 +307,7 @@ def get_stderr_wf(username, group, workflow_id, job):
     if username != identity:
         return jsonify({'error':'Not authorized to access this job'}), 403
 
-    stderr = backend.get_stderr(uid, iwd, -1, job, -1)
+    stderr = backend.get_stderr(uid, iwd, None, None, -1, job, -1)
     if stderr is None:
         return jsonify({'error':'stderr does not exist'}), 400
     else:
@@ -329,7 +329,7 @@ def get_stdout_wf_jf(username, group, workflow_id, job, instance_id):
     if username != identity:
         return jsonify({'error':'Not authorized to access this job'}), 403
 
-    stdout = backend.get_stdout(uid, iwd, job_id, job, instance_id)
+    stdout = backend.get_stdout(uid, iwd, None, None, job_id, job, instance_id)
     if stdout is None:
         return jsonify({'error':'stdout does not exist'}), 400
     else:
@@ -351,7 +351,7 @@ def get_stderr_wf_jf(username, group, workflow_id, instance_id, job):
     if username != identity:
         return jsonify({'error':'Not authorized to access this job'}), 403
 
-    stderr = backend.get_stderr(uid, iwd, job_id, job, instance_id)
+    stderr = backend.get_stderr(uid, iwd, None, None, job_id, job, instance_id)
     if stderr is None:
         return jsonify({'error':'stderr does not exist'}), 400
     else:
