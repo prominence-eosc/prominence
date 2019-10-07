@@ -1268,6 +1268,9 @@ class ProminenceBackend(object):
         elif os.path.isfile('%s/%s' % (iwd, out)):
             with open('%s/%s' % (iwd, out)) as fd:
                 return fd.read()
+        elif os.path.isfile('%s/%s/job.0.out' % (iwd, job_name)):
+            with open('%s/%s/job.0.out' % (iwd, job_name)) as fd:
+                return fd.read()
         elif os.path.isfile(out):
             with open(out) as fd:
                 return fd.read()
@@ -1281,8 +1284,11 @@ class ProminenceBackend(object):
             if os.path.isfile('%s/%s/job.%d.0.err' % (iwd, uid, job_name, instance_id)):
                 with open('%s/%s/job.%d.0.err' % (iwd, uid, job_name, instance_id)) as fd:
                     return fd.read()
-        elif os.path.isfile('%s/%s' % (iwd, out)):
-            with open('%s/%s' % (iwd, out)) as fd:
+        elif os.path.isfile('%s/%s' % (iwd, err)):
+            with open('%s/%s' % (iwd, err)) as fd:
+                return fd.read()
+        elif os.path.isfile('%s/%s/job.0.err' % (iwd, job_name)):
+            with open('%s/%s/job.0.err' % (iwd, job_name)) as fd:
                 return fd.read()
         elif os.path.isfile(err):
             with open(err) as fd:
