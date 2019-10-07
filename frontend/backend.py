@@ -288,14 +288,18 @@ class ProminenceBackend(object):
         identity = None
         name = None
         iwd = None
+        out = None
+        err = None
         schedd = htcondor.Schedd()
         jobs_condor = schedd.history('RoutedBy =?= undefined && ClusterId =?= %s' % job_id,
-                                     ['ProminenceJobUniqueIdentifier', 'ProminenceIdentity', 'Iwd', 'DAGNodeName'], 1)
+                                     ['ProminenceJobUniqueIdentifier', 'ProminenceIdentity', 'Iwd', 'Out', 'Err', 'DAGNodeName'], 1)
         for job in jobs_condor:
             if 'ProminenceJobUniqueIdentifier' in job and 'ProminenceIdentity' in job:
                 uid = job['ProminenceJobUniqueIdentifier']
                 identity = job['ProminenceIdentity']
                 iwd = job['Iwd']
+                out = job['Out']
+                err = job['Err']
                 # If a job has a DAGNodeName it must be part of a workflow, and to get the stdout/err of a such
                 # a job we need to know the job name
                 if 'DAGNodeName' in job:
@@ -303,17 +307,19 @@ class ProminenceBackend(object):
 
         if uid is None or identity is None:
             jobs_condor = schedd.xquery('RoutedBy =?= undefined && ClusterId =?= %s' % job_id,
-                                        ['ProminenceJobUniqueIdentifier', 'ProminenceIdentity', 'Iwd', 'DAGNodeName'], 1)
+                                        ['ProminenceJobUniqueIdentifier', 'ProminenceIdentity', 'Iwd', 'Out', 'Err', 'DAGNodeName'], 1)
             for job in jobs_condor:
                 if 'ProminenceJobUniqueIdentifier' in job and 'ProminenceIdentity' in job:
                     uid = job['ProminenceJobUniqueIdentifier']
                     identity = job['ProminenceIdentity']
                     iwd = job['Iwd']
+                    out = job['Out']
+                    err = job['Err']
                     # If a job has a DAGNodeName it must be part of a workflow, and to get the stdout/err of a such
                     # a job we need to know the job name
                     if 'DAGNodeName' in job:
                         name = job['DAGNodeName']
-        return (uid, identity, iwd, name)
+        return (uid, identity, iwd, out, err, name)
 
     def _get_routed_job_id(self, job_id):
         """
@@ -1251,7 +1257,7 @@ class ProminenceBackend(object):
 
         return wfs
 
-    def get_stdout(self, uid, iwd, job_id, job_name=None, instance_id=-1):
+    def get_stdout(self, uid, iwd, out, err, job_id, job_name=None, instance_id=-1):
         """
         Return the stdout from the specified job
         """
@@ -1259,15 +1265,15 @@ class ProminenceBackend(object):
             if os.path.isfile('%s/%s/job.%d.0.out' % (iwd, uid, job_name, instance_id)):
                 with open('%s/%s/job.%d.0.out' % (iwd, uid, job_name, instance_id)) as fd:
                     return fd.read()
-        elif os.path.isfile('%s/job.0.out' % iwd):
-            with open('%s/job.0.out' % iwd) as fd:
+        elif os.path.isfile('%s/%s' % (iwd, out)):
+            with open('%s/%s' % (iwd, out)) as fd:
                 return fd.read()
-        elif os.path.isfile('%s/%s/job.0.out' % (iwd, job_name)):
-            with open('%s/%s/job.0.out' % (iwd, job_name)) as fd:
+        elif os.path.isfile(out):
+            with open(out) as fd:
                 return fd.read()
         return None
 
-    def get_stderr(self, uid, iwd, job_id, job_name=None, instance_id=-1):
+    def get_stderr(self, uid, iwd, out, err, job_id, job_name=None, instance_id=-1):
         """
         Return the stdout from the specified job
         """
@@ -1275,11 +1281,11 @@ class ProminenceBackend(object):
             if os.path.isfile('%s/%s/job.%d.0.err' % (iwd, uid, job_name, instance_id)):
                 with open('%s/%s/job.%d.0.err' % (iwd, uid, job_name, instance_id)) as fd:
                     return fd.read()
-        elif os.path.isfile('%s/job.0.err' % iwd):
-            with open('%s/job.0.err' % iwd) as fd:
+        elif os.path.isfile('%s/%s' % (iwd, out)):
+            with open('%s/%s' % (iwd, out)) as fd:
                 return fd.read()
-        elif os.path.isfile('%s/%s/job.0.err' % (iwd, job_name)):
-            with open('%s/%s/job.0.err' % (iwd, job_name)) as fd:
+        elif os.path.isfile(err):
+            with open(err) as fd:
                 return fd.read()
         return None
 
