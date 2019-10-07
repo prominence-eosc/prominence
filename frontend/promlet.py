@@ -836,7 +836,7 @@ def run_tasks(job, path, is_batch):
             logging.info('BeeGFS shared filesystem is mounted on all nodes')
         else:
             logging.critical('BeeGFS shared filesystem is not mounted on all nodes')
-            exit(1)
+            return False
 
     count = 0
     tasks_u = []
