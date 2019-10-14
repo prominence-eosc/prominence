@@ -1,6 +1,7 @@
 #!/usr/bin/python
 from __future__ import print_function
 import logging
+from logging.handlers import RotatingFileHandler
 import sys
 import time
 import ConfigParser
@@ -59,7 +60,7 @@ def update_classad():
     """
     Update job ClassAd with current infrastructure status if necessary
     """
-    lock_file = '/opt/sandbox/.lock-update'
+    lock_file = '/tmp/.lock-update'
 
     infra_id = None
     infra_state = None
@@ -93,13 +94,9 @@ def update_classad():
 
     job_id = '%s.%s' % (cluster_id, proc_id)
 
-    logging.basicConfig(filename=CONFIG.get('logs', 'update'),
-                        level=logging.INFO,
-                        format='%(asctime)s %(levelname)s [%(name)s] %(message)s')
-
     if infra_id is not None and str(infra_type) == 'cloud' and infra_state != 'configured':
         (state, reason, cloud) = get_infrastructure_status_with_retries(infra_id)
-        logging.info('[%s] Infrastructure with id %s is in state %s with reason %s on cloud %s', job_id, infra_id, state, reason, cloud)
+        logger.info('[%s] Infrastructure with id %s is in state %s with reason %s on cloud %s', job_id, infra_id, state, reason, cloud)
 
         if (infra_site is None and cloud is not None) or infra_site != cloud:
             print('ProminenceInfrastructureSite = "%s"' % cloud)
@@ -109,20 +106,20 @@ def update_classad():
             print('ProminenceInfrastructureEnteredCurrentStatus = %d' % int(time.time()))
 
         if state == 'failed':
-            logging.info('[%s] Infrastructure with id %s is in state failed', job_id, infra_id)
+            logger.info('[%s] Infrastructure with id %s is in state failed', job_id, infra_id)
             print('ProminenceInfrastructureState = "failed"')
             print('ProminenceInfrastructureStateReason = "%s"' % reason)
             print('ProminenceInfrastructureEnteredCurrentStatus = %d' % int(time.time()))
 
         if state == 'unable':
-            logging.info('[%s] Infrastructure with id %s is in state "unable"', job_id, infra_id)
+            logger.info('[%s] Infrastructure with id %s is in state "unable"', job_id, infra_id)
             print('ProminenceInfrastructureState = "unable"')
             print('ProminenceInfrastructureStateReason = "%s"' % reason)
             print('ProminenceInfrastructureEnteredCurrentStatus = %d' % int(time.time()))
     elif str(infra_type) == 'batch':
-        logging.info('[%s] Batch job', job_id)
+        logger.info('[%s] Batch job', job_id)
     elif infra_id is not None and str(infra_type) == 'cloud' and infra_state == 'configured':
-        logging.info('[%s] Infrastructure already known to be configured, no longer checking infrastructure state', job_id)
+        logger.info('[%s] Infrastructure already known to be configured, no longer checking infrastructure state', job_id)
 
         if remote_host is not None and job_status == 2:
             run_check = False
@@ -135,11 +132,11 @@ def update_classad():
             if run_check:
                 startd_status = check_startd(remote_host)
                 if not startd_status:
-                    logging.critical('[%s] Consistency check failed: running job has no startd known to the collector', job_id)
+                    logger.critical('[%s] Consistency check failed: running job has no startd known to the collector', job_id)
                 #else:
-                #    logging.info('[%s] Consistency check success: running job has a startd known to the collector', job_id)
+                #    logger.info('[%s] Consistency check success: running job has a startd known to the collector', job_id)
     else:
-        logging.info('[%s] No infrastructure id, creation must have failed', job_id)
+        logger.info('[%s] No infrastructure id, creation must have failed', job_id)
 
     # Write status file
     #filename = '/opt/sandbox/%s/status' % uid
@@ -150,12 +147,22 @@ def update_classad():
     try:
         open(lock_file, 'a').close()
     except Exception as exc:
-        logging.critical('[%s] Unable to write lock file, exiting...', job_id)
+        logger.critical('[%s] Unable to write lock file, exiting...', job_id)
 
 if __name__ == "__main__":
     # Read config file
     CONFIG = ConfigParser.ConfigParser()
     CONFIG.read('/etc/prominence/prominence.ini')
+
+    # Logging
+    handler = RotatingFileHandler(CONFIG.get('logs', 'update'),
+                                  maxBytes=int(CONFIG.get('logs', 'max_bytes')),
+                                  backupCount=int(CONFIG.get('logs', 'num')))
+    formatter = logging.Formatter('%(asctime)s %(levelname)s [%(name)s] %(message)s')
+    handler.setFormatter(formatter)
+    logger = logging.getLogger('cloud_hook_update_job_info')
+    logger.addHandler(handler)
+    logger.setLevel(logging.INFO)
 
     # Update job ClassAd
     update_classad()
