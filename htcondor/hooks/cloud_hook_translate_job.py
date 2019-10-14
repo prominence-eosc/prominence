@@ -413,21 +413,25 @@ def translate_classad():
         # Generate JSON document to provide to IMC
         data = {}
         data['requirements'] = {}
+
         data['requirements']['image'] = {}
         data['requirements']['image']['distribution'] = CONFIG.get('vm', 'image-dist')
         data['requirements']['image']['version'] = CONFIG.get('vm', 'image-version')
         data['requirements']['image']['type'] = CONFIG.get('vm', 'image-type')
         data['requirements']['image']['architecture'] = CONFIG.get('vm', 'image-arch')
+
         data['requirements']['resources'] = {}
         data['requirements']['resources']['cores'] = job_json['resources']['cpus']
         data['requirements']['resources']['memory'] = job_json['resources']['memory']
         data['requirements']['regions'] = CONFIG.get('deployment', 'req-regions').split(',')
-        data['requirements']['sites'] = CONFIG.get('deployment', 'req-sites').split(',')
+        if CONFIG.get('deployment', 'req-sites'):
+            data['requirements']['sites'] = CONFIG.get('deployment', 'req-sites').split(',')
         data['requirements']['groups'] = my_groups
 
         data['preferences'] = {}
         data['preferences']['regions'] = CONFIG.get('deployment', 'pref-regions').split(',')
-        data['preferences']['sites'] = CONFIG.get('deployment', 'pref-sites').split(',')
+        if CONFIG.get('deployment', 'pref-sites'):
+            data['preferences']['sites'] = CONFIG.get('deployment', 'pref-sites').split(',')
 
         # If job contains placement policy, use this instead of the default
         if 'policies' in job_json:
@@ -455,6 +459,7 @@ def translate_classad():
 
         data['radl'] = base64.b64encode(radl_contents)
         data['identifier'] = job_id
+        data['identity'] = identity
 
         # Create infrastructure
         infra_id = create_infrastructure_with_retries(data)
