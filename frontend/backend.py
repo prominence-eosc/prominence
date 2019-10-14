@@ -1262,8 +1262,8 @@ class ProminenceBackend(object):
         Return the stdout from the specified job
         """
         if instance_id > -1:
-            if os.path.isfile('%s/%s/job.%d.0.out' % (iwd, uid, job_name, instance_id)):
-                with open('%s/%s/job.%d.0.out' % (iwd, uid, job_name, instance_id)) as fd:
+            if os.path.isfile('%s/job.%d.out' % (iwd, instance_id)):
+                with open('%s/job.%d.out' % (iwd, instance_id)) as fd:
                     return fd.read()
         elif os.path.isfile('%s/%s' % (iwd, out)):
             with open('%s/%s' % (iwd, out)) as fd:
@@ -1281,8 +1281,8 @@ class ProminenceBackend(object):
         Return the stdout from the specified job
         """
         if instance_id > -1:
-            if os.path.isfile('%s/%s/job.%d.0.err' % (iwd, uid, job_name, instance_id)):
-                with open('%s/%s/job.%d.0.err' % (iwd, uid, job_name, instance_id)) as fd:
+            if os.path.isfile('%s/job.%d.err' % (iwd, instance_id)):
+                with open('%s/job.%d.err' % (iwd, instance_id)) as fd:
                     return fd.read()
         elif os.path.isfile('%s/%s' % (iwd, err)):
             with open('%s/%s' % (iwd, err)) as fd:
