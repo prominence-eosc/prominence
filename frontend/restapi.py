@@ -322,14 +322,12 @@ def get_stdout_wf_jf(username, group, workflow_id, job, instance_id):
     app.logger.info('%s GetWorkflowStdOut user:%s group:%s id:%d' % (get_remote_addr(request), username, group, workflow_id))
 
     (uid, identity, iwd, out, err, _) = backend.get_job_unique_id(workflow_id)
-    if job is None:
-        job = 0
     if identity is None:
         return jsonify({'error':'Job does not exist'}), 400
     if username != identity:
         return jsonify({'error':'Not authorized to access this job'}), 403
 
-    stdout = backend.get_stdout(uid, iwd, None, None, job_id, job, instance_id)
+    stdout = backend.get_stdout(uid, iwd, None, None, workflow_id, None, instance_id)
     if stdout is None:
         return jsonify({'error':'stdout does not exist'}), 400
     else:
@@ -337,21 +335,19 @@ def get_stdout_wf_jf(username, group, workflow_id, job, instance_id):
 
 @app.route("/prominence/v1/workflows/<int:workflow_id>/<string:job>/<int:instance_id>/stderr", methods=['GET'])
 @requires_auth
-def get_stderr_wf_jf(username, group, workflow_id, instance_id, job):
+def get_stderr_wf_jf(username, group, workflow_id, job, instance_id):
     """
     Return the standard error from the specified job from a workflow
     """
     app.logger.info('%s GetWorkflowStdOut user:%s group:%s id:%d' % (get_remote_addr(request), username, group, workflow_id))
 
     (uid, identity, iwd, out, err,  _) = backend.get_job_unique_id(workflow_id)
-    if job is None:
-        job = 0
     if identity is None:
         return jsonify({'error':'Job does not exist'}), 400
     if username != identity:
         return jsonify({'error':'Not authorized to access this job'}), 403
 
-    stderr = backend.get_stderr(uid, iwd, None, None, job_id, job, instance_id)
+    stderr = backend.get_stderr(uid, iwd, None, None, workflow_id, None, instance_id)
     if stderr is None:
         return jsonify({'error':'stderr does not exist'}), 400
     else:
