@@ -8,6 +8,7 @@ from cryptography.hazmat.primitives.asymmetric import rsa
 from cryptography.hazmat.backends import default_backend as crypto_default_backend
 import json
 import logging
+from logging.handlers import RotatingFileHandler
 import M2Crypto
 import re
 from string import Template
@@ -296,7 +297,7 @@ def translate_classad():
     job_id = '%s.%s' % (cluster_id, proc_id)
     uid = "%s-%d" % (uid, proc_id)
 
-    logging.info('[%s] Starting cloud_hook_translate_job', job_id)
+    logger.info('[%s] Starting cloud_hook_translate_job', job_id)
 
     # Open JSON job description
     try:
@@ -304,17 +305,17 @@ def translate_classad():
         with open(filename, 'r') as json_file:
             job_json = json.load(json_file)
     except Exception as err:
-        logging.error('[%s] Unable to open JSON job description due to: %s', job_id, err)
+        logger.error('[%s] Unable to open JSON job description due to: %s', job_id, err)
         sys.exit(1)
 
     if 'batch' in route:
         # Write out updated ClassAd to stdout
         classad_new['InfrastructureSite'] = route
         print(classad_new.printOld())
-        logging.info('[%s] Exiting cloud_hook_translate_job in batch mode for route %s', job_id, route)
+        logger.info('[%s] Exiting cloud_hook_translate_job in batch mode for route %s', job_id, route)
         sys.exit(0)
     elif job_status == 1:
-        logging.info('[%s] Attempting to create cloud infrastructure', job_id)
+        logger.info('[%s] Attempting to create cloud infrastructure', job_id)
 
         # Current time
         epoch = int(time.time())
@@ -355,16 +356,16 @@ def translate_classad():
         add_mounts = ''
         if storage_mountpoint is not None:
             add_mounts = '-v /mnt%s:%s' % (storage_mountpoint, storage_mountpoint)
-        logging.info('[%s] Using mounts="%s"', job_id, add_mounts)
+        logger.info('[%s] Using mounts="%s"', job_id, add_mounts)
 
         try:
             with open(radl_file) as data:
                 radl_template = Template(data.read())
         except IOError as e: 
-            logging.critical('[%s] Exiting due to IO error opening RADL template: %s', job_id, e)
+            logger.critical('[%s] Exiting due to IO error opening RADL template: %s', job_id, e)
             exit(1)
         except Exception as e:
-            logging.critical('[%s] Exiting due to unexpected error opening RADL template: %s', job_id, e)
+            logger.critical('[%s] Exiting due to unexpected error opening RADL template: %s', job_id, e)
             exit(1)
 
         use_hostname = '%s-%d' % (uid, epoch)
@@ -396,19 +397,19 @@ def translate_classad():
                                                      onedata_token=onedata_token,
                                                      storage_mounts=add_mounts)
         except KeyError as e:
-            logging.critical('[%s] Exiting due to KeyError creating RADL template: %s', job_id, e)
+            logger.critical('[%s] Exiting due to KeyError creating RADL template: %s', job_id, e)
             exit(1)
         except ValueError as e:
-            logging.critical('[%s] Exiting due to ValueError creating RADL template: %s', job_id, e)
+            logger.critical('[%s] Exiting due to ValueError creating RADL template: %s', job_id, e)
             exit(1)
 
         try:
             with open('/tmp/job-%s-%d.radl' % (job_id, epoch), 'w') as radl_write:
                 radl_write.write(radl_contents)
         except IOError as e:
-            logging.warning('[%s] Exiting due to IO error writing RADL template: %s', job_id, e)
+            logger.warning('[%s] Exiting due to IO error writing RADL template: %s', job_id, e)
         except Exception as e:
-            logging.warning('[%s] Exiting due to unexpected error writing RADL template: %s', job_id, e)
+            logger.warning('[%s] Exiting due to unexpected error writing RADL template: %s', job_id, e)
 
         # Generate JSON document to provide to IMC
         data = {}
@@ -466,7 +467,7 @@ def translate_classad():
 
         if infra_id is None:
             classad_new['ProminenceInfrastructureState'] = 'failed'
-            logging.info('[%s] Deployment onto cloud failed', job_id)
+            logger.info('[%s] Deployment onto cloud failed', job_id)
         else:
             classad_new['ProminenceInfrastructureId'] = str('%s' % infra_id)
             classad_new['ProminenceInfrastructureState'] = 'deployment-init'
@@ -474,7 +475,7 @@ def translate_classad():
             classad_new['Requirements'] = classad.ExprTree('MY.ProminenceInfrastructureState =?= "configured"')
             classad_new['ProminenceProcId'] = str('%d' % proc_id)
 
-            logging.info('[%s] Initiated infrastructure deployment with id "%s"', job_id, infra_id)
+            logger.info('[%s] Initiated infrastructure deployment with id "%s"', job_id, infra_id)
 
     # Write out updated ClassAd to stdout
     print(classad_new.printOld())
@@ -485,9 +486,9 @@ def translate_classad():
         with open(filename, 'w') as status_file:
             status_file.write('deploying')
     except Exception:
-        logging.critical('[%s] Unable to write status file', job_id)
+        logger.critical('[%s] Unable to write status file', job_id)
 
-    logging.info('[%s] Exiting cloud_hook_translate_job', job_id)
+    logger.info('[%s] Exiting cloud_hook_translate_job', job_id)
 
 if __name__ == "__main__":
     # Read config file
@@ -495,9 +496,14 @@ if __name__ == "__main__":
     CONFIG.read('/etc/prominence/prominence.ini')
 
     # Logging
-    logging.basicConfig(filename=CONFIG.get('logs', 'translate'),
-                        level=logging.INFO,
-                        format='%(asctime)s %(message)s')
+    handler = RotatingFileHandler(CONFIG.get('logs', 'translate'),
+                                  maxBytes=int(CONFIG.get('logs', 'max_bytes')),
+                                  backupCount=int(CONFIG.get('logs', 'num')))
+    formatter = logging.Formatter('%(asctime)s %(levelname)s [%(name)s] %(message)s')
+    handler.setFormatter(formatter)
+    logger = logging.getLogger('cloud_hook_translate_job')
+    logger.addHandler(handler)
+    logger.setLevel(logging.INFO)
 
     # Create infrastructure
     translate_classad()
