@@ -109,6 +109,7 @@ def validate_workflow(workflow):
             if not isinstance(workflow['factory']['parameterSets'], list):
                 return (False, 'parameterSets must be a list')
 
+            names = []
             for parameter_set in workflow['factory']['parameterSets']:
                 if 'name' not in parameter_set:
                     return (False, 'a parameterSet must contain a name')
@@ -118,6 +119,11 @@ def validate_workflow(workflow):
                     return (False, 'a parameterSet must contain an end value')
                 if 'step' not in parameter_set:
                     return (False, 'a parameterSet must contain a step')
+
+                if parameter_set['name'] not in names:
+                    names.append(parameter_set['name'])
+                else:
+                    return (False, 'each parameterSet must have a unique name')
 
     # Polices
     if 'policies' in workflow:
