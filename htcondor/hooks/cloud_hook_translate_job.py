@@ -262,6 +262,7 @@ def translate_classad():
     dag_node_name = None
     identity = None
     iwd = None
+    factory_id = 0
 
     classad_in = sys.stdin.read().split('------')
 
@@ -293,9 +294,11 @@ def translate_classad():
         uid_raw = uid
     if 'ProminenceGroup' in job_ad:
         my_groups = job_ad['ProminenceGroup'].split(',')
+    if 'ProminenceFactoryId' in job_ad:
+        factory_id = int(job_ad['ProminenceFactoryId'])
 
     job_id = '%s.%s' % (cluster_id, proc_id)
-    uid = "%s-%d" % (uid, proc_id)
+    uid = "%s-%d" % (uid, factory_id)
 
     logger.info('[%s] Starting cloud_hook_translate_job', job_id)
 
@@ -354,6 +357,18 @@ def translate_classad():
         onedata_provider = None
         onedata_token = None
         add_mounts = ''
+
+        if 'storage' in job_json:
+           if 'mountpoint' in job_json['storage']:
+               storage_mountpoint = job_json['storage']['mountpoint']
+           if 'type' in job_json['storage']:
+               if job_json['storage']['type'] == 'b2drop':
+                   if 'b2drop' in job_json['storage']:
+                       if 'app-username' in job_json['storage']['b2drop']:
+                           b2drop_app_username = job_json['storage']['b2drop']['app-username']
+                       if 'app-password' in job_json['storage']['b2drop']:
+                           b2drop_app_password = job_json['storage']['b2drop']['app-password']
+
         if storage_mountpoint is not None:
             add_mounts = '-v /mnt%s:%s' % (storage_mountpoint, storage_mountpoint)
         logger.info('[%s] Using mounts="%s"', job_id, add_mounts)
