@@ -207,7 +207,7 @@ def validate_job(job):
         if len(job['name']) > 256:
             return (False, 'job name must be less than 256 characters in length')
 
-        if job['name'] != '' and not re.match(r'^[a-zA-Z0-9\-\_\s]+$', job['name']):
+        if job['name'] != '' and not re.match(r'^[a-zA-Z0-9\-\_\s\.]+$', job['name']):
             return (False, 'invalid job name')
 
     # Labels
