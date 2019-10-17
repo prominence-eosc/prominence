@@ -1,5 +1,6 @@
 #!/usr/bin/python
 import logging
+from logging.handlers import RotatingFileHandler
 import sys
 import time
 import ConfigParser
@@ -75,31 +76,27 @@ def cleanup_infrastructure():
     if 'ProminenceJobUniqueIdentifier' in job_ad:
         uid = job_ad['ProminenceJobUniqueIdentifier']
 
-    logging.basicConfig(filename=CONFIG.get('logs', 'cleanup'),
-                        level=logging.INFO,
-                        format='%(asctime)s %(levelname)s [%(name)s] %(message)s')
-
     job_id = '%s.%s' % (cluster_id, proc_id)
     exit_code = -1
 
-    logging.info('[%s] Started working on infrastructure with id %s of type %s on site %s with state %s', job_id, infra_id, infra_type, infra_site, infra_state)
+    logger.info('[%s] Started working on infrastructure with id %s of type %s on site %s with state %s', job_id, infra_id, infra_type, infra_site, infra_state)
 
     if str(infra_type) == 'batch':
-        logging.info('[%s] Batch infrastructure, so no need to do anything', job_id)
+        logger.info('[%s] Batch infrastructure, so no need to do anything', job_id)
         exit_code = 0
     elif infra_id is not None:
-        logging.info('[%s] Will destroy infrastructure with id %s on site %s which has state %s', job_id, infra_id, infra_site, infra_state)
+        logger.info('[%s] Will destroy infrastructure with id %s on site %s which has state %s', job_id, infra_id, infra_site, infra_state)
 
         # Delete the infrastructure
         exit_code = delete_infrastructure_with_retries(infra_id)
 
         if exit_code == 2:
-            logging.error('[%s] Error destroying infrastructure due to time out', job_id)
+            logger.error('[%s] Error destroying infrastructure due to time out', job_id)
 
         if exit_code != 0:
-            logging.error('[%s] Error destroying infrastructure', job_id)
+            logger.error('[%s] Error destroying infrastructure', job_id)
 
-        logging.info('[%s] Infrastructure successfully destroyed', job_id)
+        logger.info('[%s] Infrastructure successfully destroyed', job_id)
 
     # Handle case if routed job no longer exists, e.g. deleted by user
     if cluster_id is None:
@@ -107,7 +104,7 @@ def cleanup_infrastructure():
 
     # Handle case of job with no infrastructure id, i.e. deletion before any infrastructure was created
     if infra_id is None:
-        logging.info('[%s] No infrastructure id', job_id)
+        logger.info('[%s] No infrastructure id', job_id)
         exit_code = 0
 
     # Write status file
@@ -119,13 +116,23 @@ def cleanup_infrastructure():
     with open('%s/status' % iwd, 'w') as status_file:
         status_file.write(status)
 
-    logging.info('[%s] Exiting with code %d', job_id, exit_code)
+    logger.info('[%s] Exiting with code %d', job_id, exit_code)
     sys.exit(exit_code)
 
 if __name__ == "__main__":
     # Read config file
     CONFIG = ConfigParser.ConfigParser()
     CONFIG.read('/etc/prominence/prominence.ini')
+
+    # Logging
+    handler = RotatingFileHandler(CONFIG.get('logs', 'cleanup'),
+                                  maxBytes=int(CONFIG.get('logs', 'max_bytes')),
+                                  backupCount=int(CONFIG.get('logs', 'num')))
+    formatter = logging.Formatter('%(asctime)s %(levelname)s [%(name)s] %(message)s')
+    handler.setFormatter(formatter)
+    logger = logging.getLogger('cloud_hook_cleanup_job')
+    logger.addHandler(handler)
+    logger.setLevel(logging.INFO)
 
     # Delete infrastructure if necessary
     cleanup_infrastructure()
