@@ -694,29 +694,95 @@ class ProminenceBackend(object):
             cjob['+ProminenceWorkflowName'] = condor_str(wf_name)
             cjob['+ProminenceFactoryId'] = '$(prominencecount)'
 
+            if jjob['factory']['type'] == 'parametricSweep':
+                num_dimensions = len(jjob['factory']['parameterSets'])
+
+                if num_dimensions == 1:
+                    ps_name = jjob['factory']['parameterSets'][0]['name']
+                    ps_start = jjob['factory']['parameterSets'][0]['start']
+                    ps_end = jjob['factory']['parameterSets'][0]['end']
+                    ps_step = jjob['factory']['parameterSets'][0]['step']
+
+                    cjob['extra_args'] = '--param %s=$(prominencevalue0)' % ps_name
+                
+                    value = ps_start 
+                    job_count = 0
+                    while value <= ps_end:
+                        dag.append('JOB job%d job.jdl' % job_count)
+                        dag.append('VARS job%d prominencevalue0="%f" prominencecount="%d"' % (job_count, value, job_count))
+                        value += ps_step
+                        job_count += 1           
+
+                else:
+                    ps_num = []
+                    ps_name = []
+                    ps_start = []
+                    ps_end = []
+                    ps_step = []
+
+                    for i in range(num_dimensions):
+                        ps_name.append(jjob['factory']['parameterSets'][i]['name'])
+                        ps_start.append(jjob['factory']['parameterSets'][i]['start'])
+                        ps_end.append(jjob['factory']['parameterSets'][i]['end'])
+                        ps_step.append(jjob['factory']['parameterSets'][i]['step'])
+
+                        # Determine the number of values for each parameter
+                        value = ps_start[i]
+                        count = 0
+                        while value <= ps_end[i]:
+                            value += ps_step[i]
+                            count += 1
+                        ps_num.append(count)
+
+                    # Generate extra_args
+                    cjob['extra_args'] = ''
+                    for i in range(num_dimensions):
+                        cjob['extra_args'] += '--param %s=$(prominencevalue%d) ' % (ps_name[i], i)
+
+                    # TODO: need to work out how to have n nested for loops, for arbitrary n
+
+                    if num_dimensions == 2:
+                        job_count = 0
+                        for x1 in range(ps_num[0]):
+                            for y1 in range(ps_num[1]):
+                                x1_val = ps_start[0] + x1*ps_step[0]
+                                y1_val = ps_start[1] + y1*ps_step[1]
+                                dag.append('JOB job%d job.jdl' % job_count)
+                                dag.append('VARS job%d prominencevalue0="%f" prominencevalue1="%f" prominencecount="%d"' % (job_count, x1_val, y1_val, job_count))
+                                job_count += 1
+
+                    elif num_dimensions == 3:
+                        job_count = 0
+                        for x1 in range(ps_num[0]):
+                            for y1 in range(ps_num[1]):
+                                for z1 in range(ps_num[2]):
+                                    x1_val = ps_start[0] + x1*ps_step[0]
+                                    y1_val = ps_start[1] + y1*ps_step[1]
+                                    z1_val = ps_start[2] + z1*ps_step[2]
+                                    dag.append('JOB job%d job.jdl' % job_count)
+                                    dag.append('VARS job%d prominencevalue0="%f" prominencevalue1="%f" prominencevalue2="%f" prominencecount="%d"' % (job_count, x1_val, y1_val, z1_val, job_count))
+                                    job_count += 1
+
+                    elif num_dimensions == 4:
+                        job_count = 0
+                        for x1 in range(ps_num[0]):
+                            for y1 in range(ps_num[1]):
+                                for z1 in range(ps_num[2]):
+                                    for t1 in range(ps_num[3]):
+                                        x1_val = ps_start[0] + x1*ps_step[0]
+                                        y1_val = ps_start[1] + y1*ps_step[1]
+                                        z1_val = ps_start[2] + z1*ps_step[2]
+                                        t1_val = ps_start[3] + t1*ps_step[3]
+                                        dag.append('JOB job%d job.jdl' % job_count)
+                                        dag.append('VARS job%d prominencevalue0="%f" prominencevalue1="%f" prominencevalue2="%f" prominencevalue3="%f" prominencecount="%d"' % (job_count, x1_val, y1_val, z1_val, t1_val, job_count))
+                                        job_count += 1
+
+                    elif num_dimensions > 4:
+                        return (1, {"error":"Currently only parameter sweeps up to 4D are supported"})                       
+
             # Write JDL
             if not write_htcondor_job(cjob, '%s/job.jdl' % job_sandbox):
                 return (1, {"error":"Unable to write JDL for job"})
-
-            if jjob['factory']['type'] == 'parametricSweep':
-                ps_name = jjob['factory']['parameterSets'][0]['name']
-                ps_start = jjob['factory']['parameterSets'][0]['start']
-                ps_end = jjob['factory']['parameterSets'][0]['end']
-                ps_step = jjob['factory']['parameterSets'][0]['step']
-
-                cjob['extra_args'] = '--param %s=$(prominencevalue)' % ps_name
-                
-                # 1D parameter sweep
-                value = ps_start 
-                job_count = 0
-                while value <= ps_end:
-                    dag.append('JOB job%d job.jdl' % job_count)
-                    if ps_step == 1:
-                        dag.append('VARS job%d prominencevalue="%d" prominencecount="%d"' % (job_count, value, job_count))
-                    else:
-                        dag.append('VARS job%d prominencevalue="%f" prominencecount="%d"' % (job_count, value, job_count))
-                    value += ps_step
-                    job_count += 1           
 
         # DAGMan status file
         dag.append('NODE_STATUS_FILE workflow.dag.status')
@@ -930,9 +996,10 @@ class ProminenceBackend(object):
             # Job parameters
             parameters = {}
             if 'ProminenceFactoryId' in job:
-                match_obj = re.search(r'--param ([\w]+)=([\w]+)', job['Args'])
-                if match_obj:
-                    parameters[match_obj.group(1)] = match_obj.group(2)
+                matches = re.findall('--param ([\w]+)=([\w]+)', job['Args'])
+                if matches:
+                    for match in matches:
+                        parameters[match[0]] = match[1]
                 jobj['parameters'] = parameters
 
             # Return status as failed if container image pull failed
