@@ -119,6 +119,8 @@ def validate_workflow(workflow):
                     return (False, 'a parameterSet must contain an end value')
                 if 'step' not in parameter_set and 'number' not in parameter_set:
                     return (False, 'a parameterSet must contain a step size or number of steps')
+                if 'step' in parameter_set and 'number' in parameter_set:
+                    return (False, 'a parameterSet cannot have both a step size and number of steps')
 
                 if parameter_set['name'] not in names:
                     names.append(parameter_set['name'])
