@@ -395,6 +395,11 @@ def submit_job_new(username, group):
 
     app.logger.info('%s WorkflowSubmission user:%s group:%s uid:%s' % (get_remote_addr(request), username, group, uid))
 
+    # Validate the input JSON
+    (status, msg) = validate.validate_workflow(request.get_json())
+    if not status:
+        return jsonify({'error': msg}), 400
+
     # Create workflow
     (return_code, data) = backend.create_workflow(username, group, uid, request.get_json())
 
