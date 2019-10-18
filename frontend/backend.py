@@ -699,13 +699,13 @@ class ProminenceBackend(object):
 
                 if num_dimensions == 1:
                     ps_name = jjob['factory']['parameterSets'][0]['name']
-                    ps_start = jjob['factory']['parameterSets'][0]['start']
-                    ps_end = jjob['factory']['parameterSets'][0]['end']
-                    ps_step = jjob['factory']['parameterSets'][0]['step']
+                    ps_start = float(jjob['factory']['parameterSets'][0]['start'])
+                    ps_end = float(jjob['factory']['parameterSets'][0]['end'])
+                    ps_step = float(jjob['factory']['parameterSets'][0]['step'])
 
                     cjob['extra_args'] = '--param %s=$(prominencevalue0)' % ps_name
                 
-                    value = ps_start 
+                    value = ps_start
                     job_count = 0
                     while value <= ps_end:
                         dag.append('JOB job%d job.jdl' % job_count)
@@ -722,9 +722,9 @@ class ProminenceBackend(object):
 
                     for i in range(num_dimensions):
                         ps_name.append(jjob['factory']['parameterSets'][i]['name'])
-                        ps_start.append(jjob['factory']['parameterSets'][i]['start'])
-                        ps_end.append(jjob['factory']['parameterSets'][i]['end'])
-                        ps_step.append(jjob['factory']['parameterSets'][i]['step'])
+                        ps_start.append(float(jjob['factory']['parameterSets'][i]['start']))
+                        ps_end.append(float(jjob['factory']['parameterSets'][i]['end']))
+                        ps_step.append(float(jjob['factory']['parameterSets'][i]['step']))
 
                         # Determine the number of values for each parameter
                         value = ps_start[i]
@@ -996,10 +996,10 @@ class ProminenceBackend(object):
             # Job parameters
             parameters = {}
             if 'ProminenceFactoryId' in job:
-                matches = re.findall('--param ([\w]+)=([\w]+)', job['Args'])
+                matches = re.findall('--param ([\w]+)=([\w\.]+)', job['Args'])
                 if matches:
                     for match in matches:
-                        parameters[match[0]] = match[1]
+                        parameters[match[0]] = float(match[1])
                 jobj['parameters'] = parameters
 
             # Return status as failed if container image pull failed
