@@ -30,6 +30,34 @@ except ImportError: # Python 3
 CURRENT_SUBPROCS = set()
 FINISH_NOW = False
 
+def replace_output_urls(job, outfiles, outdirs):
+    """
+    Replace output file & directory URLs if necessary
+    """
+    logging.info('Checking if we need to update any output file & directories URLs')
+
+    if outfiles and 'outputFiles' in job:
+        for outfile in outfiles:
+            pieces = outfile.split('=', 1)
+            filename = pieces[0]
+            url = pieces[1]
+            for i in range(0, len(job['outputFiles'])):
+                pair = job['outputFiles'][i]
+                if filename == pair['name']:
+                    logging.info('Updating URL for file %s with %s', filename, url)
+                    job['outputFiles'][i]['url'] = url
+
+        if outdirs and 'outputDirs' in job:
+            for outdir in outdirs:
+                pieces = outdir.split('=', 1)
+                filename = pieces[0]
+                url = pieces[1]
+                for i in range(0, len(job['outputDirs'])):
+                    pair = job['outputDirs'][i]
+                    if filename == pair['name']:
+                        logging.info('Updating URL for dir %s with %s', filename, url)
+                        job['outputDirs'][i]['url'] = url
+
 def image_name(image):
     """
     Normalise image names
@@ -171,10 +199,10 @@ def upload(filename, url):
         with open(filename, 'rb') as file_obj:
             response = requests.put(url, data=file_obj, timeout=120)
     except requests.exceptions.RequestException as exc:
-        logging.warning('RequestException when trying to upload file', filename)
+        logging.warning('RequestException when trying to upload file %s', filename)
         return None
     except IOError:
-        logging.warning('IOError when trying to upload file', filename)
+        logging.warning('IOError when trying to upload file %s', filename)
         return None
 
     if response.status_code == 200:
@@ -1063,6 +1091,14 @@ def create_parser():
                         dest='param',
                         action='append',
                         help='Parameters for the job')
+    parser.add_argument('--outfile',
+                        dest='outfile',
+                        action='append',
+                        help='Output file url put addresses')
+    parser.add_argument('--outdir',
+                        dest='outdir',
+                        action='append',
+                        help='Output directory url put addresses')
 
     return parser.parse_args()
 
@@ -1127,6 +1163,9 @@ if __name__ == "__main__":
     except Exception as ex:
         logging.critical('Unable to read job description due to %s', ex)
         exit(1)
+
+    # Replace output file/dir URL addresses if necessary
+    replace_output_urls(job, args.outfile, args.outdir)
 
     # Mount user-specified storage if necessary
     mount_storage(job)
