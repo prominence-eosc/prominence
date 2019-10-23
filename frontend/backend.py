@@ -248,6 +248,12 @@ class ProminenceBackend(object):
 
         return lists
 
+    def get_snapshot_url(self, uid):
+        """
+        Return a pre-signed URL to retrieve a snapshot
+        """
+        return self.create_presigned_url('get', self._config['S3_BUCKET'], 'snapshots/%s/snapshot.tgz' % uid, 3600)
+
     def create_sandbox(self, uid):
         """
         Create job sandbox
@@ -657,6 +663,15 @@ class ProminenceBackend(object):
      
         os.chdir(job_sandbox)
         os.chmod(os.path.join(job_sandbox, 'promlet.py'), 0o775)
+
+        # Create a pre-signed URL for snapshotting
+        snapshot_url = self.create_presigned_url('put', self._config['S3_BUCKET'], 'snapshots/%s/snapshot.tgz' % uid, 604800)
+
+        try:
+            with open(job_sandbox + '/.snapshot', 'w') as fd:
+                fd.write(snapshot_url)
+        except IOError:
+            return (1, {"error":"Unable to write snapshot URL to file for job"})
 
         # Create dict containing HTCondor job
         (status, msg, cjob) = self._create_htcondor_job(username, groups, uid, jjob, job_sandbox)
