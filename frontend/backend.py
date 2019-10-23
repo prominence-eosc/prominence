@@ -50,6 +50,7 @@ RequestMemory = %(reqmemory)s
 +ProminenceType = "job"
 +WantIOProxy = true
 %(extras)s
+%(extras_metadata)s
 queue 1
 """
 
@@ -86,6 +87,14 @@ def write_htcondor_job(cjob, filename):
     else:
         info['extra_args'] = ''
 
+    # Add any labels
+    extras_metadata = ''
+    for item in cjob:
+        if 'ProminenceUserMetadata' in item:
+            extras_metadata += '%s = %s\n' % (item, cjob[item])
+    info['extras_metadata'] = extras_metadata
+
+    # Write to a file
     try:
         with open(filename, 'w') as fd:
             fd.write(JOB_SUBMIT % info)
@@ -189,6 +198,55 @@ class ProminenceBackend(object):
     def __init__(self, config):
         self._config = config
         self._promlet_file = '/usr/local/libexec/promlet.py'
+
+    def output_params(self, workflow):
+        """
+        Generate params
+        """
+        params = ''
+        count = 0
+
+        for job in workflow['jobs']:
+            if 'outputFiles' in job:
+                for filename in job['outputFiles']:
+                    params += ' --outfile %s=$(prominenceout%d) ' % (filename, count)
+                    count += 1
+
+            if 'outputDirs' in job:
+                for filename in job['outputDirs']:
+                    params += ' --outdir %s=$(prominenceout%d) ' % (filename, count)
+                    count += 1
+
+        return params
+
+    def output_urls(self, workflow, uid, label):
+        """
+        Generate output files/dirs
+        """
+        lists = ''
+        count = 0
+
+        for job in workflow['jobs']:
+
+            if 'outputFiles' in job:
+                for filename in job['outputFiles']:
+                    url_put = self.create_presigned_url('put',
+                                                        self._config['S3_BUCKET'],
+                                                        'scratch/%s/%d/%s' % (uid, label, os.path.basename(filename)),
+                                                        604800)
+                    lists = lists + ' prominenceout%d="%s" ' % (count, url_put)
+                    count += 1
+
+            if 'outputDirs' in job:
+                for dirname in job['outputDirs']:
+                    url_put = self.create_presigned_url('put',
+                                                        self._config['S3_BUCKET'],
+                                                        'scratch/%s/%d/%s.tgz' % (uid, label, os.path.basename(dirname)),
+                                                        604800)
+                    lists = lists + ' prominenceout%d="%s" ' % (count, url_put)
+                    count += 1
+
+        return lists
 
     def create_sandbox(self, uid):
         """
@@ -332,7 +390,7 @@ class ProminenceBackend(object):
                 return int(float(job['RoutedToJobId']))
         return None
 
-    def _create_htcondor_job(self, username, groups, uid, jjob, job_path):
+    def _create_htcondor_job(self, username, groups, uid, jjob, job_path, workflow=False):
         """
         Create a dict representing a HTCondor job & write the JSON job description
         (original & mapped) files to disk
@@ -393,7 +451,7 @@ class ProminenceBackend(object):
                     if '/' in task['image']:
                         path = task['image']
                     else:
-                       path = '%s/%s' % (username, task['image'])
+                        path = '%s/%s' % (username, task['image'])
                     task['image'] = self.create_presigned_url('get', self._config['S3_BUCKET'], 'uploads/%s' % path, 604800)
                     url_exists = validate.validate_presigned_url(task['image'])
                     if not url_exists:
@@ -491,10 +549,13 @@ class ProminenceBackend(object):
             output_locations_put = []
 
             for filename in jjob['outputFiles']:
-                url_put = self.create_presigned_url('put',
-                                                    self._config['S3_BUCKET'],
-                                                    'scratch/%s/%s' % (uid, os.path.basename(filename)),
-                                                    604800)
+                if not workflow:
+                    url_put = self.create_presigned_url('put',
+                                                        self._config['S3_BUCKET'],
+                                                        'scratch/%s/%s' % (uid, os.path.basename(filename)),
+                                                        604800)
+                else:
+                    url_put = filename
                 output_locations_put.append(url_put)
                 output_files_new.append({'name':filename, 'url':url_put})
 
@@ -506,10 +567,13 @@ class ProminenceBackend(object):
             output_locations_put = []
 
             for dirname in jjob['outputDirs']:
-                url_put = self.create_presigned_url('put',
-                                                    self._config['S3_BUCKET'],
-                                                    'scratch/%s/%s.tgz' % (uid, os.path.basename(dirname)),
-                                                    604800)
+                if not workflow:
+                    url_put = self.create_presigned_url('put',
+                                                        self._config['S3_BUCKET'],
+                                                        'scratch/%s/%s.tgz' % (uid, os.path.basename(dirname)),
+                                                        604800)
+                else:
+                    url_put = filename
                 output_locations_put.append(url_put)
                 output_dirs_new.append({'name':dirname, 'url':url_put})
 
@@ -690,7 +754,7 @@ class ProminenceBackend(object):
             os.chmod(job_sandbox + '/promlet.py', 0o775)
 
             # Create dict containing HTCondor job
-            (status, msg, cjob) = self._create_htcondor_job(username, groups, str(uuid.uuid4()), jjob['jobs'][0], job_sandbox)
+            (status, msg, cjob) = self._create_htcondor_job(username, groups, str(uuid.uuid4()), jjob['jobs'][0], job_sandbox, True)
             cjob['+ProminenceWorkflowName'] = condor_str(wf_name)
             cjob['+ProminenceFactoryId'] = '$(prominencecount)'
 
@@ -703,13 +767,16 @@ class ProminenceBackend(object):
                     ps_end = float(jjob['factory']['parameterSets'][0]['end'])
                     ps_step = float(jjob['factory']['parameterSets'][0]['step'])
 
-                    cjob['extra_args'] = '--param %s=$(prominencevalue0)' % ps_name
+                    cjob['extra_args'] = '--param %s=$(prominencevalue0) %s' % (ps_name, self.output_params(jjob))
                 
                     value = ps_start
                     job_count = 0
                     while value <= ps_end:
                         dag.append('JOB job%d job.jdl' % job_count)
-                        dag.append('VARS job%d prominencevalue0="%f" prominencecount="%d"' % (job_count, value, job_count))
+                        dag.append('VARS job%d prominencevalue0="%f" prominencecount="%d" %s' % (job_count,
+                                                                                                 value,
+                                                                                                 job_count,
+                                                                                                 self.output_urls(jjob, uid, job_count)))
                         value += ps_step
                         job_count += 1           
 
@@ -735,7 +802,7 @@ class ProminenceBackend(object):
                         ps_num.append(count)
 
                     # Generate extra_args
-                    cjob['extra_args'] = ''
+                    cjob['extra_args'] = self.output_params(jjob) + ' '
                     for i in range(num_dimensions):
                         cjob['extra_args'] += '--param %s=$(prominencevalue%d) ' % (ps_name[i], i)
 
@@ -748,7 +815,7 @@ class ProminenceBackend(object):
                                 x1_val = ps_start[0] + x1*ps_step[0]
                                 y1_val = ps_start[1] + y1*ps_step[1]
                                 dag.append('JOB job%d job.jdl' % job_count)
-                                dag.append('VARS job%d prominencevalue0="%f" prominencevalue1="%f" prominencecount="%d"' % (job_count, x1_val, y1_val, job_count))
+                                dag.append('VARS job%d prominencevalue0="%f" prominencevalue1="%f" prominencecount="%d" %s' % (job_count, x1_val, y1_val, job_count, self.output_urls(jjob, uid, job_count)))
                                 job_count += 1
 
                     elif num_dimensions == 3:
@@ -1128,6 +1195,11 @@ class ProminenceBackend(object):
                 if 'ProminenceJobUniqueIdentifier' in job:
                     uid = str(job['ProminenceJobUniqueIdentifier'])
 
+                fid = uid
+                if 'ProminenceFactoryId' in job:
+                    uid = job['Iwd'].split('/')[len(job['Iwd'].split('/'))-1]
+                    fid = '%s/%s' % (uid, job['ProminenceFactoryId'])
+
                 if 'outputFiles' in job_json_file:
                     outputs = []
                     for output_file in job_json_file['outputFiles']:
@@ -1139,7 +1211,7 @@ class ProminenceBackend(object):
                                 if file['name'] == output_file and file['status'] == 'success':
                                     url = self.create_presigned_url('get',
                                                                     self._config['S3_BUCKET'], 
-                                                                    'scratch/%s/%s' % (uid, filename),
+                                                                    'scratch/%s/%s' % (fid, filename),
                                                                     600)
                         file_map = {'name':output_file, 'url':url}
                         outputs.append(file_map)
@@ -1157,7 +1229,7 @@ class ProminenceBackend(object):
                                 if directory['name'] == output_dir and directory['status'] == 'success':
                                     url = self.create_presigned_url('get',
                                                                     self._config['S3_BUCKET'],
-                                                                    'scratch/%s/%s.tgz' % (uid, dirname_base),
+                                                                    'scratch/%s/%s.tgz' % (fid, dirname_base),
                                                                     600)
                         file_map = {'name':output_dir, 'url':url}
                         outputs.append(file_map)
