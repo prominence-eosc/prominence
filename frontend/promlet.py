@@ -1154,7 +1154,7 @@ if __name__ == "__main__":
         logging.critical('Unable to write promlet.json due to: %s', exc)
 
     # Unmount user-specified storage if necessary
-    umount_storage(job)
+    unmount_storage(job)
 
     # Return appropriate exit code - necessary for retries of DAG nodes
     if not success_tasks or not success_stageout:
