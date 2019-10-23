@@ -592,5 +592,22 @@ def get_stderr(username, group, job_id):
     else:
         return stderr
 
+@app.route("/prominence/v1/jobs/<int:job_id>/snapshot", methods=['GET'])
+@requires_auth
+def get_snapshot(username, group, job_id):
+    """
+    Download the current snapshot
+    """
+    app.logger.info('%s GetSnapshot user:%s group:%s id:%d' % (get_remote_addr(request), username, group, job_id))
+
+    (uid, identity, iwd, out, err,  name) = backend.get_job_unique_id(job_id)
+    if identity is None:
+        return jsonify({'error':'Job does not exist'}), 400
+    if username != identity:
+        return jsonify({'error':'Not authorized to access this job'}), 403
+
+    url = backend.get_snapshot_url(uid)
+    return jsonify({'url': url}), 200
+
 if __name__ == "__main__":
     app.run(host='0.0.0.0', port=8080)
