@@ -600,6 +600,9 @@ def get_snapshot(username, group, job_id):
     """
     app.logger.info('%s GetSnapshot user:%s group:%s id:%d' % (get_remote_addr(request), username, group, job_id))
 
+    if app.config['ENABLE_SNAPSHOTS'] != 'True':
+        return jsonify({'error':'Functionality disabled'}), 401
+
     (uid, identity, iwd, out, err, name) = backend.get_job_unique_id(job_id)
     if identity is None:
         return jsonify({'error':'Job does not exist'}), 400
@@ -616,6 +619,9 @@ def create_snapshot(username, group, job_id):
     Download the current snapshot
     """
     app.logger.info('%s CreateSnapshot user:%s group:%s id:%d' % (get_remote_addr(request), username, group, job_id))
+
+    if app.config['ENABLE_SNAPSHOTS'] != 'True':
+        return jsonify({'error':'Functionality disabled'}), 401
 
     (uid, identity, iwd, out, err, name) = backend.get_job_unique_id(job_id)
     if identity is None:
