@@ -277,7 +277,7 @@ def get_stdout_wf(username, group, workflow_id, job):
     """
     app.logger.info('%s GetWorkflowStdOut user:%s group:%s id:%d' % (get_remote_addr(request), username, group, workflow_id))
 
-    (uid, identity, iwd, out, err, _) = backend.get_job_unique_id(workflow_id)
+    (uid, identity, iwd, out, err, _, _) = backend.get_job_unique_id(workflow_id)
     if job is None:
         job = 0
     if identity is None:
@@ -299,7 +299,7 @@ def get_stderr_wf(username, group, workflow_id, job):
     """
     app.logger.info('%s GetWorkflowStdOut user:%s group:%s id:%d' % (get_remote_addr(request), username, group, workflow_id))
 
-    (uid, identity, iwd, out, err, _) = backend.get_job_unique_id(workflow_id)
+    (uid, identity, iwd, out, err, _, _) = backend.get_job_unique_id(workflow_id)
     if job is None:
         job = 0
     if identity is None:
@@ -321,7 +321,7 @@ def get_stdout_wf_jf(username, group, workflow_id, job, instance_id):
     """
     app.logger.info('%s GetWorkflowStdOut user:%s group:%s id:%d' % (get_remote_addr(request), username, group, workflow_id))
 
-    (uid, identity, iwd, out, err, _) = backend.get_job_unique_id(workflow_id)
+    (uid, identity, iwd, out, err, _, _) = backend.get_job_unique_id(workflow_id)
     if identity is None:
         return jsonify({'error':'Job does not exist'}), 400
     if username != identity:
@@ -341,7 +341,7 @@ def get_stderr_wf_jf(username, group, workflow_id, job, instance_id):
     """
     app.logger.info('%s GetWorkflowStdOut user:%s group:%s id:%d' % (get_remote_addr(request), username, group, workflow_id))
 
-    (uid, identity, iwd, out, err,  _) = backend.get_job_unique_id(workflow_id)
+    (uid, identity, iwd, out, err, _, _) = backend.get_job_unique_id(workflow_id)
     if identity is None:
         return jsonify({'error':'Job does not exist'}), 400
     if username != identity:
@@ -505,11 +505,13 @@ def exec_in_job(username, group, job_id):
     if app.config['ENABLE_EXEC'] != 'True':
         return jsonify({'error':'Functionality disabled'}), 401
 
-    (uid, identity, _, _, _, name) = backend.get_job_unique_id(job_id)
+    (uid, identity, _, _, _, name, status) = backend.get_job_unique_id(job_id)
     if identity is None:
         return jsonify({'error':'Job does not exist'}), 400
     if username != identity:
         return jsonify({'error':'Not authorized to access this job'}), 403
+    if status != 2:
+        return jsonify({'error':'Job is not running'}), 400
 
     command = []
     if 'command' in request.args:
@@ -560,7 +562,7 @@ def get_stdout(username, group, job_id):
     """
     app.logger.info('%s GetStdOut user:%s group:%s id:%d' % (get_remote_addr(request), username, group, job_id))
 
-    (uid, identity, iwd, out, err, name) = backend.get_job_unique_id(job_id)
+    (uid, identity, iwd, out, err, name, _) = backend.get_job_unique_id(job_id)
     if identity is None:
         return jsonify({'error':'Job does not exist'}), 400
     if username != identity:
@@ -580,7 +582,7 @@ def get_stderr(username, group, job_id):
     """
     app.logger.info('%s GetStdErr user:%s group:%s id:%d' % (get_remote_addr(request), username, group, job_id))
 
-    (uid, identity, iwd, out, err, name) = backend.get_job_unique_id(job_id)
+    (uid, identity, iwd, out, err, name, _) = backend.get_job_unique_id(job_id)
     if identity is None:
         return jsonify({'error':'Job does not exist'}), 400
     if username != identity:
@@ -603,11 +605,13 @@ def get_snapshot(username, group, job_id):
     if app.config['ENABLE_SNAPSHOTS'] != 'True':
         return jsonify({'error':'Functionality disabled'}), 401
 
-    (uid, identity, iwd, out, err, name) = backend.get_job_unique_id(job_id)
+    (uid, identity, iwd, out, err, name, status) = backend.get_job_unique_id(job_id)
     if identity is None:
         return jsonify({'error':'Job does not exist'}), 400
     if username != identity:
         return jsonify({'error':'Not authorized to access this job'}), 403
+    if status != 2:
+        return jsonify({'error':'Job is not running'}), 400
 
     url = backend.get_snapshot_url(uid)
     return jsonify({'url': url}), 200
@@ -623,11 +627,13 @@ def create_snapshot(username, group, job_id):
     if app.config['ENABLE_SNAPSHOTS'] != 'True':
         return jsonify({'error':'Functionality disabled'}), 401
 
-    (uid, identity, iwd, out, err, name) = backend.get_job_unique_id(job_id)
+    (uid, identity, iwd, out, err, name, status) = backend.get_job_unique_id(job_id)
     if identity is None:
         return jsonify({'error':'Job does not exist'}), 400
     if username != identity:
         return jsonify({'error':'Not authorized to access this job'}), 403
+    if status != 2:
+        return jsonify({'error':'Job is not running'}), 400
 
     if 'path' in request.args:
         path = request.args.get('path')

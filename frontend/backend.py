@@ -354,9 +354,10 @@ class ProminenceBackend(object):
         iwd = None
         out = None
         err = None
+        status = -1
         schedd = htcondor.Schedd()
         jobs_condor = schedd.history('RoutedBy =?= undefined && ClusterId =?= %s' % job_id,
-                                     ['ProminenceJobUniqueIdentifier', 'ProminenceIdentity', 'Iwd', 'Out', 'Err', 'DAGNodeName'], 1)
+                                     ['ProminenceJobUniqueIdentifier', 'ProminenceIdentity', 'Iwd', 'Out', 'Err', 'DAGNodeName', 'JobStatus'], 1)
         for job in jobs_condor:
             if 'ProminenceJobUniqueIdentifier' in job and 'ProminenceIdentity' in job:
                 uid = job['ProminenceJobUniqueIdentifier']
@@ -364,6 +365,7 @@ class ProminenceBackend(object):
                 iwd = job['Iwd']
                 out = job['Out']
                 err = job['Err']
+                status = job['JobStatus']
                 # If a job has a DAGNodeName it must be part of a workflow, and to get the stdout/err of a such
                 # a job we need to know the job name
                 if 'DAGNodeName' in job:
@@ -371,7 +373,7 @@ class ProminenceBackend(object):
 
         if uid is None or identity is None:
             jobs_condor = schedd.xquery('RoutedBy =?= undefined && ClusterId =?= %s' % job_id,
-                                        ['ProminenceJobUniqueIdentifier', 'ProminenceIdentity', 'Iwd', 'Out', 'Err', 'DAGNodeName'], 1)
+                                        ['ProminenceJobUniqueIdentifier', 'ProminenceIdentity', 'Iwd', 'Out', 'Err', 'DAGNodeName', 'JobStatus'], 1)
             for job in jobs_condor:
                 if 'ProminenceJobUniqueIdentifier' in job and 'ProminenceIdentity' in job:
                     uid = job['ProminenceJobUniqueIdentifier']
@@ -379,11 +381,12 @@ class ProminenceBackend(object):
                     iwd = job['Iwd']
                     out = job['Out']
                     err = job['Err']
+                    status = job['JobStatus']
                     # If a job has a DAGNodeName it must be part of a workflow, and to get the stdout/err of a such
                     # a job we need to know the job name
                     if 'DAGNodeName' in job:
                         name = job['DAGNodeName']
-        return (uid, identity, iwd, out, err, name)
+        return (uid, identity, iwd, out, err, name, status)
 
     def _get_routed_job_id(self, job_id):
         """
