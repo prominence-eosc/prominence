@@ -1485,3 +1485,28 @@ class ProminenceBackend(object):
 
         return 0
 
+    def validate_snapshot_path(self, iwd, path):
+        """
+        Validate the path used for a snapshot
+        """
+        try:
+            with open(iwd + '/.job.json') as json_file:
+                job = json.load(json_file)
+        except:
+            return None
+
+        found = None
+        if 'artifacts' in job:
+            for artifact in job['artifacts']:
+                if 'mountpoint' in artifact:
+                    mountpoint = artifact['mountpoint'].split(':')[1]
+                    directory = artifact['mountpoint'].split(':')[0]
+                    if path == mountpoint:
+                        found = directory
+
+        if not found and path.startswith('/'):
+            return None
+        elif path.startswith('/'):
+            return found
+
+        return path

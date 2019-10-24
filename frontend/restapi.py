@@ -631,6 +631,12 @@ def create_snapshot(username, group, job_id):
 
     if 'path' in request.args:
         path = request.args.get('path')
+    else:
+        return jsonify({'error':'A path to snapshot must be specified'}), 400
+
+    path = backend.validate_snapshot_path(iwd, path)
+    if not path:
+         return jsonify({'error':'Invalid path'}), 400
 
     backend.create_snapshot(uid, job_id, path)
     return jsonify({}), 200
