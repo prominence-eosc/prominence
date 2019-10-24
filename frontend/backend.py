@@ -252,7 +252,7 @@ class ProminenceBackend(object):
         """
         Return a pre-signed URL to retrieve a snapshot
         """
-        return self.create_presigned_url('get', self._config['S3_BUCKET'], 'snapshots/%s/snapshot.tgz' % uid, 3600)
+        return str(self.create_presigned_url('get', self._config['S3_BUCKET'], 'snapshots/%s/snapshot.tgz' % uid, 3600))
 
     def create_sandbox(self, uid):
         """
@@ -663,15 +663,6 @@ class ProminenceBackend(object):
      
         os.chdir(job_sandbox)
         os.chmod(os.path.join(job_sandbox, 'promlet.py'), 0o775)
-
-        # Create a pre-signed URL for snapshotting
-        snapshot_url = self.create_presigned_url('put', self._config['S3_BUCKET'], 'snapshots/%s/snapshot.tgz' % uid, 604800)
-
-        try:
-            with open(job_sandbox + '/.snapshot', 'w') as fd:
-                fd.write(snapshot_url)
-        except IOError:
-            return (1, {"error":"Unable to write snapshot URL to file for job"})
 
         # Create dict containing HTCondor job
         (status, msg, cjob) = self._create_htcondor_job(username, groups, uid, jjob, job_sandbox)
@@ -1470,3 +1461,27 @@ class ProminenceBackend(object):
         if process.returncode == 0:
             return output
         return None
+
+    def create_snapshot(self, uid, job_id, path):
+        """
+        Create a snapshot of the specified path
+        """
+        # Firstly create the PUT URL
+        snapshot_url = self.create_presigned_url('put', self._config['S3_BUCKET'], 'snapshots/%s/snapshot.tgz' % uid, 1000)
+
+        job_id_routed = self._get_routed_job_id(job_id)
+        if not job_id_routed:
+            return None
+    
+        # Create a tarball & upload to S3
+        cmd = 'condor_ssh_to_job %d "tar czf snapshot.tgz %s && curl --upload-file snapshot.tgz \\\"%s\\\""' % (job_id_routed, path, snapshot_url.encode('utf-8'))
+        print('cmd=', cmd)
+        process = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+        timeout = {"value": False}
+        timer = threading.Timer(int(self._config['EXEC_TIMEOUT']), kill_proc, [process, timeout])
+        timer.start()
+        output = process.communicate()[0]
+        timer.cancel()
+
+        return 0
+
