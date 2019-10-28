@@ -1478,7 +1478,6 @@ class ProminenceBackend(object):
     
         # Create a tarball & upload to S3
         cmd = 'condor_ssh_to_job %d "tar czf snapshot.tgz %s && curl --upload-file snapshot.tgz \\\"%s\\\""' % (job_id_routed, path, snapshot_url.encode('utf-8'))
-        print('cmd=', cmd)
         process = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
         timeout = {"value": False}
         timer = threading.Timer(int(self._config['EXEC_TIMEOUT']), kill_proc, [process, timeout])
