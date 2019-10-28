@@ -10,7 +10,7 @@ RUN yum -y install epel-release && \
                 requests \
                 boto3 \
                 PyJWT && \
-    useradd -u 1010 prominence
+    useradd prominence
                    
 COPY restapi.py /usr/local/bin/
 COPY backend.py /usr/local/bin/
