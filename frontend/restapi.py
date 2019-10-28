@@ -505,7 +505,7 @@ def exec_in_job(username, group, job_id):
     if app.config['ENABLE_EXEC'] != 'True':
         return jsonify({'error':'Functionality disabled'}), 401
 
-    (uid, identity, _, _, _, name, status) = backend.get_job_unique_id(job_id)
+    (uid, identity, iwd, _, _, name, status) = backend.get_job_unique_id(job_id)
     if identity is None:
         return jsonify({'error':'Job does not exist'}), 400
     if username != identity:
@@ -517,7 +517,7 @@ def exec_in_job(username, group, job_id):
     if 'command' in request.args:
         command = str(request.args.get('command')).split(',')
 
-    output = backend.execute_command(job_id, command)
+    output = backend.execute_command(job_id, iwd, command)
     if output is not None:
         return output, 200
  

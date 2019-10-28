@@ -1443,7 +1443,7 @@ class ProminenceBackend(object):
                 return fd.read()
         return None
 
-    def execute_command(self, job_id, command):
+    def execute_command(self, job_id, iwd, command):
         """
         Execute a command inside a job
         """
@@ -1452,7 +1452,7 @@ class ProminenceBackend(object):
             return None
 
         args = ['condor_ssh_to_job', '%d' % job_id_routed]
-        args.extend(command)
+        args.extend(self.modify_exec_command(iwd, command))
         
         process = subprocess.Popen(args, shell=False, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
         timeout = {"value": False}
@@ -1512,3 +1512,22 @@ class ProminenceBackend(object):
             return found
 
         return path
+
+    def modify_exec_command(self, iwd, command):
+        """
+        Replace any artifact mounts with actual path
+        """
+        try:
+            with open(iwd + '/.job.json') as json_file:
+                job = json.load(json_file)
+        except:
+            return None
+
+        if 'artifacts' in job:
+            for artifact in job['artifacts']:
+                if 'mountpoint' in artifact:
+                    mountpoint = artifact['mountpoint'].split(':')[1]
+                    directory = artifact['mountpoint'].split(':')[0]
+                    command = [item.replace(mountpoint, directory) for item in command]
+
+        return command
