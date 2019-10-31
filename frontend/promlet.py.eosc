@@ -86,6 +86,34 @@ fi
 exit $?
 """
 
+def replace_output_urls(job, outfiles, outdirs):
+    """
+    Replace output file & directory URLs if necessary
+    """
+    logging.info('Checking if we need to update any output file & directories URLs')
+
+    if outfiles and 'outputFiles' in job:
+        for outfile in outfiles:
+            pieces = outfile.split('=', 1)
+            filename = pieces[0]
+            url = pieces[1]
+            for i in range(0, len(job['outputFiles'])):
+                pair = job['outputFiles'][i]
+                if filename == pair['name']:
+                    logging.info('Updating URL for file %s with %s', filename, url)
+                    job['outputFiles'][i]['url'] = url
+
+        if outdirs and 'outputDirs' in job:
+            for outdir in outdirs:
+                pieces = outdir.split('=', 1)
+                filename = pieces[0]
+                url = pieces[1]
+                for i in range(0, len(job['outputDirs'])):
+                    pair = job['outputDirs'][i]
+                    if filename == pair['name']:
+                        logging.info('Updating URL for dir %s with %s', filename, url)
+                        job['outputDirs'][i]['url'] = url
+
 def create_dirs(path):
     """
     Create the empty user home and tmp directories
@@ -1154,6 +1182,14 @@ def create_parser():
                         dest='param',
                         action='append',
                         help='Parameters for the job')
+    parser.add_argument('--outfile',
+                        dest='outfile',
+                        action='append',
+                        help='Output file url put addresses')
+    parser.add_argument('--outdir',
+                        dest='outdir',
+                        action='append',
+                        help='Output directory url put addresses')
 
     return parser.parse_args()
 
@@ -1209,6 +1245,9 @@ if __name__ == "__main__":
 
     # Mount user-specified storage if necessary
     mount_storage(job)
+
+    # Replace output file/dir URL addresses if necessary
+    replace_output_urls(job, args.outfile, args.outdir)
 
     # Create the user home & tmp directories
     create_dirs(path)
