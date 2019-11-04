@@ -78,9 +78,9 @@ else
 fi
 
 if [[ -z "${SINGULARITY_CONTAINER}" ]]; then
-    ssh -i /home/user/.id_rsa -o LogLevel=quiet -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null $_PARAM $_HOST env UDOCKER_DIR=$UDOCKER_DIR \$\(which udocker\) -q run --hostauth --hostenv -v $PROMINENCE_PATH:/home/user --workdir=$PROMINENCE_PWD --user=user -v /home/user/tmp:/tmp $container_names $_COMMAND
+    ssh -i /home/user/.id_rsa -o LogLevel=quiet -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null $_PARAM $_HOST env UDOCKER_DIR=$UDOCKER_DIR \$\(which udocker\) -q run --hostauth --hostenv -v /etc/ssh -v $PROMINENCE_PATH:/home/user --workdir=$PROMINENCE_PWD --user=user -v /home/user/tmp:/tmp $container_names $_COMMAND
 else
-    ssh -i /home/user/.id_rsa -o LogLevel=quiet -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null $_PARAM $_HOST \$\(which singularity\) exec -B /etc/ssh -B /home/user/tmp:/tmp -B $PROMINENCE_PATH:/home/user --pwd $PROMINENCE_PWD --no-home --home /home/user -c $PROMINENCE_CONTAINER_LOCATION/$SINGULARITY_CONTAINER $_COMMAND
+    ssh -i /home/user/.id_rsa -o LogLevel=quiet -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null $_PARAM $_HOST \$\(which singularity\) exec -B /etc/ssh -B /home/user/tmp:/tmp --home $PROMINENCE_PATH:/home/user --pwd $PROMINENCE_PWD $PROMINENCE_CONTAINER_LOCATION/$SINGULARITY_CONTAINER $_COMMAND
 fi
 
 exit $?
@@ -147,11 +147,12 @@ def move_inputs(job, path):
         for input_file in job['inputs']:
             if 'filename' in input_file:
                 filename = os.path.basename(input_file['filename'])
-                logging.info('Moving file %s into userhome directory', filename)
+                logging.info('Moving input file %s into userhome directory', filename)
                 try:
                     shutil.move('%s/%s' % (path, filename),
                                 '%s/userhome/%s' % (path, filename))
                 except:
+                    logging.critical('Unable to move input file %s', filename)
                     return False
 
     return True
@@ -221,7 +222,7 @@ def mpi_setup(runtime, cmd, env, path, mpi, mpi_processes, mpi_procs_per_node):
     elif mpi == 'intelmpi':
         if mpi_procs_per_node > 0:
             mpi_per_node = '-perhost %d' % mpi_procs_per_node
-        env_list = [container_env_name, 'PROMINENCE_PWD', 'HOME', 'TMP', 'TEMP', 'PROMINENCE_PATH']
+        env_list = [container_env_name, 'PROMINENCE_PWD', 'HOME', 'TMP', 'TEMP', 'TMPDIR', 'PROMINENCE_PATH']
         env_list.extend(env.keys())
         mpi_env = ",".join('%s' % item for item in env_list)
         cmd = ("mpirun -machine /home/user/.hosts-mpich"
@@ -649,7 +650,7 @@ def install_udocker(location):
     Install  udocker if necessary
     """
     if not os.path.exists('%s/.udocker/bin/proot-x86_64' % location):
-        logging.info('Installing udockertools')
+        logging.info('Installing udockertools in %s', location)
 
         attempt = 0
         installed = False
@@ -680,7 +681,7 @@ def install_udocker(location):
             attempt += 1
 
     else:
-        logging.info('Found existing udocker installation')
+        logging.info('Found existing udocker installation in %s', location)
         installed = True
 
     if not installed:
@@ -846,13 +847,16 @@ def run_udocker(image, cmd, workdir, env, path, mpi, mpi_processes, mpi_procs_pe
                    " %s"
                    " --workdir=%s"
                    " -v %s:/tmp"
-                   " %s %s") % (extras, workdir, path, path, getpass.getuser(), path, mounts, workdir, user_tmp_dir, image, cmd)
+                   " %s %s") % (extras, workdir, path, udocker_location, getpass.getuser(), path, mounts, workdir, user_tmp_dir, image, cmd)
 
     # Run container
     logging.info('Running: "%s"', run_command)
     return_code, timed_out = run_with_timeout(run_command,
                                               dict(os.environ,
-                                                   UDOCKER_DIR='%s/.udocker' % udocker_location),
+                                                   PATH='/usr/local/bin:/usr/bin:/usr/local/sbin:/usr/sbin',
+                                                   UDOCKER_DIR='%s/.udocker' % udocker_location,
+                                                   PROMINENCE_PATH='%s/userhome' % path,
+                                                   PROMINENCE_PWD='%s' % workdir),
                                               walltime_limit)
 
     logging.info('Task had exit code %d', return_code)
@@ -889,11 +893,8 @@ def run_singularity(image, cmd, workdir, env, path, mpi, mpi_processes, mpi_proc
 
     # Prepare Singularity command
     run_command = ("singularity %s"
-                   " --no-home"
-                   " -c"
-                   " --bind %s/userhome:/home/user"
+                   " --home %s/userhome:/home/user"
                    " --bind %s:/tmp"
-                   " --home /home/user"
                    " %s"
                    " --pwd %s"
                    " %s %s") % (command, path, user_tmp_dir, mounts, workdir, image, cmd)
@@ -917,6 +918,7 @@ def run_singularity(image, cmd, workdir, env, path, mpi, mpi_processes, mpi_proc
                                                    TEMP='/tmp',
                                                    TMPDIR='/tmp',
                                                    PROMINENCE_CONTAINER_LOCATION='%s' % os.path.dirname(image),
+                                                   PROMINENCE_PATH='%s/userhome' % path,
                                                    PROMINENCE_CONTAINER_RUNTIME='singularity',
                                                    PROMINENCE_PWD='%s' % workdir,
                                                    PROMINENCE_CPUS='%d' % job_cpus,
