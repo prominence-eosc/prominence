@@ -180,11 +180,18 @@ def mpi_setup(runtime, cmd, env, path, mpi, mpi_processes, mpi_procs_per_node):
     if mpi:
         if not is_batch:
             logging.info('Writing new MPI files...')
+
+            src_dir = None
+            if os.path.isfile('/home/user/.hosts-openmpi'):
+                src_dir = '/home/user'
+            elif os.path.isfile('/mnt/beeond/.hosts-openmpi'):
+                src_dir = '/mnt/beeond'
+
             mpi_hosts = '/home/user'
             try:
-                shutil.copyfile('/home/user/.hosts-openmpi',
+                shutil.copyfile('%s/.hosts-openmpi' % src_dir,
                                 '%s/userhome/.hosts-openmpi' % path)
-                shutil.copyfile('/home/user/.hosts-mpich',
+                shutil.copyfile('%s/.hosts-mpich' % src_dir,
                                 '%s/userhome/.hosts-mpich' % path)
                 shutil.copyfile('/home/user/.ssh/id_rsa',
                                 '%s/userhome/.id_rsa' % path)
