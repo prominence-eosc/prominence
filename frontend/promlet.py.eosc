@@ -157,6 +157,18 @@ def move_inputs(job, path):
 
     return True
 
+def find_mpi_hosts():
+    """
+    Return the path to the MPI hosts files
+    """
+    src_dir = None
+    if os.path.isfile('/home/user/.hosts-openmpi'):
+        src_dir = '/home/user'
+    elif os.path.isfile('/mnt/beeond/.hosts-openmpi'):
+        src_dir = '/mnt/beeond'
+   
+    return src_dir
+
 def mpi_setup(runtime, cmd, env, path, mpi, mpi_processes, mpi_procs_per_node):
     """
     Setup for MPI jobs and create MPI command
@@ -181,11 +193,7 @@ def mpi_setup(runtime, cmd, env, path, mpi, mpi_processes, mpi_procs_per_node):
         if not is_batch:
             logging.info('Writing new MPI files...')
 
-            src_dir = None
-            if os.path.isfile('/home/user/.hosts-openmpi'):
-                src_dir = '/home/user'
-            elif os.path.isfile('/mnt/beeond/.hosts-openmpi'):
-                src_dir = '/mnt/beeond'
+            src_dir = find_mpi_hosts()
 
             mpi_hosts = '/home/user'
             try:
@@ -273,7 +281,10 @@ def check_beeond():
     """
     beeond_valid_hosts = 0
     total_hosts = 0
-    with open('/home/user/.hosts-openmpi', 'r') as hosts:
+
+    src_dir = find_mpi_hosts()
+
+    with open('%s/.hosts-openmpi' % src_dir, 'r') as hosts:
         for mpi_host in hosts.readlines():
             host = mpi_host.split(' ')[0]
             process = subprocess.Popen('ssh -i /home/user/.ssh/id_rsa -o LogLevel=quiet -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null %s "df -h | grep beeond"' % host, shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
