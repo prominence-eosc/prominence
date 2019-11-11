@@ -77,10 +77,16 @@ else
     _COMMAND='/bin/bash -c "'$_COMMAND'"'
 fi
 
+# Some versions of Singularity have full path in SINGULARITY_CONTAINER, but other's don't (!)
+PROMINENCE_IMAGE=$PROMINENCE_CONTAINER_LOCATION/$SINGULARITY_CONTAINER
+if [[ $SINGULARITY_CONTAINER == *$PROMINENCE_CONTAINER_LOCATION* ]]; then
+    PROMINENCE_IMAGE=$SINGULARITY_CONTAINER
+fi
+
 if [[ -z "${SINGULARITY_CONTAINER}" ]]; then
     ssh -i /home/user/.id_rsa -o LogLevel=quiet -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null $_PARAM $_HOST env UDOCKER_DIR=$UDOCKER_DIR \$\(which udocker\) -q run --hostauth --hostenv -v /etc/ssh -v $PROMINENCE_PATH:/home/user --workdir=$PROMINENCE_PWD --user=user -v /home/user/tmp:/tmp $container_names $_COMMAND
 else
-    ssh -i /home/user/.id_rsa -o LogLevel=quiet -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null $_PARAM $_HOST \$\(which singularity\) exec -B /etc/ssh -B /home/user/tmp:/tmp --home $PROMINENCE_PATH:/home/user --pwd $PROMINENCE_PWD $PROMINENCE_CONTAINER_LOCATION/$SINGULARITY_CONTAINER $_COMMAND
+    ssh -i /home/user/.id_rsa -o LogLevel=quiet -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null $_PARAM $_HOST \$\(which singularity\) exec -B /etc/ssh -B /home/user/tmp:/tmp --home $PROMINENCE_PATH:/home/user --pwd $PROMINENCE_PWD $PROMINENCE_IMAGE $_COMMAND
 fi
 
 exit $?
