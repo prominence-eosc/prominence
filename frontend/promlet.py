@@ -429,15 +429,15 @@ def download_singularity(image, image_new, location, path):
                                    cwd=os.path.dirname(image_new),
                                    shell=True,
                                    env=dict(os.environ,
-                                            PATH='/usr/local/bin:/usr/bin:/usr/local/sbin:/usr/sbin',
-                                            SINGULARITY_LOCALCACHEDIR='%s/.singularity' % path,
-                                            SINGULARITY_TMPDIR='%s/.tmp' % path),
+                                            PATH='/usr/local/bin:/usr/bin:/usr/local/sbin:/usr/sbin'),
                                    stdout=subprocess.PIPE,
                                    stderr=subprocess.PIPE)
         stdout, stderr = process.communicate()
         return_code = process.returncode
 
         if return_code != 0:
+            logging.error(stdout)
+            logging.error(stderr)
             return 1, False
 
     if os.path.exists(image_new):
