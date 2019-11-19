@@ -405,20 +405,6 @@ def download_singularity(image, image_new, location, path):
 
         logging.info('Singularity image downloaded from URL and written to file %s', image_new)
     else:
-        # We set SINGULARITY_LOCALCACHEDIR & SINGULARITY_TMPDIR in order to avoid Singularity errors
-        if not os.path.isdir(path + '/.singularity'):
-            try:
-                os.mkdir(path + '/.singularity')
-            except Exception as ex:
-                logging.error('Unable to create .singularity directory due to: %s', ex)
-                return 1, False
-        if not os.path.isdir(path + '/.tmp'):
-            try:
-                os.mkdir(path + '/.tmp')
-            except Exception as ex:
-                logging.error('Unable to create .tmp directory due to: %s', ex)
-                return 1, False
-
         # Handle both Singularity Hub & Docker Hub, with Docker Hub the default
         if re.match(r'^shub:', image):
             cmd = 'singularity pull --name "image.simg" %s' % image
