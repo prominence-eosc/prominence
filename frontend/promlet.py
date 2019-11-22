@@ -868,7 +868,7 @@ def run_tasks(job, path, is_batch):
                 artifacts[source] = dest
 
     # Check shared filesystem for multi-node jobs before doing anything
-    if num_nodes > 1:
+    if num_nodes > 1 and not is_batch:
         if check_beeond():
             logging.info('BeeGFS shared filesystem is mounted on all nodes')
         else:
