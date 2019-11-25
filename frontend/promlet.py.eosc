@@ -853,11 +853,12 @@ def run_udocker(image, cmd, workdir, env, path, mpi, mpi_processes, mpi_procs_pe
                    " --env=PROMINENCE_CONTAINER_RUNTIME=udocker"
                    " --hostauth"
                    " --user=%s"
+                   " --env=USER=%s"
                    " -v %s/userhome:/home/user"
                    " %s"
                    " --workdir=%s"
                    " -v %s:/tmp"
-                   " %s %s") % (extras, workdir, path, udocker_location, getpass.getuser(), path, mounts, workdir, user_tmp_dir, image, cmd)
+                   " %s %s") % (extras, workdir, path, udocker_location, getpass.getuser(), getpass.getuser(), path, mounts, workdir, user_tmp_dir, image, cmd)
 
     # Run container
     logging.info('Running: "%s"', run_command)
@@ -923,6 +924,7 @@ def run_singularity(image, cmd, workdir, env, path, mpi, mpi_processes, mpi_proc
     logging.info('Running: "%s"', run_command)
     return_code, timed_out = run_with_timeout(run_command,
                                               dict(env,
+                                                   USER='%s' % getpass.getuser(),
                                                    PATH='/usr/local/bin:/usr/bin:/usr/local/sbin:/usr/sbin',
                                                    TMP='/tmp',
                                                    TEMP='/tmp',
