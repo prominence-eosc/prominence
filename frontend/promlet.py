@@ -682,6 +682,7 @@ def run_udocker(image, cmd, workdir, env, path, mpi, mpi_processes, mpi_procs_pe
         # Used on clouds
         run_command = ("/usr/local/bin/udocker -q run %s"
                        " --env=HOME=%s"
+                       " --env=USER=user"
                        " --env=TMP=/tmp"
                        " --env=TEMP=/tmp"
                        " --env=TMPDIR=/tmp"
@@ -707,12 +708,13 @@ def run_udocker(image, cmd, workdir, env, path, mpi, mpi_processes, mpi_procs_pe
                        " --env=PROMINENCE_CONTAINER_RUNTIME=udocker"
                        " --hostauth"
                        " --user=%s"
+                       " --env=USER=%s"
                        " --bindhome"
                        " %s"
                        " -v %s"
                        " --workdir=%s"
                        " -v %s:/tmp"
-                       " %s %s") % (extras, path, workdir, path, getpass.getuser(), mounts, path, workdir, user_tmp_dir, image, cmd)
+                       " %s %s") % (extras, path, workdir, path, getpass.getuser(), getpass.getuser(), mounts, path, workdir, user_tmp_dir, image, cmd)
 
     logging.info('Running: "%s"', run_command)
 
@@ -821,6 +823,7 @@ def run_singularity(image, cmd, workdir, env, path, mpi, mpi_processes, mpi_proc
                                                    TMP='/tmp',
                                                    TEMP='/tmp',
                                                    TMPDIR='/tmp',
+                                                   USER='%s' % getpass.getuser(),
                                                    PROMINENCE_CONTAINER_LOCATION='%s' % os.path.dirname(image),
                                                    PROMINENCE_CONTAINER_RUNTIME='singularity',
                                                    PROMINENCE_PWD='%s' % workdir,
