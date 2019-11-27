@@ -876,7 +876,7 @@ def run_tasks(job, path, is_batch):
             logging.info('BeeGFS shared filesystem is mounted on all nodes')
         else:
             logging.critical('BeeGFS shared filesystem is not mounted on all nodes')
-            return False
+            return False, {}
 
     count = 0
     tasks_u = []
@@ -918,7 +918,7 @@ def run_tasks(job, path, is_batch):
             os.makedirs(location)
         except Exception as err:
             logging.error('Unable to create directory %s', location)
-            return False
+            return False, {}
 
         mpi = None
         if 'type' in task:
