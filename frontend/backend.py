@@ -670,7 +670,7 @@ class ProminenceBackend(object):
 
         # Check if we have an error
         if status != 0:
-            return (0, msg)
+            return (1, msg)
 
         # Submit the job to HTCondor
         data = {}
