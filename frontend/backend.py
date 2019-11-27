@@ -648,6 +648,14 @@ class ProminenceBackend(object):
         except IOError as err:
             return (1, {"error":"Unable to write .job.mapped.json due to %s" % err}, cjob)
 
+        # Write empty files for stdout & stderr - for jobs submitted to a batch system, these will
+        # not be initially created by HTCondor by default
+        try:
+            open('%s/job.0.out' % job_path, 'a').close()
+            open('%s/job.0.err' % job_path, 'a').close()
+        except IOError:
+            pass
+
         return (0, {}, cjob)
 
     def create_job(self, username, groups, uid, jjob):
