@@ -203,6 +203,7 @@ def validate_job(job):
     policies_valids = ['maximumRetries',
                        'preemptible',
                        'maximumTimeInQueue',
+                       'maximumIdleTimePerResource',
                        'placement']
  
     # Check for valid items in job
@@ -415,6 +416,16 @@ def validate_job(job):
 
             if job['policies']['maximumTimeInQueue'] > 44640:
                 return (False, 'the maximum time in queue must be less than 44640')
+
+        if 'maximumIdleTimePerResource' in job['policies']:
+            if not str(job['policies']['maximumIdleTimePerResource']).isdigit():
+                return (False, 'the maximum idle time per resource must be an integer')
+
+            if job['policies']['maximumIdleTimePerResource'] < 1:
+                return (False, 'the maximum idle time per resource must be greater than 0')
+
+            if job['policies']['maximumIdleTimePerResource'] > 44640:
+                return (False, 'the maximum idle time per resource must be less than 44640')
 
     return (True, '')
 
