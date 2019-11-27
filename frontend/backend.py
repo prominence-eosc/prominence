@@ -614,14 +614,11 @@ class ProminenceBackend(object):
         memoryPerCpu = jjob['resources']['memory']*1000
         cjob['+remote_cerequirements_default'] = condor_str("RequiredTasks == %d && RequiredMemoryPerCpu == %d && RequiredCpusPerTask == %d && RequiredTime == %d" % (tasks, memoryPerCpu, cpusPerTask, max_run_time))
 
-        # Set max idle time for local resources
+        # Set max idle time per resource
         max_idle_time = 0
-        if 'constraints' in jjob:
-            if 'maxidletime' in jjob['constraints']:
-                max_idle_time = int(jjob['constraints']['maxidletime'])
-                cjob['+HookKeyword'] = condor_str('CONTAINER')
-            if 'site' in jjob['constraints']:
-                cjob['+ProminenceWantCloud'] = condor_str(jjob['constraints']['site'])
+        if 'policies' in jjob:
+            if 'maximumIdleTimePerResource' in jjob['policies']:
+                max_idle_time = int(jjob['policies']['maximumIdleTimePerResource'])
         cjob['+ProminenceMaxIdleTime'] = str("%d" % max_idle_time)
 
         # Maximum time in queue
