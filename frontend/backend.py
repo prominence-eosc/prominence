@@ -472,6 +472,7 @@ class ProminenceBackend(object):
         jjob_mapped['tasks'] = tasks_mapped
 
         # Include the mapped JSON job description as an input file
+        input_files.append(os.path.join(job_path, '.job.json'))
         input_files.append(os.path.join(job_path, '.job.mapped.json'))
 
         # Standard defaults
