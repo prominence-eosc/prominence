@@ -1023,7 +1023,8 @@ def run_tasks(job, path, is_batch):
                 key = pair.split('=')[0]
                 value = pair.split('=')[1]
                 env['PROMINENCE_PARAMETER_%s' % key] = value
-                cmd = Template(cmd).safe_substitute({key:value})
+                if cmd:
+                    cmd = Template(cmd).safe_substitute({key:value})
 
         location = '%s/images/%d' % (path, count)
         try:
