@@ -974,7 +974,7 @@ class ProminenceBackend(object):
                           'Args']
         jobs_state_map = {1:'idle',
                           2:'running',
-                          3:'failed',
+                          3:'deleted',
                           4:'completed',
                           5:'failed'}
 
@@ -1117,6 +1117,9 @@ class ProminenceBackend(object):
                         jobj['status'] = 'deleted'
                     if 'Infrastructure took too long to be deployed' in job['RemoveReason']:
                         reason = 'Infrastructure took too long to be deployed'
+                    if 'OtherJobRemoveRequirements = DAGManJobId' in job['RemoveReason'] and 'was removed' in job['RemoveReason']:
+                        reason = 'Job part of a workflow which was deleted by user'
+
                 if 'LastHoldReasonSubCode' in job:
                     if job['LastHoldReasonSubCode'] == 1001:
                         reason = 'Runtime limit exceeded'
