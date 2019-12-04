@@ -479,7 +479,13 @@ def jobs(username, group):
         completed = True
         active = True
 
-    data = backend.list_jobs(job_ids, username, active, completed, num, detail, constraint)
+    workflow = False
+    if 'workflow' in request.args:
+        if request.args.get('workflow') == 'true':
+            workflow = True
+            num = -1
+
+    data = backend.list_jobs(job_ids, username, active, completed, workflow, num, detail, constraint)
 
     return jsonify(data)
 
@@ -491,7 +497,7 @@ def get_job(username, group, job_id):
     """
     app.logger.info('%s DescribeJob user:%s group:%s id:%d' % (get_remote_addr(request), username, group, job_id))
 
-    data = backend.list_jobs([job_id], username, True, True, 1, 1, (None, None))
+    data = backend.list_jobs([job_id], username, True, True, False, 1, 1, (None, None))
     return jsonify(data)
 
 @app.route("/prominence/v1/jobs/<int:job_id>/exec", methods=['POST'])
