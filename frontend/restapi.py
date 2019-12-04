@@ -472,18 +472,19 @@ def jobs(username, group):
     if 'detail' in request.args:
         detail = 1
 
-    job_ids = []
-    if 'id' in request.args:
-        job_ids = request.args.get('id').split(',')
-        # Assume both active jobs and completed jobs
-        completed = True
-        active = True
-
     workflow = False
     if 'workflow' in request.args:
         if request.args.get('workflow') == 'true':
             workflow = True
             num = -1
+
+    job_ids = []
+    if 'id' in request.args:
+        job_ids = request.args.get('id').split(',')
+        # Assume both active jobs and completed jobs
+        if not workflow:
+            completed = True
+            active = True
 
     data = backend.list_jobs(job_ids, username, active, completed, workflow, num, detail, constraint)
 
