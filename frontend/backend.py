@@ -871,7 +871,12 @@ class ProminenceBackend(object):
                     parameters = []
                     count = 0
                     for parameter in jjob['factory']['parameters']:
-                        parameters.append('prominencevalue%d="%f"' % (count, parameter['values'][index]))
+                        if isinstance(parameter['values'][index], int):
+                            parameters.append('prominencevalue%d="%d"' % (count, parameter['values'][index]))
+                        elif isinstance(parameter['values'][index], float):
+                            parameters.append('prominencevalue%d="%f"' % (count, parameter['values'][index]))
+                        elif isinstance(parameter['values'][index], basestring):
+                            parameters.append('prominencevalue%d="%s"' % (count, parameter['values'][index]))
                         count += 1
                     dag.append('JOB job%d job.jdl' % index)
                     dag.append('VARS job%d %s prominencecount="%d"' % (index, ' '.join(parameters), index))
@@ -1098,7 +1103,7 @@ class ProminenceBackend(object):
                 matches = re.findall('--param ([\w]+)=([\w\.]+)', job['Args'])
                 if matches:
                     for match in matches:
-                        parameters[match[0]] = float(match[1])
+                        parameters[match[0]] = match[1]
                 jobj['parameters'] = parameters
 
             # Return status as failed if container image pull failed
