@@ -860,7 +860,7 @@ class ProminenceBackend(object):
                                         job_count += 1
 
                     elif num_dimensions > 4:
-                        return (1, {"error":"Currently only parameter sweeps up to 4D are supported"})                       
+                        return (1, {"error": "Currently only parameter sweeps up to 4D are supported"})                       
 
             elif jjob['factory']['type'] == 'zip':
 
