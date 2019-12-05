@@ -219,6 +219,17 @@ class ProminenceBackend(object):
 
         return params
 
+    def write_parameter_value(self, value):
+        """
+        Write a parameter value, taking into account its type
+        """
+        if isinstance(value, int):
+            return '%d' % value
+        elif isinstance(value, float):
+            return '%f' % value
+        elif isinstance(value, basestring):
+            return '%s' % value
+
     def output_urls(self, workflow, uid, label):
         """
         Generate output files/dirs
@@ -788,8 +799,8 @@ class ProminenceBackend(object):
                     job_count = 0
                     while value <= ps_end:
                         dag.append('JOB job%d job.jdl' % job_count)
-                        dag.append('VARS job%d prominencevalue0="%f" prominencecount="%d" %s' % (job_count,
-                                                                                                 value,
+                        dag.append('VARS job%d prominencevalue0="%s" prominencecount="%d" %s' % (job_count,
+                                                                                                 self.write_parameter_value(value),
                                                                                                  job_count,
                                                                                                  self.output_urls(jjob, uid, job_count)))
                         value += ps_step
@@ -830,7 +841,7 @@ class ProminenceBackend(object):
                                 x1_val = ps_start[0] + x1*ps_step[0]
                                 y1_val = ps_start[1] + y1*ps_step[1]
                                 dag.append('JOB job%d job.jdl' % job_count)
-                                dag.append('VARS job%d prominencevalue0="%f" prominencevalue1="%f" prominencecount="%d" %s' % (job_count, x1_val, y1_val, job_count, self.output_urls(jjob, uid, job_count)))
+                                dag.append('VARS job%d prominencevalue0="%s" prominencevalue1="%s" prominencecount="%d" %s' % (job_count, self.write_parameter_value(x1_val), self.write_parameter_value(y1_val), job_count, self.output_urls(jjob, uid, job_count)))
                                 job_count += 1
 
                     elif num_dimensions == 3:
@@ -842,7 +853,7 @@ class ProminenceBackend(object):
                                     y1_val = ps_start[1] + y1*ps_step[1]
                                     z1_val = ps_start[2] + z1*ps_step[2]
                                     dag.append('JOB job%d job.jdl' % job_count)
-                                    dag.append('VARS job%d prominencevalue0="%f" prominencevalue1="%f" prominencevalue2="%f" prominencecount="%d"' % (job_count, x1_val, y1_val, z1_val, job_count))
+                                    dag.append('VARS job%d prominencevalue0="%s" prominencevalue1="%s" prominencevalue2="%s" prominencecount="%d"' % (job_count, self.write_parameter_value(x1_val), self.write_parameter_value(y1_val), self.write_parameter_value(z1_val), job_count))
                                     job_count += 1
 
                     elif num_dimensions == 4:
@@ -856,7 +867,7 @@ class ProminenceBackend(object):
                                         z1_val = ps_start[2] + z1*ps_step[2]
                                         t1_val = ps_start[3] + t1*ps_step[3]
                                         dag.append('JOB job%d job.jdl' % job_count)
-                                        dag.append('VARS job%d prominencevalue0="%f" prominencevalue1="%f" prominencevalue2="%f" prominencevalue3="%f" prominencecount="%d"' % (job_count, x1_val, y1_val, z1_val, t1_val, job_count))
+                                        dag.append('VARS job%d prominencevalue0="%s" prominencevalue1="%s" prominencevalue2="%s" prominencevalue3="%s" prominencecount="%d"' % (job_count, self.write_parameter_value(x1_val), self.write_parameter_value(y1_val), self.write_parameter_value(z1_val), self.write_parameter_value(t1_val), job_count))
                                         job_count += 1
 
                     elif num_dimensions > 4:
@@ -871,12 +882,7 @@ class ProminenceBackend(object):
                     parameters = []
                     count = 0
                     for parameter in jjob['factory']['parameters']:
-                        if isinstance(parameter['values'][index], int):
-                            parameters.append('prominencevalue%d="%d"' % (count, parameter['values'][index]))
-                        elif isinstance(parameter['values'][index], float):
-                            parameters.append('prominencevalue%d="%f"' % (count, parameter['values'][index]))
-                        elif isinstance(parameter['values'][index], basestring):
-                            parameters.append('prominencevalue%d="%s"' % (count, parameter['values'][index]))
+                        parameters.append('prominencevalue%d="%s"' % (count, self.write_parameter_value(parameter['values'][index])))
                         count += 1
                     dag.append('JOB job%d job.jdl' % index)
                     dag.append('VARS job%d %s prominencecount="%d"' % (index, ' '.join(parameters), index))
