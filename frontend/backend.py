@@ -774,13 +774,13 @@ class ProminenceBackend(object):
             cjob['+ProminenceFactoryId'] = '$(prominencecount)'
 
             if jjob['factory']['type'] == 'parametricSweep':
-                num_dimensions = len(jjob['factory']['parameterSets'])
+                num_dimensions = len(jjob['factory']['parameters'])
 
                 if num_dimensions == 1:
-                    ps_name = jjob['factory']['parameterSets'][0]['name']
-                    ps_start = float(jjob['factory']['parameterSets'][0]['start'])
-                    ps_end = float(jjob['factory']['parameterSets'][0]['end'])
-                    ps_step = float(jjob['factory']['parameterSets'][0]['step'])
+                    ps_name = jjob['factory']['parameters'][0]['name']
+                    ps_start = float(jjob['factory']['parameters'][0]['start'])
+                    ps_end = float(jjob['factory']['parameters'][0]['end'])
+                    ps_step = float(jjob['factory']['parameters'][0]['step'])
 
                     cjob['extra_args'] = '--param %s=$(prominencevalue0) %s' % (ps_name, self.output_params(jjob))
                 
@@ -803,10 +803,10 @@ class ProminenceBackend(object):
                     ps_step = []
 
                     for i in range(num_dimensions):
-                        ps_name.append(jjob['factory']['parameterSets'][i]['name'])
-                        ps_start.append(float(jjob['factory']['parameterSets'][i]['start']))
-                        ps_end.append(float(jjob['factory']['parameterSets'][i]['end']))
-                        ps_step.append(float(jjob['factory']['parameterSets'][i]['step']))
+                        ps_name.append(jjob['factory']['parameters'][i]['name'])
+                        ps_start.append(float(jjob['factory']['parameters'][i]['start']))
+                        ps_end.append(float(jjob['factory']['parameters'][i]['end']))
+                        ps_step.append(float(jjob['factory']['parameters'][i]['step']))
 
                         # Determine the number of values for each parameter
                         value = ps_start[i]
@@ -861,6 +861,20 @@ class ProminenceBackend(object):
 
                     elif num_dimensions > 4:
                         return (1, {"error":"Currently only parameter sweeps up to 4D are supported"})                       
+
+            elif jjob['factory']['type'] == 'zip':
+
+                cjob['extra_args'] = self.output_params(jjob) + ' '
+                for index in range(len(jjob['factory']['parameters'])):
+                    cjob['extra_args'] += '--param %s=$(prominencevalue%d) ' % (jjob['factory']['parameters'][index]['name'], index)
+                for index in range(len(jjob['factory']['parameters'][0]['values'])):
+                    parameters = []
+                    count = 0
+                    for parameter in jjob['factory']['parameters']:
+                        parameters.append('prominencevalue%d="%f"' % (count, parameter['values'][index]))
+                        count += 1
+                    dag.append('JOB job%d job.jdl' % index)
+                    dag.append('VARS job%d %s prominencecount="%d"' % (index, ' '.join(parameters), index))
 
             # Write JDL
             if not write_htcondor_job(cjob, '%s/job.jdl' % job_sandbox):

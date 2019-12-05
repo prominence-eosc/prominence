@@ -94,7 +94,7 @@ def validate_workflow(workflow):
 
     # Factories
     if 'factory' in workflow:
-        valid_factories = ['parametricSweep']
+        valid_factories = ['parametricSweep', 'zip']
 
         if 'type' not in workflow['factory']:
             return (False, 'a factory type must be specified')
@@ -103,29 +103,57 @@ def validate_workflow(workflow):
             return (False, 'invalid factory type')
 
         if workflow['factory']['type'] == 'parametricSweep':
-            if 'parameterSets' not in workflow['factory']:
-                return (False, 'a factory of type parametricSweep must have parameterSets specified')
+            if 'parameters' not in workflow['factory']:
+                return (False, 'a factory of type parametricSweep must have parameters specified')
 
-            if not isinstance(workflow['factory']['parameterSets'], list):
-                return (False, 'parameterSets must be a list')
+            if not isinstance(workflow['factory']['parameters'], list):
+                return (False, 'parameters must be a list')
 
             names = []
-            for parameter_set in workflow['factory']['parameterSets']:
-                if 'name' not in parameter_set:
-                    return (False, 'a parameterSet must contain a name')
-                if 'start' not in parameter_set:
-                    return (False, 'a parameterSet must contain a start value')
-                if 'end' not in parameter_set:
-                    return (False, 'a parameterSet must contain an end value')
-                if 'step' not in parameter_set and 'number' not in parameter_set:
-                    return (False, 'a parameterSet must contain a step size or number of steps')
-                if 'step' in parameter_set and 'number' in parameter_set:
-                    return (False, 'a parameterSet cannot have both a step size and number of steps')
+            for parameter in workflow['factory']['parameters']:
+                if 'name' not in parameter:
+                    return (False, 'a parameter must contain a name')
+                if 'start' not in parameter:
+                    return (False, 'a parameter must contain a start value')
+                if 'end' not in parameter:
+                    return (False, 'a parameter must contain an end value')
+                if 'step' not in parameter and 'number' not in parameter:
+                    return (False, 'a parameter must contain a step size or number of steps')
+                if 'step' in parameter and 'number' in parameter:
+                    return (False, 'a parameter cannot have both a step size and number of steps')
 
-                if parameter_set['name'] not in names:
-                    names.append(parameter_set['name'])
+                if parameter['name'] not in names:
+                    names.append(parameter['name'])
                 else:
-                    return (False, 'each parameterSet must have a unique name')
+                    return (False, 'each parameter must have a unique name')
+
+        elif workflow['factory']['type'] == 'zip':
+            if 'parameters' not in workflow['factory']:
+                return (False, 'a factory of type zip must have parameters specified')
+
+            if not isinstance(workflow['factory']['parameters'], list):
+                return (False, 'parameters must be a list')
+
+            names = []
+            previous_length = -1
+            for parameter in workflow['factory']['parameters']:
+                current_length = len(parameter['values'])
+                if current_length != previous_length and previous_length != -1:
+                    return (False, 'all parameters must lists of values the same length')
+                previous_length = current_length
+
+                if 'name' not in parameter:
+                    return (False, 'a parameter must contain a name')
+                if 'values' not in parameter:
+                    return (False, 'a parameter must contain a list of values')
+
+                if not isinstance(parameter['values'], list):
+                    return (False, 'values must be a list')
+
+                if parameter['name'] not in names:
+                    names.append(parameter['name'])
+                else:
+                    return (False, 'each parameter must have a unique name')
 
     # Polices
     if 'policies' in workflow:
