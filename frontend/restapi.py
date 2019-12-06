@@ -63,6 +63,10 @@ def get_user_details(token):
     elif 'preferred_username' in response.json():
         username = str(response.json()['preferred_username'])
 
+    email = None
+    if 'email' in response.json():
+        email = response.json()['email']
+
     groups = None
     if 'groups' in response.json():
         if len(response.json()['groups']) > 0:
@@ -85,7 +89,7 @@ def get_user_details(token):
     else:
         allowed = True
 
-    return (True, username, groups, allowed)
+    return (True, username, groups, email, allowed)
 
 def get_remote_addr(req):
     """
@@ -131,7 +135,7 @@ def requires_auth(function):
             return authenticate()
 
         # Query OIDC server
-        (success, username, group, allowed) = get_user_details(token)
+        (success, username, group, email, allowed) = get_user_details(token)
 
         if not success:
             return jsonify({'error':'Unable to connect to OIDC server'}), 401
