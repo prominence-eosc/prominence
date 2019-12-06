@@ -208,6 +208,7 @@ def validate_job(job):
                   'tasks',
                   'resources',
                   'policies',
+                  'notifications',
                   'inputs',
                   'artifacts',
                   'outputFiles',
