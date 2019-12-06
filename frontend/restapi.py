@@ -150,13 +150,13 @@ def requires_auth(function):
 
         app.logger.info('%s AuthenticationSuccess user:%s group:%s duration:%d' % (get_remote_addr(request), username, group, time.time() - start_time))
 
-        return function(username, group, *args, **kwargs)
+        return function(username, group, email, *args, **kwargs)
     return decorated
 
 @app.route("/prominence/v1/data", methods=['GET'])
 @app.route("/prominence/v1/data/<path:path>", methods=['GET'])
 @requires_auth
-def list_objects(username, group, path=None):
+def list_objects(username, group, email, path=None):
     """
     List objects in cloud storage
     """
@@ -174,7 +174,7 @@ def list_objects(username, group, path=None):
 
 @app.route("/prominence/v1/data/<path:obj>", methods=['DELETE'])
 @requires_auth
-def delete_object(username, group, obj):
+def delete_object(username, group, email, obj):
     """
     Delete object in cloud storage
     """
@@ -189,7 +189,7 @@ def delete_object(username, group, obj):
 @app.route("/prominence/v1/data", methods=['POST'])
 @app.route("/prominence/v1/data/upload", methods=['POST'])
 @requires_auth
-def upload_file(username, group):
+def upload_file(username, group, email):
     """
     Return Swift URL to allow users to upload data to Swift
     """
@@ -216,7 +216,7 @@ def upload_file(username, group):
 
 @app.route("/prominence/v1/workflows", methods=['GET'])
 @requires_auth
-def workflows(username, group):
+def workflows(username, group, email):
     """
     List workflows
     """
@@ -264,7 +264,7 @@ def workflows(username, group):
 
 @app.route("/prominence/v1/workflows/<int:workflow_id>", methods=['GET'])
 @requires_auth
-def get_workflow(username, group, workflow_id):
+def get_workflow(username, group, email, workflow_id):
     """
     Describe a workflow
     """
@@ -275,7 +275,7 @@ def get_workflow(username, group, workflow_id):
 
 @app.route("/prominence/v1/workflows/<int:workflow_id>/<string:job>/stdout", methods=['GET'])
 @requires_auth
-def get_stdout_wf(username, group, workflow_id, job):
+def get_stdout_wf(username, group, email, workflow_id, job):
     """
     Return the standard output from the specified job from a workflow
     """
@@ -297,7 +297,7 @@ def get_stdout_wf(username, group, workflow_id, job):
 
 @app.route("/prominence/v1/workflows/<int:workflow_id>/<string:job>/stderr", methods=['GET'])
 @requires_auth
-def get_stderr_wf(username, group, workflow_id, job):
+def get_stderr_wf(username, group, email, workflow_id, job):
     """
     Return the standard error from the specified job from a workflow
     """
@@ -319,7 +319,7 @@ def get_stderr_wf(username, group, workflow_id, job):
 
 @app.route("/prominence/v1/workflows/<int:workflow_id>/<string:job>/<int:instance_id>/stdout", methods=['GET'])
 @requires_auth
-def get_stdout_wf_jf(username, group, workflow_id, job, instance_id):
+def get_stdout_wf_jf(username, group, email, workflow_id, job, instance_id):
     """
     Return the standard output from the specified job from a workflow
     """
@@ -339,7 +339,7 @@ def get_stdout_wf_jf(username, group, workflow_id, job, instance_id):
 
 @app.route("/prominence/v1/workflows/<int:workflow_id>/<string:job>/<int:instance_id>/stderr", methods=['GET'])
 @requires_auth
-def get_stderr_wf_jf(username, group, workflow_id, job, instance_id):
+def get_stderr_wf_jf(username, group, email, workflow_id, job, instance_id):
     """
     Return the standard error from the specified job from a workflow
     """
@@ -359,7 +359,7 @@ def get_stderr_wf_jf(username, group, workflow_id, job, instance_id):
 
 @app.route("/prominence/v1/workflows/<int:workflow_id>", methods=['DELETE'])
 @requires_auth
-def delete_workflow(username, group, workflow_id):
+def delete_workflow(username, group, email, workflow_id):
     """
     Delete a workflow
     """
@@ -373,7 +373,7 @@ def delete_workflow(username, group, workflow_id):
 
 @app.route("/prominence/v1/workflows", methods=['DELETE'])
 @requires_auth
-def delete_workflows(username, group):
+def delete_workflows(username, group, email):
     """
     Delete the specified workflow(s)
     """
@@ -390,7 +390,7 @@ def delete_workflows(username, group):
 
 @app.route("/prominence/v1/workflows", methods=['POST'])
 @requires_auth
-def submit_job_new(username, group):
+def submit_job_new(username, group, email):
     """
     Create a new workflow
     """
@@ -405,7 +405,7 @@ def submit_job_new(username, group):
         return jsonify({'error': msg}), 400
 
     # Create workflow
-    (return_code, data) = backend.create_workflow(username, group, uid, request.get_json())
+    (return_code, data) = backend.create_workflow(username, group, email, uid, request.get_json())
 
     retval = 201
     if return_code == 1:
@@ -415,7 +415,7 @@ def submit_job_new(username, group):
 
 @app.route("/prominence/v1/jobs", methods=['POST'])
 @requires_auth
-def submit_job(username, group):
+def submit_job(username, group, email):
     """
     Create a new job
     """
@@ -430,7 +430,7 @@ def submit_job(username, group):
         return jsonify({'error': msg}), 400
 
     # Create job
-    (return_code, data) = backend.create_job(username, group, uid, request.get_json())
+    (return_code, data) = backend.create_job(username, group, email, uid, request.get_json())
 
     retval = 201
     if return_code == 1:
@@ -440,7 +440,7 @@ def submit_job(username, group):
 
 @app.route("/prominence/v1/jobs", methods=['GET'])
 @requires_auth
-def jobs(username, group):
+def jobs(username, group, email):
     """
     List jobs
     """
@@ -496,7 +496,7 @@ def jobs(username, group):
 
 @app.route("/prominence/v1/jobs/<int:job_id>", methods=['GET'])
 @requires_auth
-def get_job(username, group, job_id):
+def get_job(username, group, email, job_id):
     """
     Describe the specified job
     """
@@ -507,7 +507,7 @@ def get_job(username, group, job_id):
 
 @app.route("/prominence/v1/jobs/<int:job_id>/exec", methods=['POST'])
 @requires_auth
-def exec_in_job(username, group, job_id):
+def exec_in_job(username, group, email, job_id):
     """
     Execute a command in a job
     """
@@ -536,7 +536,7 @@ def exec_in_job(username, group, job_id):
 
 @app.route("/prominence/v1/jobs", methods=['DELETE'])
 @requires_auth
-def delete_jobs(username, group):
+def delete_jobs(username, group, email):
     """
     Delete the specified job(s)
     """
@@ -553,7 +553,7 @@ def delete_jobs(username, group):
 
 @app.route("/prominence/v1/jobs/<int:job_id>", methods=['DELETE'])
 @requires_auth
-def delete_job(username, group, job_id):
+def delete_job(username, group, email, job_id):
     """
     Delete the specified job
     """
@@ -567,7 +567,7 @@ def delete_job(username, group, job_id):
 
 @app.route("/prominence/v1/jobs/<int:job_id>/stdout", methods=['GET'])
 @requires_auth
-def get_stdout(username, group, job_id):
+def get_stdout(username, group, email, job_id):
     """
     Return the standard output from the specified job
     """
@@ -587,7 +587,7 @@ def get_stdout(username, group, job_id):
     
 @app.route("/prominence/v1/jobs/<int:job_id>/stderr", methods=['GET'])
 @requires_auth
-def get_stderr(username, group, job_id):
+def get_stderr(username, group, email, job_id):
     """
     Return the standard error from the specified job
     """
@@ -607,7 +607,7 @@ def get_stderr(username, group, job_id):
 
 @app.route("/prominence/v1/jobs/<int:job_id>/snapshot", methods=['GET'])
 @requires_auth
-def get_snapshot(username, group, job_id):
+def get_snapshot(username, group, email, job_id):
     """
     Download the current snapshot
     """
@@ -629,7 +629,7 @@ def get_snapshot(username, group, job_id):
 
 @app.route("/prominence/v1/jobs/<int:job_id>/snapshot", methods=['PUT'])
 @requires_auth
-def create_snapshot(username, group, job_id):
+def create_snapshot(username, group, email, job_id):
     """
     Download the current snapshot
     """

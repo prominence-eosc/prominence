@@ -410,7 +410,7 @@ class ProminenceBackend(object):
                 return int(float(job['RoutedToJobId']))
         return None
 
-    def _create_htcondor_job(self, username, groups, uid, jjob, job_path, workflow=False):
+    def _create_htcondor_job(self, username, groups, email, uid, jjob, job_path, workflow=False):
         """
         Create a dict representing a HTCondor job & write the JSON job description
         (original & mapped) files to disk
@@ -669,7 +669,7 @@ class ProminenceBackend(object):
 
         return (0, {}, cjob)
 
-    def create_job(self, username, groups, uid, jjob):
+    def create_job(self, username, groups, email, uid, jjob):
         """
         Create a job
         """
@@ -685,7 +685,7 @@ class ProminenceBackend(object):
         os.chmod(os.path.join(job_sandbox, 'promlet.py'), 0o775)
 
         # Create dict containing HTCondor job
-        (status, msg, cjob) = self._create_htcondor_job(username, groups, uid, jjob, job_sandbox)
+        (status, msg, cjob) = self._create_htcondor_job(username, groups, email, uid, jjob, job_sandbox)
 
         # Check if we have an error
         if status != 0:
@@ -708,7 +708,7 @@ class ProminenceBackend(object):
 
         return (retval, data)
 
-    def create_workflow(self, username, groups, uid, jjob):
+    def create_workflow(self, username, groups, email, uid, jjob):
         """
         Create a workflow
         """
@@ -753,7 +753,7 @@ class ProminenceBackend(object):
                 job_filename = job_sandbox + '/' + job['name'] + '/job.jdl'
 
                 # Create dict containing HTCondor job
-                (status, msg, cjob) = self._create_htcondor_job(username, groups, str(uuid.uuid4()), job, job_sandbox + '/' + job['name'])
+                (status, msg, cjob) = self._create_htcondor_job(username, groups, email, str(uuid.uuid4()), job, job_sandbox + '/' + job['name'])
                 cjob['+ProminenceWorkflowName'] = condor_str(wf_name)
 
                 # Write JDL
@@ -780,7 +780,7 @@ class ProminenceBackend(object):
             os.chmod(job_sandbox + '/promlet.py', 0o775)
 
             # Create dict containing HTCondor job
-            (status, msg, cjob) = self._create_htcondor_job(username, groups, str(uuid.uuid4()), jjob['jobs'][0], job_sandbox, True)
+            (status, msg, cjob) = self._create_htcondor_job(username, groups, email, str(uuid.uuid4()), jjob['jobs'][0], job_sandbox, True)
             cjob['+ProminenceWorkflowName'] = condor_str(wf_name)
             cjob['+ProminenceFactoryId'] = '$(prominencecount)'
 
