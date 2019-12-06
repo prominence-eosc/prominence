@@ -47,16 +47,16 @@ def replace_output_urls(job, outfiles, outdirs):
                     logging.info('Updating URL for file %s with %s', filename, url)
                     job['outputFiles'][i]['url'] = url
 
-        if outdirs and 'outputDirs' in job:
-            for outdir in outdirs:
-                pieces = outdir.split('=', 1)
-                filename = pieces[0]
-                url = pieces[1]
-                for i in range(0, len(job['outputDirs'])):
-                    pair = job['outputDirs'][i]
-                    if filename == pair['name']:
-                        logging.info('Updating URL for dir %s with %s', filename, url)
-                        job['outputDirs'][i]['url'] = url
+    if outdirs and 'outputDirs' in job:
+        for outdir in outdirs:
+            pieces = outdir.split('=', 1)
+            filename = pieces[0]
+            url = pieces[1]
+            for i in range(0, len(job['outputDirs'])):
+                pair = job['outputDirs'][i]
+                if filename == pair['name']:
+                    logging.info('Updating URL for dir %s with %s', filename, url)
+                    job['outputDirs'][i]['url'] = url
 
 def image_name(image):
     """
@@ -233,7 +233,7 @@ def stageout(job, path):
                     logging.info('Successfully uploaded file %s to cloud storage', out_file)
                     json_out_file['status'] = 'success'
                 else:
-                    logging.error('Unable to upload file %s to cloud storage', out_file)
+                    logging.error('Unable to upload file %s to cloud storage with url %s', out_file, output['url'])
                     json_out_file['status'] = 'failedUpload'
                     success = False
             json_out_files.append(json_out_file)
@@ -258,7 +258,7 @@ def stageout(job, path):
                     logging.info('Successfully uploaded directory %s to cloud storage', output['name'])
                     json_out_dir['status'] = 'success'
                 else:
-                    logging.error('Unable to upload directory %s to cloud storage', output['name'])
+                    logging.error('Unable to upload directory %s to cloud storage with url %s', output['name'], output['url'])
                     json_out_dir['status'] = 'failedUpload'
                     success = False
             json_out_dirs.append(json_out_dir)
@@ -1155,7 +1155,8 @@ if __name__ == "__main__":
         exit(1)
 
     # Replace output file/dir URL addresses if necessary
-    replace_output_urls(job, args.outfile, args.outdir)
+    if args.outfile or args.outdir:
+        replace_output_urls(job, args.outfile, args.outdir)
 
     # Mount user-specified storage if necessary
     mount_storage(job)
