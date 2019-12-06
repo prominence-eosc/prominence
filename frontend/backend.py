@@ -594,7 +594,7 @@ class ProminenceBackend(object):
                                                         'scratch/%s/%s.tgz' % (uid, os.path.basename(dirname)),
                                                         604800)
                 else:
-                    url_put = filename
+                    url_put = dirname
                 output_locations_put.append(url_put)
                 output_dirs_new.append({'name':dirname, 'url':url_put})
 
@@ -853,7 +853,7 @@ class ProminenceBackend(object):
                                     y1_val = ps_start[1] + y1*ps_step[1]
                                     z1_val = ps_start[2] + z1*ps_step[2]
                                     dag.append('JOB job%d job.jdl' % job_count)
-                                    dag.append('VARS job%d prominencevalue0="%s" prominencevalue1="%s" prominencevalue2="%s" prominencecount="%d"' % (job_count, self.write_parameter_value(x1_val), self.write_parameter_value(y1_val), self.write_parameter_value(z1_val), job_count))
+                                    dag.append('VARS job%d prominencevalue0="%s" prominencevalue1="%s" prominencevalue2="%s" prominencecount="%d" %s' % (job_count, self.write_parameter_value(x1_val), self.write_parameter_value(y1_val), self.write_parameter_value(z1_val), job_count, self.output_urls(jjob, uid, job_count)))
                                     job_count += 1
 
                     elif num_dimensions == 4:
@@ -867,7 +867,7 @@ class ProminenceBackend(object):
                                         z1_val = ps_start[2] + z1*ps_step[2]
                                         t1_val = ps_start[3] + t1*ps_step[3]
                                         dag.append('JOB job%d job.jdl' % job_count)
-                                        dag.append('VARS job%d prominencevalue0="%s" prominencevalue1="%s" prominencevalue2="%s" prominencevalue3="%s" prominencecount="%d"' % (job_count, self.write_parameter_value(x1_val), self.write_parameter_value(y1_val), self.write_parameter_value(z1_val), self.write_parameter_value(t1_val), job_count))
+                                        dag.append('VARS job%d prominencevalue0="%s" prominencevalue1="%s" prominencevalue2="%s" prominencevalue3="%s" prominencecount="%d" %s' % (job_count, self.write_parameter_value(x1_val), self.write_parameter_value(y1_val), self.write_parameter_value(z1_val), self.write_parameter_value(t1_val), job_count, self.output_urls(jjob, uid, job_count)))
                                         job_count += 1
 
                     elif num_dimensions > 4:
@@ -885,7 +885,10 @@ class ProminenceBackend(object):
                         parameters.append('prominencevalue%d="%s"' % (count, self.write_parameter_value(parameter['values'][index])))
                         count += 1
                     dag.append('JOB job%d job.jdl' % index)
-                    dag.append('VARS job%d %s prominencecount="%d"' % (index, ' '.join(parameters), index))
+                    dag.append('VARS job%d %s prominencecount="%d" %s' % (index,
+                                                                          ' '.join(parameters),
+                                                                          index,
+                                                                          self.output_urls(jjob, uid, index)))
 
             # Write JDL
             if not write_htcondor_job(cjob, '%s/job.jdl' % job_sandbox):
