@@ -37,7 +37,8 @@ def validate_workflow(workflow):
                        'jobs',
                        'dependencies',
                        'factory',
-                       'policies']
+                       'policies',
+                       'notifications']
 
     policies_workflow_valids = ['maximumRetries',
                                 'placement']
