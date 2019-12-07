@@ -518,8 +518,12 @@ class ProminenceBackend(object):
         cjob['+ProminenceIdentity'] = condor_str(username)
 
         # Group
-        if groups is not None:
+        if groups:
             cjob['+ProminenceGroup'] = condor_str(groups)
+
+        # Email
+        if email:
+            cjob['+ProminenceEmail'] = condor_str(email)
 
         # Memory required
         cjob['+ProminenceMemoryPerNode'] = str(jjob['resources']['memory'])
