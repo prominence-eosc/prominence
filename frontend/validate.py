@@ -4,6 +4,19 @@ import requests
 
 import retry
 
+def validate_notification(notification, valid_events):
+    """
+    Validate a notification
+    """
+    for item in notification:
+        if item not in ('event', 'type'):
+            return (False, 'invalid item "%s" in notifications' % item)
+        if item == 'event':
+            if notification[item]['event'] not in valid_events:
+                return (False, 'invalid notification event "%s"' % notification[item]['event'])
+
+    return (True, '')
+
 def validate_placement(placement):
     """
     Validate placement policy
@@ -42,6 +55,8 @@ def validate_workflow(workflow):
 
     policies_workflow_valids = ['maximumRetries',
                                 'placement']
+
+    valid_events = ['workflowFinished']
 
     # Check for valid items in workflow
     for item in workflow:
@@ -198,6 +213,15 @@ def validate_workflow(workflow):
             if not re.match(r'^[\w\-\_\.\/]+$', workflow['labels'][label]):
                 return (False, 'label value "%s" is invalid' % workflow['labels'][label])
 
+    # Notifications
+    if 'notifications' in workflow:
+        if not isinstance(workflow['notifications'], list):
+            return (False, 'notifications must be in the form of a list')
+        for notification in workflow['notifications']:
+            (status, msg) = validate_notification(notification, valid_events)
+            if not status:
+                return (status, msg)
+
     return (True, '')
 
 def validate_job(job):
@@ -235,7 +259,9 @@ def validate_job(job):
                        'maximumTimeInQueue',
                        'maximumIdleTimePerResource',
                        'placement']
- 
+
+    valid_events = ['jobFinished']
+
     # Check for valid items in job
     for item in job:
         if item not in job_valids:
@@ -456,6 +482,15 @@ def validate_job(job):
 
             if job['policies']['maximumIdleTimePerResource'] > 44640:
                 return (False, 'the maximum idle time per resource must be less than 44640')
+
+    # Notifications
+    if 'notifications' in job:
+        if not isinstance(job['notifications'], list):
+            return (False, 'notifications must be in the form of a list')
+        for notification in job['notifications']:
+            (status, msg) = validate_notification(notification, valid_events)
+            if not status:
+                return (status, msg)
 
     return (True, '')
 
