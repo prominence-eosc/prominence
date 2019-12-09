@@ -1,7 +1,5 @@
 """ HTCondor backend"""
 import base64
-import boto3
-import hmac
 import json
 import os
 import re
@@ -9,9 +7,9 @@ import shlex
 import shutil
 import subprocess
 import threading
-import time
 import uuid
 
+import boto3
 import classad
 import htcondor
 
