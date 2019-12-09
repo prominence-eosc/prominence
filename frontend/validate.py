@@ -12,11 +12,11 @@ def validate_notification(notification, valid_events):
         if item not in ('event', 'type'):
             return (False, 'invalid item "%s" in notifications' % item)
         if item == 'event':
-            if notification[item]['event'] not in valid_events:
-                return (False, 'invalid notification event "%s"' % notification[item]['event'])
+            if notification[item] not in valid_events:
+                return (False, 'invalid notification event "%s"' % notification[item])
         if item == 'type':
-            if notification[item]['type'] != 'email':
-                return (False, 'invalid notification type "%s"' % notification[item]['type'])
+            if notification[item] != 'email':
+                return (False, 'invalid notification type "%s"' % notification[item])
 
     return (True, '')
 
