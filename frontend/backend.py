@@ -1205,6 +1205,9 @@ class ProminenceBackend(object):
                 if 'policies' in job_json_file:
                     jobj['policies'] = job_json_file['policies']
 
+                if 'notifications' in job_json_file:
+                    jobj['notifications'] = job_json_file['notifications']
+
                 if 'artifacts' in job_json_file:
                     jobj['artifacts'] = job_json_file['artifacts']
 
