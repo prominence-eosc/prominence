@@ -700,6 +700,7 @@ def get_accounting(username, group, email):
 
     wall_time = 0
     cpu_time = 0
+    num_jobs = 0
 
     for hit in search:
         if hit.type == 'job':
@@ -708,12 +709,14 @@ def get_accounting(username, group, email):
                 for task in hit.execution['tasks']:
                     if 'wallTimeUsage' in task:
                         wall_time += task['wallTimeUsage']*cpus
+                        num_jobs += 1
                     if 'cpuTimeUsage' in task:
                         cpu_time += task['cpuTimeUsage']
 
     data = {}
     data['cpuTime'] = cpu_time/3600.0
     data['wallTime'] = wall_time/3600.0
+    data['numberOfJobs'] = num_jobs
 
     return jsonify(data), 200
 
