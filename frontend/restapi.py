@@ -706,10 +706,10 @@ def get_accounting(username, group, email):
         if hit.type == 'job':
             cpus = hit.resources['cpus']
             if 'tasks' in hit.execution:
+                num_jobs += 1
                 for task in hit.execution['tasks']:
                     if 'wallTimeUsage' in task:
                         wall_time += task['wallTimeUsage']*cpus
-                        num_jobs += 1
                     if 'cpuTimeUsage' in task:
                         cpu_time += task['cpuTimeUsage']
 
