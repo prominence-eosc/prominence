@@ -714,9 +714,20 @@ def get_accounting(username, group, email):
                         cpu_time += task['cpuTimeUsage']
 
     data = {}
-    data['cpuTime'] = cpu_time/3600.0
-    data['wallTime'] = wall_time/3600.0
-    data['numberOfJobs'] = num_jobs
+    data['usage'] = {}
+    data['usage']['groups'] = {}
+    data['usage']['users'] = {}
+    
+    if group_use and not username_use:
+        data['usage']['groups'][group_use] = {}
+        data['usage']['groups'][group_use]['cpuTime'] = cpu_time/3600.0
+        data['usage']['groups'][group_use]['wallTime'] = wall_time/3600.0
+        data['usage']['groups'][group_use]['numberOfJobs'] = num_jobs
+    elif not group_use and username_use:
+        data['usage']['groups'][username_use] = {}
+        data['usage']['groups'][username_use]['cpuTime'] = cpu_time/3600.0
+        data['usage']['groups'][username_use]['wallTime'] = wall_time/3600.0
+        data['usage']['groups'][username_use]['numberOfJobs'] = num_jobs
 
     return jsonify(data), 200
 
