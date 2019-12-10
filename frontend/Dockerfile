@@ -9,7 +9,9 @@ RUN yum -y install epel-release && \
                 flask \
                 requests \
                 boto3 \
-                PyJWT && \
+                PyJWT \
+                elasticsearch \
+                elasticsearch-dsl && \
     useradd prominence
                    
 COPY restapi.py /usr/local/bin/
