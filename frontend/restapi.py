@@ -1,15 +1,15 @@
 #!/usr/bin/python
 from __future__ import print_function
-import base64
 from functools import wraps
-import json
-import jwt
 import logging
 import os
 import sys
 import uuid
 import time
 import requests
+import jwt
+from elasticsearch import Elasticsearch
+from elasticsearch_dsl import Search, Q
 from flask import Flask, jsonify, request
 
 from backend import ProminenceBackend
@@ -281,7 +281,7 @@ def get_stdout_wf(username, group, email, workflow_id, job):
     """
     app.logger.info('%s GetWorkflowStdOut user:%s group:%s id:%d' % (get_remote_addr(request), username, group, workflow_id))
 
-    (uid, identity, iwd, out, err, _, _) = backend.get_job_unique_id(workflow_id)
+    (uid, identity, iwd, _, _, _, _) = backend.get_job_unique_id(workflow_id)
     if job is None:
         job = 0
     if identity is None:
@@ -303,7 +303,7 @@ def get_stderr_wf(username, group, email, workflow_id, job):
     """
     app.logger.info('%s GetWorkflowStdOut user:%s group:%s id:%d' % (get_remote_addr(request), username, group, workflow_id))
 
-    (uid, identity, iwd, out, err, _, _) = backend.get_job_unique_id(workflow_id)
+    (uid, identity, iwd, _, _, _, _) = backend.get_job_unique_id(workflow_id)
     if job is None:
         job = 0
     if identity is None:
@@ -325,7 +325,7 @@ def get_stdout_wf_jf(username, group, email, workflow_id, job, instance_id):
     """
     app.logger.info('%s GetWorkflowStdOut user:%s group:%s id:%d' % (get_remote_addr(request), username, group, workflow_id))
 
-    (uid, identity, iwd, out, err, _, _) = backend.get_job_unique_id(workflow_id)
+    (uid, identity, iwd, _, _, _, _) = backend.get_job_unique_id(workflow_id)
     if identity is None:
         return jsonify({'error':'Job does not exist'}), 400
     if username != identity:
@@ -345,7 +345,7 @@ def get_stderr_wf_jf(username, group, email, workflow_id, job, instance_id):
     """
     app.logger.info('%s GetWorkflowStdOut user:%s group:%s id:%d' % (get_remote_addr(request), username, group, workflow_id))
 
-    (uid, identity, iwd, out, err, _, _) = backend.get_job_unique_id(workflow_id)
+    (uid, identity, iwd, _, _, _, _) = backend.get_job_unique_id(workflow_id)
     if identity is None:
         return jsonify({'error':'Job does not exist'}), 400
     if username != identity:
@@ -616,7 +616,7 @@ def get_snapshot(username, group, email, job_id):
     if app.config['ENABLE_SNAPSHOTS'] != 'True':
         return jsonify({'error':'Functionality disabled'}), 401
 
-    (uid, identity, iwd, out, err, name, status) = backend.get_job_unique_id(job_id)
+    (uid, identity, _, _, _, name, status) = backend.get_job_unique_id(job_id)
     if identity is None:
         return jsonify({'error':'Job does not exist'}), 400
     if username != identity:
@@ -638,7 +638,7 @@ def create_snapshot(username, group, email, job_id):
     if app.config['ENABLE_SNAPSHOTS'] != 'True':
         return jsonify({'error':'Functionality disabled'}), 401
 
-    (uid, identity, iwd, out, err, name, status) = backend.get_job_unique_id(job_id)
+    (uid, identity, iwd, _, _, _, status) = backend.get_job_unique_id(job_id)
     if identity is None:
         return jsonify({'error':'Job does not exist'}), 400
     if username != identity:
@@ -657,6 +657,65 @@ def create_snapshot(username, group, email, job_id):
 
     backend.create_snapshot(uid, job_id, path)
     return jsonify({}), 200
+
+@app.route("/prominence/v1/accounting", methods=['GET'])
+@requires_auth
+def get_accounting(username, group, email):
+    """
+    Return usage data
+    """
+    app.logger.info('%s GetAccounting user:%s group:%s' % (get_remote_addr(request), username, group))
+    
+    username_use = username
+    group_use = None
+    if 'by_group' in request.args:
+        if request.args.get('by_group') == 'true':
+            group_use = group
+            username_use = None
+
+    if 'start' in request.args:
+        start_date = request.args.get('start')
+    else:
+        return jsonify({'error':'Start date must be provided'}), 400
+
+    if 'end' in request.args:
+        end_date = request.args.get('end')
+    else:
+        return jsonify({'error':'End date must be provided'}), 400
+
+    client = Elasticsearch([{'host':app.config['ELASTICSEARCH_HOST'],
+                             'port':app.config['ELASTICSEARCH_PORT']}])
+    
+    if username_use and group_use:
+        query = Q('match', group__keyword=group_use) & Q('match', username=username_use)
+    elif username_use and not group_use:
+        query = Q('match', username=username_use)
+    elif not username_use and group_use:
+        query = Q('match', group__keyword=group_use)
+
+    search = Search(using=client, index=app.config['ELASTICSEARCH_INDEX']) \
+             .filter('range', date={'gte':start_date, 'lte':end_date}) \
+             .query(query) \
+             .scan()
+
+    wall_time = 0
+    cpu_time = 0
+
+    for hit in search:
+        if hit.type == 'job':
+            cpus = hit.resources['cpus']
+            if 'tasks' in hit.execution:
+                for task in hit.execution['tasks']:
+                    if 'wallTimeUsage' in task:
+                        wall_time += task['wallTimeUsage']*cpus
+                    if 'cpuTimeUsage' in task:
+                        cpu_time += task['cpuTimeUsage']
+
+    data = {}
+    data['cpuTime'] = cpu_time/3600.0
+    data['wallTime'] = wall_time/3600.0
+
+    return jsonify(data), 200
 
 if __name__ == "__main__":
     app.run(host='0.0.0.0', port=8080)
