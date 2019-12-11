@@ -666,12 +666,18 @@ def get_accounting(username, group, email):
     """
     app.logger.info('%s GetAccounting user:%s group:%s' % (get_remote_addr(request), username, group))
     
-    username_use = username
-    group_use = None
+    show_users = True
+    show_groups = False
+    show_all_users = False
+
     if 'by_group' in request.args:
         if request.args.get('by_group') == 'true':
-            group_use = group
-            username_use = None
+            show_groups = True
+            show_users = False
+
+    if 'show_all_users' in request.args:
+        if request.args.get('show_all_users') == 'true':
+            show_all_users = True
 
     if 'start' in request.args:
         start_date = request.args.get('start')
@@ -686,48 +692,53 @@ def get_accounting(username, group, email):
     client = Elasticsearch([{'host':app.config['ELASTICSEARCH_HOST'],
                              'port':app.config['ELASTICSEARCH_PORT']}])
     
-    if username_use and group_use:
-        query = Q('match', group__keyword=group_use) & Q('match', username=username_use)
-    elif username_use and not group_use:
-        query = Q('match', username=username_use)
-    elif not username_use and group_use:
-        query = Q('match', group__keyword=group_use)
+    if show_users and not show_all_users and not show_groups:
+        query = Q('match', group__keyword=group) & Q('match', username=username)
+    else:
+        query = Q('match', group__keyword=group)
 
     search = Search(using=client, index=app.config['ELASTICSEARCH_INDEX']) \
              .filter('range', date={'gte':start_date, 'lte':end_date}) \
              .query(query) \
              .scan()
 
-    wall_time = 0
-    cpu_time = 0
-    num_jobs = 0
+    wall_time = {}
+    cpu_time = {}
+    num_jobs = {}
 
     for hit in search:
         if hit.type == 'job':
             cpus = hit.resources['cpus']
             if 'tasks' in hit.execution:
-                num_jobs += 1
+                if hit.username not in wall_time:
+                    wall_time[hit.username] = 0
+                    cpu_time[hit.username] = 0
+                    num_jobs[hit.username] = 0
+                num_jobs[hit.username] += 1
                 for task in hit.execution['tasks']:
                     if 'wallTimeUsage' in task:
-                        wall_time += task['wallTimeUsage']*cpus
+                        wall_time[hit.username] += task['wallTimeUsage']*cpus
                     if 'cpuTimeUsage' in task:
-                        cpu_time += task['cpuTimeUsage']
+                        cpu_time[hit.username] += task['cpuTimeUsage']
 
     data = {}
     data['usage'] = {}
     data['usage']['groups'] = {}
     data['usage']['users'] = {}
     
-    if group_use and not username_use:
-        data['usage']['groups'][group_use] = {}
-        data['usage']['groups'][group_use]['cpuTime'] = cpu_time/3600.0
-        data['usage']['groups'][group_use]['wallTime'] = wall_time/3600.0
-        data['usage']['groups'][group_use]['numberOfJobs'] = num_jobs
-    elif not group_use and username_use:
-        data['usage']['groups'][username_use] = {}
-        data['usage']['groups'][username_use]['cpuTime'] = cpu_time/3600.0
-        data['usage']['groups'][username_use]['wallTime'] = wall_time/3600.0
-        data['usage']['groups'][username_use]['numberOfJobs'] = num_jobs
+    if show_groups:
+        data['usage']['groups'][group] = {}
+        data['usage']['groups'][group]['cpuTime'] = sum(cpu_time.values())/3600.0
+        data['usage']['groups'][group]['wallTime'] = sum(wall_time.values())/3600.0
+        data['usage']['groups'][group]['numberOfJobs'] = sum(num_jobs.values())
+    
+    if show_users or show_all_users:
+        for username_to_use in wall_time:
+            if username_to_use == username or show_all_users:
+                data['usage']['users'][username_to_use] = {}
+                data['usage']['users'][username_to_use]['cpuTime'] = cpu_time[username_to_use]/3600.0
+                data['usage']['users'][username_to_use]['wallTime'] = wall_time[username_to_use]/3600.0
+                data['usage']['users'][username_to_use]['numberOfJobs'] = num_jobs[username_to_use]
 
     return jsonify(data), 200
 
