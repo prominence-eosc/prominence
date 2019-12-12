@@ -366,8 +366,8 @@ def translate_classad():
                        if 'app-password' in job_json['storage']['b2drop']:
                            b2drop_app_password = job_json['storage']['b2drop']['app-password']
 
-        if storage_mountpoint is not None:
-            add_mounts = '-v /mnt%s:%s' % (storage_mountpoint, storage_mountpoint)
+        if storage_mountpoint:
+            add_mounts = '-v /mnt%s:/home/user%s' % (storage_mountpoint, storage_mountpoint)
         logger.info('[%s] Using mounts="%s"', job_id, add_mounts)
 
         try:
