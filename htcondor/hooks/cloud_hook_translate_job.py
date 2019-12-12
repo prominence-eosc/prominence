@@ -323,9 +323,6 @@ def translate_classad():
         # Current time
         epoch = int(time.time())
         classad_new['ProminenceLastRouted'] = epoch
-
-        # Current time
-        epoch = int(time.time())
         classad_new['ProminenceInfrastructureEnteredCurrentStatus'] = epoch
 
         # Get appropriate RADL template depending on job type
@@ -417,14 +414,6 @@ def translate_classad():
         except ValueError as e:
             logger.critical('[%s] Exiting due to ValueError creating RADL template: %s', job_id, e)
             exit(1)
-
-        try:
-            with open('/tmp/job-%s-%d.radl' % (job_id, epoch), 'w') as radl_write:
-                radl_write.write(radl_contents)
-        except IOError as e:
-            logger.warning('[%s] Exiting due to IO error writing RADL template: %s', job_id, e)
-        except Exception as e:
-            logger.warning('[%s] Exiting due to unexpected error writing RADL template: %s', job_id, e)
 
         # Generate JSON document to provide to IMC
         data = {}
