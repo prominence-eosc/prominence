@@ -635,7 +635,7 @@ def delete_workflows(username, group, email):
 
 @app.route("/prominence/v1/workflows", methods=['POST'])
 @requires_auth
-def submit_job_new(username, group, email):
+def submit_workflow(username, group, email):
     """
     Create a new workflow
     """
