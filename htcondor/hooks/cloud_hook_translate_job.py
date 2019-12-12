@@ -15,8 +15,11 @@ from string import Template
 import sys
 import time
 import requests
+import requests.packages.urllib3
 from requests.auth import HTTPBasicAuth
 import classad
+
+requests.packages.urllib3.disable_warnings()
 
 def create_ssh_keypair():
     """
