@@ -439,6 +439,7 @@ def translate_classad():
         data['requirements']['resources'] = {}
         data['requirements']['resources']['cores'] = job_json['resources']['cpus']
         data['requirements']['resources']['memory'] = job_json['resources']['memory']
+        data['requirements']['resources']['disk'] = job_json['resources']['disk']
         data['requirements']['regions'] = CONFIG.get('deployment', 'req-regions').split(',')
         if CONFIG.get('deployment', 'req-sites'):
             data['requirements']['sites'] = CONFIG.get('deployment', 'req-sites').split(',')
