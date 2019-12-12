@@ -164,7 +164,7 @@ def create_infrastructure_with_retries(data):
     max_retries = int(CONFIG.get('imc', 'retries'))
     count = 0
     success = None
-    while count < max_retries and success is None:
+    while count < max_retries and not success:
         success = create_infrastructure(data)
         count += 1
         time.sleep(count/2)
@@ -471,7 +471,7 @@ def translate_classad():
         # Create infrastructure
         infra_id = create_infrastructure_with_retries(data)
 
-        if infra_id is None:
+        if not infra_id:
             classad_new['ProminenceInfrastructureState'] = 'failed'
             logger.info('[%s] Deployment onto cloud failed', job_id)
         else:
