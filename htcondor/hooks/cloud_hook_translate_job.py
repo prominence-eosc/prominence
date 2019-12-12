@@ -343,7 +343,7 @@ def translate_classad():
          private_ssh_key_2,
          public_ssh_key_2) = create_worker_credentials(spacing_type)
 
-        # Generate RADL based on existing templates
+        # Calculate total cores and number of worker nodes
         num_total_cores = job_json['resources']['nodes']*job_json['resources']['cpus']
         num_worker_nodes = job_json['resources']['nodes'] - 1
 
@@ -382,7 +382,8 @@ def translate_classad():
 
         use_hostname = '%s-%d' % (uid, epoch)
         use_uid = use_hostname
-    
+     
+        # Generate RADL based on existing template
         try:
             radl_contents = radl_template.substitute(cores_per_node=job_json['resources']['cpus'],
                                                      memory_per_node=job_json['resources']['memory'],
