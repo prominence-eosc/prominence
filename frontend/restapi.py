@@ -13,7 +13,7 @@ from elasticsearch_dsl import Search, Q
 from flask import Flask, jsonify, request
 
 from backend import ProminenceBackend
-
+import errors
 import validate
 
 app = Flask(__name__)
@@ -264,9 +264,9 @@ def jobs(username, group, email):
                 constraint = (request.args.get('constraint').split('=')[0],
                               request.args.get('constraint').split('=')[1])
             else:
-                return jsonify({'error':'Invalid constraint'}), 400
+                return errors.INVALID_CONSTRAINT
         else:
-            return jsonify({'error':'Invalid constraint'}), 400
+            return errors.INVALID_CONSTRAINT
 
     if 'all' in request.args:
         completed = True
@@ -315,15 +315,15 @@ def exec_in_job(username, group, email, job_id):
     app.logger.info('%s ExecJob user:%s group:%s id:%d' % (get_remote_addr(request), username, group, job_id))
 
     if app.config['ENABLE_EXEC'] != 'True':
-        return jsonify({'error':'Functionality disabled'}), 401
+        return errors.FUNC_DISABLED
 
     (uid, identity, iwd, _, _, name, status) = backend.get_job_unique_id(job_id)
     if not identity:
-        return jsonify({'error':'Job does not exist'}), 400
+        return errors.NO_SUCH_JOB
     if username != identity:
-        return jsonify({'error':'Not authorized to access this job'}), 403
+        return errors.NOT_AUTH_JOB
     if status != 2:
-        return jsonify({'error':'Job is not running'}), 400
+        return errors.JOB_NOT_RUNNING
 
     command = []
     if 'command' in request.args:
@@ -376,13 +376,13 @@ def get_stdout(username, group, email, job_id):
 
     (uid, identity, iwd, out, err, name, _) = backend.get_job_unique_id(job_id)
     if not identity:
-        return jsonify({'error':'Job does not exist'}), 400
+        return errors.NO_SUCH_JOB
     if username != identity:
-        return jsonify({'error':'Not authorized to access this job'}), 403
+        return errors.NOT_AUTH_JOB
     
     stdout = backend.get_stdout(uid, iwd, out, err, job_id, name)
     if not stdout:
-        return jsonify({'error':'stdout does not exist'}), 400
+        return errors.NO_STDOUT
     else:
         return stdout
     
@@ -396,13 +396,13 @@ def get_stderr(username, group, email, job_id):
 
     (uid, identity, iwd, out, err, name, _) = backend.get_job_unique_id(job_id)
     if not identity:
-        return jsonify({'error':'Job does not exist'}), 400
+        return errors.NO_SUCH_JOB
     if username != identity:
-        return jsonify({'error':'Not authorized to access this job'}), 403
+        return errors.NOT_AUTH_JOB
 
     stderr = backend.get_stderr(uid, iwd, out, err, job_id, name)
     if not stderr:
-        return jsonify({'error':'stderr does not exist'}), 400
+        return errors.NO_STDERR
     else:
         return stderr
 
@@ -415,15 +415,15 @@ def get_snapshot(username, group, email, job_id):
     app.logger.info('%s GetSnapshot user:%s group:%s id:%d' % (get_remote_addr(request), username, group, job_id))
 
     if app.config['ENABLE_SNAPSHOTS'] != 'True':
-        return jsonify({'error':'Functionality disabled'}), 401
+        return errors.FUNC_DISABLED
 
     (uid, identity, _, _, _, name, status) = backend.get_job_unique_id(job_id)
     if not identity:
-        return jsonify({'error':'Job does not exist'}), 400
+        return errors.NO_SUCH_JOB
     if username != identity:
-        return jsonify({'error':'Not authorized to access this job'}), 403
+        return errors.NOT_AUTH_JOB
     if status != 2:
-        return jsonify({'error':'Job is not running'}), 400
+        return errors.JOB_NOT_RUNNING
 
     url = backend.get_snapshot_url(uid)
     return jsonify({'url': url}), 200
@@ -437,15 +437,15 @@ def create_snapshot(username, group, email, job_id):
     app.logger.info('%s CreateSnapshot user:%s group:%s id:%d' % (get_remote_addr(request), username, group, job_id))
 
     if app.config['ENABLE_SNAPSHOTS'] != 'True':
-        return jsonify({'error':'Functionality disabled'}), 401
+        return errors.FUNC_DISABLED
 
     (uid, identity, iwd, _, _, _, status) = backend.get_job_unique_id(job_id)
     if not identity:
-        return jsonify({'error':'Job does not exist'}), 400
+        return errors.NO_SUCH_JOB
     if username != identity:
-        return jsonify({'error':'Not authorized to access this job'}), 403
+        return errors.NOT_AUTH_JOB
     if status != 2:
-        return jsonify({'error':'Job is not running'}), 400
+        return errors.JOB_NOT_RUNNING
 
     if 'path' in request.args:
         path = request.args.get('path')
@@ -483,9 +483,9 @@ def workflows(username, group, email):
                 constraint = (request.args.get('constraint').split('=')[0],
                               request.args.get('constraint').split('=')[1])
             else:
-                return jsonify({'error':'Invalid constraint'}), 400
+                return errors.INVALID_CONSTRAINT
         else:
-            return jsonify({'error':'Invalid constraint'}), 400
+            return errors.INVALID_CONSTRAINT
 
     if 'all' in request.args:
         completed = True
@@ -530,13 +530,13 @@ def get_stdout_wf(username, group, email, workflow_id, job):
     if not job:
         job = 0
     if not identity:
-        return jsonify({'error':'Job does not exist'}), 400
+        return errors.NO_SUCH_WORKFLOW
     if username != identity:
-        return jsonify({'error':'Not authorized to access this job'}), 403
+        return errors.NOT_AUTH_WORKFLOW
 
     stdout = backend.get_stdout(uid, iwd, None, None, -1, job, -1)
     if not stdout:
-        return jsonify({'error':'stdout does not exist'}), 400
+        return errors.NO_STDOUT
     else:
         return stdout
 
@@ -552,13 +552,13 @@ def get_stderr_wf(username, group, email, workflow_id, job):
     if not job:
         job = 0
     if not identity:
-        return jsonify({'error':'Job does not exist'}), 400
+        return errors.NO_SUCH_WORKFLOW
     if username != identity:
-        return jsonify({'error':'Not authorized to access this job'}), 403
+        return errors.NOT_AUTH_WORKFLOW
 
     stderr = backend.get_stderr(uid, iwd, None, None, -1, job, -1)
     if not stderr:
-        return jsonify({'error':'stderr does not exist'}), 400
+        return errors.NO_STDERR
     else:
         return stderr
 
@@ -572,13 +572,13 @@ def get_stdout_wf_jf(username, group, email, workflow_id, job, instance_id):
 
     (uid, identity, iwd, _, _, _, _) = backend.get_job_unique_id(workflow_id)
     if not identity:
-        return jsonify({'error':'Job does not exist'}), 400
+        return errors.NO_SUCH_WORKFLOW
     if username != identity:
-        return jsonify({'error':'Not authorized to access this job'}), 403
+        return errors.NOT_AUTH_WORKFLOW
 
     stdout = backend.get_stdout(uid, iwd, None, None, workflow_id, None, instance_id)
     if not stdout:
-        return jsonify({'error':'stdout does not exist'}), 400
+        return errors.NO_STDOUT
     else:
         return stdout
 
@@ -592,13 +592,13 @@ def get_stderr_wf_jf(username, group, email, workflow_id, job, instance_id):
 
     (uid, identity, iwd, _, _, _, _) = backend.get_job_unique_id(workflow_id)
     if not identity:
-        return jsonify({'error':'Job does not exist'}), 400
+        return errors.NO_SUCH_WORKFLOW
     if username != identity:
-        return jsonify({'error':'Not authorized to access this job'}), 403
+        return errors.NOT_AUTH_WORKFLOW
 
     stderr = backend.get_stderr(uid, iwd, None, None, workflow_id, None, instance_id)
     if not stderr:
-        return jsonify({'error':'stderr does not exist'}), 400
+        return errors.NO_STDERR
     else:
         return stderr
 
