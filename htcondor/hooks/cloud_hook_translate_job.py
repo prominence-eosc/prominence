@@ -15,8 +15,11 @@ from string import Template
 import sys
 import time
 import requests
+import requests.packages.urllib3
 from requests.auth import HTTPBasicAuth
 import classad
+
+requests.packages.urllib3.disable_warnings()
 
 def create_ssh_keypair():
     """
@@ -164,7 +167,7 @@ def create_infrastructure_with_retries(data):
     max_retries = int(CONFIG.get('imc', 'retries'))
     count = 0
     success = None
-    while count < max_retries and success is None:
+    while count < max_retries and not success:
         success = create_infrastructure(data)
         count += 1
         time.sleep(count/2)
@@ -323,9 +326,6 @@ def translate_classad():
         # Current time
         epoch = int(time.time())
         classad_new['ProminenceLastRouted'] = epoch
-
-        # Current time
-        epoch = int(time.time())
         classad_new['ProminenceInfrastructureEnteredCurrentStatus'] = epoch
 
         # Get appropriate RADL template depending on job type
@@ -346,7 +346,7 @@ def translate_classad():
          private_ssh_key_2,
          public_ssh_key_2) = create_worker_credentials(spacing_type)
 
-        # Generate RADL based on existing templates
+        # Calculate total cores and number of worker nodes
         num_total_cores = job_json['resources']['nodes']*job_json['resources']['cpus']
         num_worker_nodes = job_json['resources']['nodes'] - 1
 
@@ -369,8 +369,8 @@ def translate_classad():
                        if 'app-password' in job_json['storage']['b2drop']:
                            b2drop_app_password = job_json['storage']['b2drop']['app-password']
 
-        if storage_mountpoint is not None:
-            add_mounts = '-v /mnt%s:%s' % (storage_mountpoint, storage_mountpoint)
+        if storage_mountpoint:
+            add_mounts = '-v /mnt%s:/home/user%s' % (storage_mountpoint, storage_mountpoint)
         logger.info('[%s] Using mounts="%s"', job_id, add_mounts)
 
         try:
@@ -385,7 +385,8 @@ def translate_classad():
 
         use_hostname = '%s-%d' % (uid, epoch)
         use_uid = use_hostname
-    
+     
+        # Generate RADL based on existing template
         try:
             radl_contents = radl_template.substitute(cores_per_node=job_json['resources']['cpus'],
                                                      memory_per_node=job_json['resources']['memory'],
@@ -418,14 +419,6 @@ def translate_classad():
             logger.critical('[%s] Exiting due to ValueError creating RADL template: %s', job_id, e)
             exit(1)
 
-        try:
-            with open('/tmp/job-%s-%d.radl' % (job_id, epoch), 'w') as radl_write:
-                radl_write.write(radl_contents)
-        except IOError as e:
-            logger.warning('[%s] Exiting due to IO error writing RADL template: %s', job_id, e)
-        except Exception as e:
-            logger.warning('[%s] Exiting due to unexpected error writing RADL template: %s', job_id, e)
-
         # Generate JSON document to provide to IMC
         data = {}
         data['requirements'] = {}
@@ -439,6 +432,7 @@ def translate_classad():
         data['requirements']['resources'] = {}
         data['requirements']['resources']['cores'] = job_json['resources']['cpus']
         data['requirements']['resources']['memory'] = job_json['resources']['memory']
+        data['requirements']['resources']['disk'] = job_json['resources']['disk']
         data['requirements']['regions'] = CONFIG.get('deployment', 'req-regions').split(',')
         if CONFIG.get('deployment', 'req-sites'):
             data['requirements']['sites'] = CONFIG.get('deployment', 'req-sites').split(',')
@@ -480,7 +474,7 @@ def translate_classad():
         # Create infrastructure
         infra_id = create_infrastructure_with_retries(data)
 
-        if infra_id is None:
+        if not infra_id:
             classad_new['ProminenceInfrastructureState'] = 'failed'
             logger.info('[%s] Deployment onto cloud failed', job_id)
         else:
