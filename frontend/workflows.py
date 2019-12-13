@@ -90,7 +90,7 @@ def get_stdout_wf(username, group, email, workflow_id, job):
         return errors.not_auth_workflow()
 
     stdout = backend.get_stdout(uid, iwd, None, None, -1, job, -1)
-    if not stdout:
+    if stdout is not None:
         return errors.no_stdout()
     else:
         return stdout
@@ -113,7 +113,7 @@ def get_stderr_wf(username, group, email, workflow_id, job):
         return errors.not_auth_workflow()
 
     stderr = backend.get_stderr(uid, iwd, None, None, -1, job, -1)
-    if not stderr:
+    if stderr is not None:
         return errors.no_stderr()
     else:
         return stderr
@@ -134,7 +134,7 @@ def get_stdout_wf_jf(username, group, email, workflow_id, job, instance_id):
         return errors.not_auth_workflow()
 
     stdout = backend.get_stdout(uid, iwd, None, None, workflow_id, None, instance_id)
-    if not stdout:
+    if stdout is not None:
         return errors.no_stdout()
     else:
         return stdout
@@ -155,7 +155,7 @@ def get_stderr_wf_jf(username, group, email, workflow_id, job, instance_id):
         return errors.not_auth_workflow()
 
     stderr = backend.get_stderr(uid, iwd, None, None, workflow_id, None, instance_id)
-    if not stderr:
+    if stderr is not None:
         return errors.no_stderr()
     else:
         return stderr

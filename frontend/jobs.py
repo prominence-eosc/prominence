@@ -186,7 +186,7 @@ def get_stdout(username, group, email, job_id):
         return errors.not_auth_job()
     
     stdout = backend.get_stdout(uid, iwd, out, err, job_id, name)
-    if not stdout:
+    if stdout is not None:
         return errors.no_stdout()
     else:
         return stdout
@@ -207,7 +207,7 @@ def get_stderr(username, group, email, job_id):
         return errors.not_auth_job()
 
     stderr = backend.get_stderr(uid, iwd, out, err, job_id, name)
-    if not stderr:
+    if stderr is not None:
         return errors.no_stderr()
     else:
         return stderr
