@@ -44,4 +44,3 @@ def get_accounting(username, group, email):
         return jsonify(data), 200
 
     return jsonify({'error':'Unable to retrieve usage data'}), 400
-

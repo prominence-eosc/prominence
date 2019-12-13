@@ -1,5 +1,5 @@
-"""Routes for managing jobs""" 
-import uuid 
+"""Routes for managing jobs"""
+import uuid
 
 from flask import Blueprint, jsonify, request
 from flask import current_app as app
@@ -185,13 +185,13 @@ def get_stdout(username, group, email, job_id):
         return errors.no_such_job()
     if username != identity:
         return errors.not_auth_job()
-    
+
     stdout = backend.get_stdout(uid, iwd, out, err, job_id, name)
     if stdout is not None:
         return errors.no_stdout()
     else:
         return stdout
-    
+
 @jobs.route("/prominence/v1/jobs/<int:job_id>/stderr", methods=['GET'])
 @requires_auth
 def get_stderr(username, group, email, job_id):

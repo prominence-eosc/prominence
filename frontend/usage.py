@@ -56,7 +56,7 @@ def get_usage(username,
         data['usage']['groups'][group]['cpuTime'] = sum(cpu_time.values())/3600.0
         data['usage']['groups'][group]['wallTime'] = sum(wall_time.values())/3600.0
         data['usage']['groups'][group]['numberOfJobs'] = sum(num_jobs.values())
-    
+
     if show_users or show_all_users:
         for username_to_use in wall_time:
             if username_to_use == username or show_all_users:
