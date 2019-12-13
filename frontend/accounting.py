@@ -1,3 +1,4 @@
+"""Route for obtaining usage data"""
 from flask import Blueprint, jsonify, request
 from flask import current_app as app
 

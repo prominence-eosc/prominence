@@ -1,4 +1,4 @@
-#!/usr/bin/python
+"""Routes for managing data"""
 from flask import Blueprint, jsonify, request
 from flask import current_app as app
 

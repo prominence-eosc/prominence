@@ -1,4 +1,4 @@
-#!/usr/bin/python
+"""Authorisation functions"""
 from __future__ import print_function
 from functools import wraps
 import time

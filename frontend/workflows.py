@@ -1,3 +1,4 @@
+"""Routes for managing workflows"""
 import uuid
 
 from flask import Blueprint, jsonify, request

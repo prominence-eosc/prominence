@@ -1,3 +1,4 @@
+"""Routes for managing jobs""" 
 import uuid 
 
 from flask import Blueprint, jsonify, request

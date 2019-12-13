@@ -1,3 +1,4 @@
+"""Miscellaneous utilities"""
 def get_remote_addr(req):
     """
     Returns the remote IP address of a user
