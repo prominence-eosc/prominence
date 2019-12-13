@@ -18,6 +18,14 @@ COPY restapi.py /usr/local/bin/
 COPY backend.py /usr/local/bin/
 COPY validate.py /usr/local/bin/
 COPY retry.py /usr/local/bin/
+COPY data.py /usr/local/bin/
+COPY auth.py /usr/local/bin/
+COPY jobs.py /usr/local/bin/
+COPY workflows.py /usr/local/bin/
+COPY errors.py /usr/local/bin/
+COPY utilities.py /usr/local/bin/
+COPY usage.py /usr/local/bin/
+COPY accounting.py /usr/local/bin/
 COPY promlet.py /usr/local/libexec/
 
 ENTRYPOINT ["uwsgi", \
