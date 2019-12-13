@@ -39,6 +39,8 @@ def delete_object(username, group, email, obj):
     """
     Delete object in cloud storage
     """
+    app.logger.info('%s DeleteData user:%s group:%s' % (get_remote_addr(request), username, group))
+
     if app.config['ENABLE_DATA'] != 'True':
         return errors.func_disabled()
 
