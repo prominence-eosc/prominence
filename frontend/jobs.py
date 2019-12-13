@@ -133,7 +133,7 @@ def exec_in_job(username, group, email, job_id):
         command = str(request.args.get('command')).split(',')
 
     output = backend.execute_command(job_id, iwd, command)
-    if output is not None:
+    if output is None:
         return output, 200
  
     return jsonify({'error':'Unable to execute command'}), 400
@@ -187,7 +187,7 @@ def get_stdout(username, group, email, job_id):
         return errors.not_auth_job()
 
     stdout = backend.get_stdout(uid, iwd, out, err, job_id, name)
-    if stdout is not None:
+    if stdout is None:
         return errors.no_stdout()
     else:
         return stdout
@@ -208,7 +208,7 @@ def get_stderr(username, group, email, job_id):
         return errors.not_auth_job()
 
     stderr = backend.get_stderr(uid, iwd, out, err, job_id, name)
-    if stderr is not None:
+    if stderr is None:
         return errors.no_stderr()
     else:
         return stderr
