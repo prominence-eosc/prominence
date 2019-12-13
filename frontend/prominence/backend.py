@@ -584,7 +584,7 @@ class ProminenceBackend(object):
 
             jjob_mapped['outputFiles'] = output_files_new
 
-        # Output directories    
+        # Output directories
         if 'outputDirs' in jjob:
             output_dirs_new = []
             output_locations_put = []
@@ -624,9 +624,9 @@ class ProminenceBackend(object):
 
         # Prepare for submission to a remote HPC system
         tasks = jjob['resources']['nodes']
-        cpusPerTask = jjob['resources']['cpus']
-        memoryPerCpu = jjob['resources']['memory']*1000
-        cjob['+remote_cerequirements_default'] = condor_str("RequiredTasks == %d && RequiredMemoryPerCpu == %d && RequiredCpusPerTask == %d && RequiredTime == %d" % (tasks, memoryPerCpu, cpusPerTask, max_run_time))
+        cpus_per_task = jjob['resources']['cpus']
+        memory_per_cpu = jjob['resources']['memory']*1000
+        cjob['+remote_cerequirements_default'] = condor_str("RequiredTasks == %d && RequiredMemoryPerCpu == %d && RequiredCpusPerTask == %d && RequiredTime == %d" % (tasks, memory_per_cpu, cpus_per_task, max_run_time))
 
         # Set max idle time per resource
         max_idle_time = 0
@@ -682,7 +682,7 @@ class ProminenceBackend(object):
 
         # Copy executable to sandbox, change current working directory to the sandbox
         shutil.copyfile(self._promlet_file, os.path.join(job_sandbox, 'promlet.py'))
-     
+
         os.chdir(job_sandbox)
         os.chmod(os.path.join(job_sandbox, 'promlet.py'), 0o775)
 
@@ -796,7 +796,7 @@ class ProminenceBackend(object):
                     ps_step = float(jjob['factory']['parameters'][0]['step'])
 
                     cjob['extra_args'] = '--param %s=$(prominencevalue0) %s' % (ps_name, self.output_params(jjob))
-                
+
                     value = ps_start
                     job_count = 0
                     while value <= ps_end:
@@ -806,7 +806,7 @@ class ProminenceBackend(object):
                                                                                                  job_count,
                                                                                                  self.output_urls(jjob, uid, job_count)))
                         value += ps_step
-                        job_count += 1           
+                        job_count += 1
 
                 else:
                     ps_num = []
@@ -873,7 +873,7 @@ class ProminenceBackend(object):
                                         job_count += 1
 
                     elif num_dimensions > 4:
-                        return (1, {"error": "Currently only parameter sweeps up to 4D are supported"})                       
+                        return (1, {"error": "Currently only parameter sweeps up to 4D are supported"})
 
             elif jjob['factory']['type'] == 'zip':
 
@@ -1053,7 +1053,7 @@ class ProminenceBackend(object):
             jobj['id'] = job['ClusterId']
             jobj['status'] = jobs_state_map[job['JobStatus']]
             jobj['tasks'] = job_json_file['tasks']
- 
+
             # Job name - for jobs from workflows, use the name "<workflow name>/<job name>/(<number>)"
             jobj['name'] = ''
             if 'name' in job_json_file:
@@ -1267,7 +1267,7 @@ class ProminenceBackend(object):
                             for file in stageout_u['files']:
                                 if file['name'] == output_file and file['status'] == 'success':
                                     url = self.create_presigned_url('get',
-                                                                    self._config['S3_BUCKET'], 
+                                                                    self._config['S3_BUCKET'],
                                                                     'scratch/%s/%s' % (fid, filename),
                                                                     600)
                         file_map = {'name':output_file, 'url':url}
@@ -1501,7 +1501,7 @@ class ProminenceBackend(object):
 
         args = ['condor_ssh_to_job', '%d' % job_id_routed]
         args.extend(self.modify_exec_command(iwd, command))
-        
+
         process = subprocess.Popen(args, shell=False, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
         timeout = {"value": False}
         timer = threading.Timer(int(self._config['EXEC_TIMEOUT']), kill_proc, [process, timeout])
@@ -1523,7 +1523,7 @@ class ProminenceBackend(object):
         job_id_routed = self._get_routed_job_id(job_id)
         if not job_id_routed:
             return None
-    
+
         # Create a tarball & upload to S3
         cmd = 'condor_ssh_to_job %d "tar czf snapshot.tgz %s && curl --upload-file snapshot.tgz \\\"%s\\\""' % (job_id_routed, path, snapshot_url.encode('utf-8'))
         process = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
