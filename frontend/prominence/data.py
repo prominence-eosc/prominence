@@ -16,6 +16,8 @@ def list_objects(username, group, email, path=None):
     """
     List objects in cloud storage
     """
+    app.logger.info('%s ListData user:%s group:%s' % (get_remote_addr(request), username, group))
+
     if app.config['ENABLE_DATA'] != 'True':
         return errors.func_disabled()
 
