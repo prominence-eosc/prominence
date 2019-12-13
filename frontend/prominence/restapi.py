@@ -1,5 +1,4 @@
 """PROMINENCE REST API"""
-#!/usr/bin/python
 from __future__ import print_function
 import logging
 import os
@@ -28,4 +27,4 @@ app.register_blueprint(jobs)
 app.register_blueprint(workflows)
 
 if __name__ == "__main__":
-    app.run(host='0.0.0.0', port=8080)
+    app.run()
