@@ -1,3 +1,4 @@
+"""User error messages"""
 from flask import current_app as app
 from flask import jsonify
 
