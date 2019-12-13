@@ -3,20 +3,11 @@ from flask import Blueprint, jsonify, request
 from flask import current_app as app
 
 from backend import ProminenceBackend
-from utilities import get_remote_addr
+from utilities import get_remote_addr, object_access_allowed
 
 from auth import requires_auth
 
 data = Blueprint('data', __name__)
-
-def object_access_allowed(groups, path):
-    """
-    Decide if a user is allowed to access a path
-    """
-    for group in groups.split(','):
-        if path.startswith(group):
-            return True
-    return False
 
 @data.route("/prominence/v1/data", methods=['GET'])
 @data.route("/prominence/v1/data/<path:path>", methods=['GET'])
