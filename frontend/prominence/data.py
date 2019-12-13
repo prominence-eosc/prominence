@@ -16,6 +16,9 @@ def list_objects(username, group, email, path=None):
     """
     List objects in cloud storage
     """
+    if app.config['ENABLE_DATA'] != 'True':
+        return errors.func_disabled()
+
     backend = ProminenceBackend(app.config)
 
     if not path:
@@ -36,6 +39,9 @@ def delete_object(username, group, email, obj):
     """
     Delete object in cloud storage
     """
+    if app.config['ENABLE_DATA'] != 'True':
+        return errors.func_disabled()
+
     backend = ProminenceBackend(app.config)
 
     obj = str(obj)
@@ -54,6 +60,9 @@ def upload_file(username, group, email):
     Return Swift URL to allow users to upload data to Swift
     """
     app.logger.info('%s UploadData user:%s group:%s' % (get_remote_addr(request), username, group))
+
+    if app.config['ENABLE_DATA'] != 'True':
+        return errors.func_disabled()
 
     backend = ProminenceBackend(app.config)
 
