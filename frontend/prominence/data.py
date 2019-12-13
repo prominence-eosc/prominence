@@ -3,6 +3,7 @@ from flask import Blueprint, jsonify, request
 from flask import current_app as app
 
 from backend import ProminenceBackend
+import errors
 from utilities import get_remote_addr, object_access_allowed
 
 from auth import requires_auth
