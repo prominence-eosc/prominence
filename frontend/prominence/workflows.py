@@ -170,7 +170,7 @@ def delete_workflow(username, group, email, workflow_id):
     app.logger.info('%s DeleteWorkflow user:%s group:%s id:%d' % (get_remote_addr(request), username, group, workflow_id))
 
     backend = ProminenceBackend(app.config)
-    (return_code, data) = backend.delete_workflows(username, [workflow_id])
+    (return_code, data) = backend.delete_workflow(username, [workflow_id])
 
     if return_code == 0:
         return jsonify(data), 200
@@ -188,7 +188,7 @@ def delete_workflows(username, group, email):
     app.logger.info('%s DeleteWorkflows user:%s group:%s id:%s' % (get_remote_addr(request), username, group, request.args.get('id')))
 
     backend = ProminenceBackend(app.config)
-    (return_code, data) = backend.delete_workflows(username, request.args.get('id').split(','))
+    (return_code, data) = backend.delete_workflow(username, request.args.get('id').split(','))
 
     if return_code == 0:
         return jsonify(data), 200

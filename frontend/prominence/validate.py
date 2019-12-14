@@ -1,8 +1,5 @@
 """ Functions for validating jobs and workflows"""
 import re
-import requests
-
-import retry
 
 def validate_notification(notification, valid_events):
     """
@@ -496,17 +493,3 @@ def validate_job(job):
                 return (status, msg)
 
     return (True, '')
-
-@retry.retry(tries=2, delay=1, backoff=1)
-def validate_presigned_url(url):
-    """
-    Validate a presigned URL
-    """
-    try:
-        response = requests.get(url, stream=True, timeout=30)
-    except requests.exceptions.RequestException:
-        return False
-
-    if response.status_code != 200:
-        return False
-    return True
