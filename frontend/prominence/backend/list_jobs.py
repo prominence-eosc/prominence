@@ -1,5 +1,6 @@
 import json
 import os
+import re
 
 import classad
 import htcondor
