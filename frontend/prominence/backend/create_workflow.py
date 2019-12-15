@@ -7,7 +7,7 @@ import subprocess
 import threading
 import uuid
 
-from utilities import condor_str
+from utilities import condor_str, kill_proc
 from write_htcondor_job import write_htcondor_job
 
 def write_parameter_value(value):
@@ -40,13 +40,6 @@ def output_params(workflow):
                 count += 1
 
     return params
-
-def kill_proc(proc, timeout):
-    """
-    Helper function used by "run"
-    """
-    timeout["value"] = True
-    proc.kill()
 
 def run(cmd, cwd, timeout_sec):
     """

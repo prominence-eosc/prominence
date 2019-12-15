@@ -1,5 +1,8 @@
+import json
 import subprocess
 import threading
+
+from utilities import get_routed_job_id, kill_proc
 
 def modify_exec_command(iwd, command):
     """
@@ -24,7 +27,7 @@ def execute_command(self, job_id, iwd, command):
     """
     Execute a command inside a job
     """
-    job_id_routed = self._get_routed_job_id(job_id)
+    job_id_routed = get_routed_job_id(job_id)
     if not job_id_routed:
         return None
 

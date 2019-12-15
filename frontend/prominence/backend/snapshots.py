@@ -2,6 +2,8 @@ import json
 import subprocess
 import threading
 
+from utilities import get_routed_job_id, kill_proc
+
 def get_snapshot_url(self, uid):
     """
     Return a pre-signed URL to retrieve a snapshot
@@ -15,7 +17,7 @@ def create_snapshot(self, uid, job_id, path):
     # Firstly create the PUT URL
     snapshot_url = self.create_presigned_url('put', self._config['S3_BUCKET'], 'snapshots/%s/snapshot.tgz' % uid, 1000)
 
-    job_id_routed = self._get_routed_job_id(job_id)
+    job_id_routed = get_routed_job_id(job_id)
     if not job_id_routed:
         return None
 
