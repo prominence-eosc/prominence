@@ -18,13 +18,9 @@ class ProminenceBackend(object):
     from get_stderr import get_stderr
     from execute_command import execute_command
     from snapshots import create_snapshot, get_snapshot_url
-    from list_objects import list_objects
-    from delete_object import delete_object
-
+    from data import create_presigned_url, list_objects, delete_object
     from get_job_unique_id import get_job_unique_id
-    from create_presigned_url import create_presigned_url
     from create_htcondor_job import _create_htcondor_job
-    from write_htcondor_job import write_htcondor_job
 
     def create_sandbox(self, uid):
         """
