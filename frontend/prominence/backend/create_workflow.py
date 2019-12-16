@@ -41,6 +41,34 @@ def output_params(workflow):
 
     return params
 
+def _output_urls(self, workflow, uid, label):
+    """
+    Generate output files/dirs
+    """
+    lists = ''
+    count = 0
+
+    for job in workflow['jobs']:
+        if 'outputFiles' in job:
+            for filename in job['outputFiles']:
+                url_put = self.create_presigned_url('put',
+                                                    self._config['S3_BUCKET'],
+                                                    'scratch/%s/%d/%s' % (uid, label, os.path.basename(filename)),
+                                                    604800)
+                lists = lists + ' prominenceout%d="%s" ' % (count, url_put)
+                count += 1
+
+        if 'outputDirs' in job:
+            for dirname in job['outputDirs']:
+                url_put = self.create_presigned_url('put',
+                                                    self._config['S3_BUCKET'],
+                                                    'scratch/%s/%d/%s.tgz' % (uid, label, os.path.basename(dirname)),
+                                                    604800)
+                lists = lists + ' prominenceout%d="%s" ' % (count, url_put)
+                count += 1
+
+    return lists
+
 def run(cmd, cwd, timeout_sec):
     """
     Run a subprocess, capturing stdout & stderr, with a timeout
@@ -147,7 +175,7 @@ def create_workflow(self, username, groups, email, uid, jjob):
                     dag.append('VARS job%d prominencevalue0="%s" prominencecount="%d" %s' % (job_count,
                                                                                              write_parameter_value(value),
                                                                                              job_count,
-                                                                                             self.output_urls(jjob, uid, job_count)))
+                                                                                             self._output_urls(jjob, uid, job_count)))
                     value += ps_step
                     job_count += 1
 
@@ -186,7 +214,7 @@ def create_workflow(self, username, groups, email, uid, jjob):
                             x1_val = ps_start[0] + x1*ps_step[0]
                             y1_val = ps_start[1] + y1*ps_step[1]
                             dag.append('JOB job%d job.jdl' % job_count)
-                            dag.append('VARS job%d prominencevalue0="%s" prominencevalue1="%s" prominencecount="%d" %s' % (job_count, write_parameter_value(x1_val), write_parameter_value(y1_val), job_count, self.output_urls(jjob, uid, job_count)))
+                            dag.append('VARS job%d prominencevalue0="%s" prominencevalue1="%s" prominencecount="%d" %s' % (job_count, write_parameter_value(x1_val), write_parameter_value(y1_val), job_count, self._output_urls(jjob, uid, job_count)))
                             job_count += 1
 
                 elif num_dimensions == 3:
@@ -198,7 +226,7 @@ def create_workflow(self, username, groups, email, uid, jjob):
                                 y1_val = ps_start[1] + y1*ps_step[1]
                                 z1_val = ps_start[2] + z1*ps_step[2]
                                 dag.append('JOB job%d job.jdl' % job_count)
-                                dag.append('VARS job%d prominencevalue0="%s" prominencevalue1="%s" prominencevalue2="%s" prominencecount="%d" %s' % (job_count, write_parameter_value(x1_val), write_parameter_value(y1_val), write_parameter_value(z1_val), job_count, self.output_urls(jjob, uid, job_count)))
+                                dag.append('VARS job%d prominencevalue0="%s" prominencevalue1="%s" prominencevalue2="%s" prominencecount="%d" %s' % (job_count, write_parameter_value(x1_val), write_parameter_value(y1_val), write_parameter_value(z1_val), job_count, self._output_urls(jjob, uid, job_count)))
                                 job_count += 1
 
                 elif num_dimensions == 4:
@@ -212,7 +240,7 @@ def create_workflow(self, username, groups, email, uid, jjob):
                                     z1_val = ps_start[2] + z1*ps_step[2]
                                     t1_val = ps_start[3] + t1*ps_step[3]
                                     dag.append('JOB job%d job.jdl' % job_count)
-                                    dag.append('VARS job%d prominencevalue0="%s" prominencevalue1="%s" prominencevalue2="%s" prominencevalue3="%s" prominencecount="%d" %s' % (job_count, write_parameter_value(x1_val), write_parameter_value(y1_val), write_parameter_value(z1_val), write_parameter_value(t1_val), job_count, self.output_urls(jjob, uid, job_count)))
+                                    dag.append('VARS job%d prominencevalue0="%s" prominencevalue1="%s" prominencevalue2="%s" prominencevalue3="%s" prominencecount="%d" %s' % (job_count, write_parameter_value(x1_val), write_parameter_value(y1_val), write_parameter_value(z1_val), write_parameter_value(t1_val), job_count, self._output_urls(jjob, uid, job_count)))
                                     job_count += 1
 
                 elif num_dimensions > 4:
@@ -233,7 +261,7 @@ def create_workflow(self, username, groups, email, uid, jjob):
                 dag.append('VARS job%d %s prominencecount="%d" %s' % (index,
                                                                       ' '.join(parameters),
                                                                       index,
-                                                                      self.output_urls(jjob, uid, index)))
+                                                                      self._output_urls(jjob, uid, index)))
 
         # Write JDL
         if not write_htcondor_job(cjob, '%s/job.jdl' % job_sandbox):
