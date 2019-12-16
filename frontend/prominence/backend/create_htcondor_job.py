@@ -5,7 +5,7 @@ import requests
 
 from utilities import condor_str, retry
 
-@retry.retry(tries=2, delay=1, backoff=1)
+@retry(tries=2, delay=1, backoff=1)
 def validate_presigned_url(url):
     """
     Validate a presigned URL
