@@ -255,17 +255,7 @@ def list_jobs(self, job_ids, identity, active, completed, workflow, num, detail,
                 jobj['constraints'] = job_json_file['constraints']
 
             if 'storage' in job_json_file:
-                storage = {}
-                storage['type'] = job_json_file['storage']['type']
-                storage['mountpoint'] = job_json_file['storage']['mountpoint']
-                storage[storage['type']] = {}
-                if storage['type'] == 'onedata':
-                    storage[storage['type']]['provider'] = '***'
-                    storage[storage['type']]['token'] = '***'
-                elif storage['type'] == 'b2drop':
-                    storage[storage['type']]['app-username'] = '***'
-                    storage[storage['type']]['app-password'] = '***'
-                jobj['storage'] = storage
+                jobj['storage'] = redact_storage_creds(job_json_file['storage'])
 
             execution = {}
             if 'ProminenceInfrastructureSite' in job:
