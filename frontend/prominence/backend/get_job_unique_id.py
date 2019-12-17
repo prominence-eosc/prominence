@@ -12,9 +12,11 @@ def get_job_unique_id(self, job_id):
     out = None
     err = None
     status = -1
+
+    attributes = ['ProminenceJobUniqueIdentifier', 'ProminenceIdentity', 'Iwd', 'Out', 'Err', 'DAGNodeName', 'JobStatus']
+
     schedd = htcondor.Schedd()
-    jobs_condor = schedd.history('RoutedBy =?= undefined && ClusterId =?= %s' % job_id,
-                                 ['ProminenceJobUniqueIdentifier', 'ProminenceIdentity', 'Iwd', 'Out', 'Err', 'DAGNodeName', 'JobStatus'], 1)
+    jobs_condor = schedd.history('RoutedBy =?= undefined && ClusterId =?= %s' % job_id, attributes, 1)
     for job in jobs_condor:
         if 'ProminenceJobUniqueIdentifier' in job and 'ProminenceIdentity' in job:
             uid = job['ProminenceJobUniqueIdentifier']
@@ -28,9 +30,8 @@ def get_job_unique_id(self, job_id):
             if 'DAGNodeName' in job:
                 name = job['DAGNodeName']
 
-    if uid is None or identity is None:
-        jobs_condor = schedd.xquery('RoutedBy =?= undefined && ClusterId =?= %s' % job_id,
-                                    ['ProminenceJobUniqueIdentifier', 'ProminenceIdentity', 'Iwd', 'Out', 'Err', 'DAGNodeName', 'JobStatus'], 1)
+    if not uid or not identity:
+        jobs_condor = schedd.xquery('RoutedBy =?= undefined && ClusterId =?= %s' % job_id, attributes, 1)
         for job in jobs_condor:
             if 'ProminenceJobUniqueIdentifier' in job and 'ProminenceIdentity' in job:
                 uid = job['ProminenceJobUniqueIdentifier']
@@ -43,4 +44,5 @@ def get_job_unique_id(self, job_id):
                 # a job we need to know the job name
                 if 'DAGNodeName' in job:
                     name = job['DAGNodeName']
+
     return (uid, identity, iwd, out, err, name, status)
