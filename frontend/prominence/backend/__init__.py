@@ -11,7 +11,7 @@ class ProminenceBackend(object):
     from create_job import create_job
     from list_jobs import list_jobs
     from delete_job import delete_job
-    from create_workflow import create_workflow
+    from create_workflow import create_workflow, _output_urls
     from list_workflows import list_workflows
     from delete_workflow import delete_workflow
     from get_stdout import get_stdout
@@ -21,7 +21,6 @@ class ProminenceBackend(object):
     from data import create_presigned_url, list_objects, delete_object
     from get_job_unique_id import get_job_unique_id
     from create_htcondor_job import _create_htcondor_job
-    from output_urls import _output_urls
 
     def create_sandbox(self, uid):
         """
