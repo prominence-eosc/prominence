@@ -137,9 +137,6 @@ def list_jobs(self, job_ids, identity, active, completed, workflow, num, detail,
         tasks_u = []
         if 'tasks' in job_u:
             tasks_u = job_u['tasks']
-        elif job_u:
-            # Handle original promlet.json format
-            tasks_u = job_u
 
         stageout_u = {}
         if 'stageout' in job_u:
