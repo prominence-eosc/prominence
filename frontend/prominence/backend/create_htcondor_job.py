@@ -82,7 +82,7 @@ def _create_htcondor_job(self, username, groups, email, uid, jjob, job_path, wor
                 else:
                     path = '%s/%s' % (username, task['image'])
                 task['image'] = self.create_presigned_url('get', self._config['S3_BUCKET'], 'uploads/%s' % path, 604800)
-                url_exists = validate.validate_presigned_url(task['image'])
+                url_exists = validate_presigned_url(task['image'])
                 if not url_exists:
                     return (1, {"error":"Image %s does not exist" % image}, cjob)
 
@@ -171,7 +171,7 @@ def _create_htcondor_job(self, username, groups, email, uid, jjob, job_path, wor
                 else:
                     path = '%s/%s' % (username, artifact_url)
                 artifact_url = self.create_presigned_url('get', self._config['S3_BUCKET'], 'uploads/%s' % path, 604800)
-                url_exists = validate.validate_presigned_url(artifact_url)
+                url_exists = validate_presigned_url(artifact_url)
                 if not url_exists:
                     return (1, {"error":"Artifact %s does not exist" % artifact_original}, cjob)
             input_files.append(artifact_url)
