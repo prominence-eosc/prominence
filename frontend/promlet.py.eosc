@@ -1271,7 +1271,8 @@ if __name__ == "__main__":
     mount_storage(job)
 
     # Replace output file/dir URL addresses if necessary
-    replace_output_urls(job, args.outfile, args.outdir)
+    if args.outfile or args.outdir:
+        replace_output_urls(job, args.outfile, args.outdir)
 
     # Create the user home & tmp directories
     create_dirs(path)
