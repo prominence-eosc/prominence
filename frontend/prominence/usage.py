@@ -11,7 +11,7 @@ def get_usage(username,
               show_groups,
               config):
     """
-    Get resource usage data from ElasticSearch
+    Get resource usage data from Elasticsearch
     """
 
     client = Elasticsearch([{'host':config['ELASTICSEARCH_HOST'],
