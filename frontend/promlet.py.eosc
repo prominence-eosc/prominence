@@ -642,6 +642,31 @@ def download_singularity(image, image_new, location, path):
 
     return 0, False
 
+def download_tarball(image, location):
+    """
+    Download a container image tarball
+    """
+    try:
+        response = requests.get(image, allow_redirects=True, stream=True)
+        if response.status_code == 200:
+            with open('%s/image.tar' % location, 'wb') as tar_file:
+                for chunk in response.iter_content(chunk_size=1024*1024):
+                    if chunk:
+                        tar_file.write(chunk)
+        else:
+            logging.error('Unable to download container image')
+            return False
+    except requests.exceptions.RequestException as e:
+        logging.error('Unable to download container image due to: %s', e)
+        return False
+    except IOError as e:
+        logging.error('Unable to download container image due to: %s', e)
+        return False
+
+    logging.info('Container imaage tarball downloaded from URL and written to file %s/image.tar' % location)
+
+    return True
+
 def get_udocker(path):
     """
     Check if udocker is installed
@@ -710,24 +735,8 @@ def download_udocker(image, location, label, path):
 
     if re.match(r'^http', image):
         # Download tarball
-        try:
-            response = requests.get(image, allow_redirects=True, stream=True)
-            if response.status_code == 200:
-                with open('%s/image.tar' % location, 'wb') as tar_file:
-                    for chunk in response.iter_content(chunk_size=1024*1024):
-                        if chunk:
-                            tar_file.write(chunk)
-            else:
-                logging.error('Unable to download udocker image')
-                return 1, False
-        except requests.exceptions.RequestException as e:
-            logging.error('Unable to download udocker image due to: %s', e)
+        if not download_tarball(image, location):
             return 1, False
-        except IOError as e:
-            logging.error('Unable to download udocker image due to: %s', e)
-            return 1, False
-
-        logging.info('udocker tarball downloaded from URL and written to file %s/image.tar' % location)
 
         # Load image
         process = subprocess.Popen('udocker load -i %s/image.tar' % location,
