@@ -109,16 +109,16 @@ def replace_output_urls(job, outfiles, outdirs):
                     logging.info('Updating URL for file %s with %s', filename, url)
                     job['outputFiles'][i]['url'] = url
 
-        if outdirs and 'outputDirs' in job:
-            for outdir in outdirs:
-                pieces = outdir.split('=', 1)
-                filename = pieces[0]
-                url = pieces[1]
-                for i in range(0, len(job['outputDirs'])):
-                    pair = job['outputDirs'][i]
-                    if filename == pair['name']:
-                        logging.info('Updating URL for dir %s with %s', filename, url)
-                        job['outputDirs'][i]['url'] = url
+    if outdirs and 'outputDirs' in job:
+        for outdir in outdirs:
+            pieces = outdir.split('=', 1)
+            filename = pieces[0]
+            url = pieces[1]
+            for i in range(0, len(job['outputDirs'])):
+                pair = job['outputDirs'][i]
+                if filename == pair['name']:
+                    logging.info('Updating URL for dir %s with %s', filename, url)
+                    job['outputDirs'][i]['url'] = url
 
 def create_dirs(path):
     """
