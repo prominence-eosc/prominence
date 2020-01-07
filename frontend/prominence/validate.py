@@ -382,6 +382,10 @@ def validate_job(job):
             return (False, 'an array of artifacts must be provided')
 
         for artifact in job['artifacts']:
+            for item in artifact:
+                if item not in ('url', 'mountpoint', 'executable'):
+                    return (False, 'invalid item %s in artifact' % item)
+
             if 'url' not in artifact:
                 return (False, 'an artifact must contain a URL')
 
