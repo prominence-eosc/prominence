@@ -14,6 +14,7 @@ import re
 from string import Template
 import sys
 import time
+import uuid
 import requests
 import requests.packages.urllib3
 from requests.auth import HTTPBasicAuth
@@ -160,23 +161,25 @@ def makeX509Proxy(certPath, keyPath, expirationTime, isLegacyProxy=False, cn=Non
 
    return proxyString
 
-def create_infrastructure_with_retries(data):
+def create_infrastructure_with_retries(uid, data):
     """
     Create infrastructure with retries & backoff
     """
     max_retries = int(CONFIG.get('imc', 'retries'))
     count = 0
     success = None
-    while count < max_retries and not success:
-        success = create_infrastructure(data)
+    while count < max_retries and success is None:
+        success = create_infrastructure(uid, data)
         count += 1
         time.sleep(count/2)
     return success
 
-def create_infrastructure(data):
+def create_infrastructure(uid, data):
     """
     Create infrastructure
     """
+    headers = {}
+    headers['Idempotency-Key'] = uid
     try:
         response = requests.post('%s' % CONFIG.get('imc', 'url'),
                                  auth=HTTPBasicAuth(CONFIG.get('imc', 'username'),
@@ -185,12 +188,13 @@ def create_infrastructure(data):
                                        CONFIG.get('imc', 'ssl-key')),
                                  verify=CONFIG.get('imc', 'ssl-cert'),
                                  json=data,
+                                 headers=headers,
                                  timeout=int(CONFIG.get('imc', 'timeout')))
     except requests.exceptions.Timeout:
         return None
     except requests.exceptions.RequestException:
         return None
-    if response.status_code == 201:
+    if response.status_code == 201 or response.status_code == 200:
         return response.json()['id']
     return None
 
@@ -472,9 +476,11 @@ def translate_classad():
         data['identity'] = identity
 
         # Create infrastructure
-        infra_id = create_infrastructure_with_retries(data)
+        uid_infra = str(uuid.uuid4())
+        logger.info('[%s] About to create infrastructure with Idempotency-Key "%s"', job_id, uid_infra)
+        infra_id = create_infrastructure_with_retries(uid_infra, data)
 
-        if not infra_id:
+        if infra_id is None:
             classad_new['ProminenceInfrastructureState'] = 'failed'
             logger.info('[%s] Deployment onto cloud failed', job_id)
         else:
