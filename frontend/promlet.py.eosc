@@ -990,6 +990,12 @@ def run_tasks(job, path, is_batch):
                 source = artifact['mountpoint'].split(':')[0]
                 dest = artifact['mountpoint'].split(':')[1]
                 artifacts[source] = dest
+            elif 'executable' in artifact:
+                if artifact['executable'] == 'true':
+                    filename = url2filename(artifact['url'])
+                    if os.path.exists(filename):
+                        logging.info('Making artifact file %s executable', filename)
+                        os.chmod(os.path.join(path, filename), 0o775)
 
     # Check shared filesystem for multi-node jobs before doing anything
     if num_nodes > 1 and not is_batch and os.path.isfile('/home/user/.beeond'):
