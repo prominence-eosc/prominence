@@ -155,8 +155,8 @@ def _create_htcondor_job(self, username, groups, email, uid, jjob, job_path, wor
     if 'preemptible' in jjob:
         cjob['+ProminencePreemptible'] = 'true'
 
-    # Job router
-    cjob['+ProminenceWantJobRouter'] = str('(ProminenceMaxIdleTime =?= 0 || (ProminenceMaxIdleTime > 0 && JobStatus == 1 && CurrentTime - EnteredCurrentStatus > ProminenceMaxIdleTime)) && Preemptible =!= True')
+    # Job router - route idle jobs if they have never been routed before or if they were last routed more than 20 mins ago
+    cjob['+ProminenceWantJobRouter'] = str('JobStatus == 1 && ((CurrentTime - ProminenceLastRouted > 1200) || isUndefined(ProminenceLastRouted))')
 
     # Artifacts
     artifacts = []
