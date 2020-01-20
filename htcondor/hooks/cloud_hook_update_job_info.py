@@ -11,6 +11,15 @@ import classad
 import htcondor
 import os
 
+def get_from_classad(name, class_ad, default=None):
+    """
+    Get the value of the specified item from a job ClassAd
+    """
+    value = default
+    if name in class_ad:
+        value = class_ad[name]
+    return value
+
 def check_startd(host):
     """
     Check that running the job has a startd
@@ -62,36 +71,20 @@ def update_classad():
     """
     lock_file = '/tmp/.lock-update'
 
-    infra_id = None
-    infra_state = None
-    infra_type = None
-    state = None
-    infra_site = None
-    uid = None
-    job_status = -1
-    remote_host = None
-
     # Read ClassAd
     job_ad = classad.parseOne(sys.stdin, parser=classad.Parser.Old)
-    if 'ClusterId' in job_ad:
-        cluster_id = int(job_ad['ClusterId'])
-    if 'JobStatus' in job_ad:
-        job_status = int(job_ad['JobStatus'])
-    if 'ProcId' in job_ad:
-        proc_id = int(job_ad['ProcId'])
-    if 'ProminenceInfrastructureId' in job_ad:
-        infra_id = job_ad['ProminenceInfrastructureId']
-    if 'ProminenceInfrastructureState' in job_ad:
-        infra_state = job_ad['ProminenceInfrastructureState']
-    if 'ProminenceInfrastructureType' in job_ad:
-        infra_type = job_ad['ProminenceInfrastructureType']
-    if 'ProminenceInfrastructureSite' in job_ad:
-        infra_site = job_ad['ProminenceInfrastructureSite']
-    if 'ProminenceJobUniqueIdentifier' in job_ad:
-        uid = job_ad['ProminenceJobUniqueIdentifier']
-    if 'RemoteHost' in job_ad:
-        remote_host = job_ad['RemoteHost']
 
+    cluster_id = int(get_from_classad('ClusterId', job_ad, -1))
+    job_status = int(get_from_classad('JobStatus', job_ad, -1))
+    proc_id = int(get_from_classad('ProcId', job_ad, 0))
+    infra_id = get_from_classad('ProminenceInfrastructureId', job_ad)
+    infra_state = get_from_classad('ProminenceInfrastructureState', job_ad)
+    infra_type = get_from_classad('ProminenceInfrastructureType', job_ad)
+    infra_site = get_from_classad('ProminenceInfrastructureSite', job_ad)
+    uid = get_from_classad('ProminenceJobUniqueIdentifier', job_ad)
+    remote_host = get_from_classad('RemoteHost', job_ad)
+
+    state = None
     job_id = '%s.%s' % (cluster_id, proc_id)
 
     if infra_id is not None and str(infra_type) == 'cloud' and infra_state != 'configured':
