@@ -8,6 +8,15 @@ import requests
 from requests.auth import HTTPBasicAuth
 import classad
 
+def get_from_classad(name, class_ad, default=None):
+    """
+    Get the value of the specified item from a job ClassAd
+    """
+    value = default
+    if name in class_ad:
+        value = class_ad[name]
+    return value
+
 def delete_infrastructure_with_retries(infra_id):
     """
     Delete infrastructure with retries & backoff
@@ -45,36 +54,18 @@ def cleanup_infrastructure():
     """
     Cleanup infrastructure associated with the job if necessary
     """
-    cluster_id = None
-    proc_id = None
-    infra_id = None
-    infra_state = None
-    infra_site = None
-    infra_type = None
-    uid = None
-    job_status = -1
-    iwd = None
-
     # Read ClassAd
     job_ad = classad.parseOne(sys.stdin, parser=classad.Parser.Old)
-    if 'Iwd' in job_ad:
-        iwd = job_ad['Iwd']
-    if 'ClusterId' in job_ad:
-        cluster_id = int(job_ad['ClusterId'])
-    if 'ProcId' in job_ad:
-        proc_id = int(job_ad['ProcId'])
-    if 'JobStatus' in job_ad:
-        job_status = int(job_ad['JobStatus'])
-    if 'ProminenceInfrastructureId' in job_ad:
-        infra_id = job_ad['ProminenceInfrastructureId']
-    if 'ProminenceInfrastructureState' in job_ad:
-        infra_state = job_ad['ProminenceInfrastructureState']
-    if 'ProminenceInfrastructureSite' in job_ad:
-        infra_site = job_ad['ProminenceInfrastructureSite']
-    if 'ProminenceInfrastructureType' in job_ad:
-        infra_type = job_ad['ProminenceInfrastructureType']
-    if 'ProminenceJobUniqueIdentifier' in job_ad:
-        uid = job_ad['ProminenceJobUniqueIdentifier']
+
+    iwd = get_from_classad(iwd, job_ad)
+    cluster_id = int(get_from_classad('ClusterId', job_ad, -1))
+    proc_id = int(get_from_classad('ProcId', job_ad, 0))
+    job_status = int(get_from_classad('JobStatus', job_ad, -1))
+    infra_id = get_from_classad('ProminenceInfrastructureId', job_ad)
+    infra_state = get_from_classad('ProminenceInfrastructureState', job_ad)
+    infra_site = get_from_classad('ProminenceInfrastructureSite', job_ad)
+    infra_type = get_from_classad('ProminenceInfrastructureType', job_ad)
+    uid = get_from_classad('ProminenceJobUniqueIdentifier', job_ad)
 
     job_id = '%s.%s' % (cluster_id, proc_id)
     exit_code = -1
