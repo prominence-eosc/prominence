@@ -22,6 +22,15 @@ import classad
 
 requests.packages.urllib3.disable_warnings()
 
+def get_from_classad(name, class_ad, default=None):
+    """
+    Get the value of the specified item from a job ClassAd
+    """
+    value = default
+    if name in class_ad:
+        value = class_ad[name]
+    return value
+
 def create_ssh_keypair():
     """
     Create an ssh keypair
@@ -257,19 +266,7 @@ def translate_classad():
     Deploy infrastructure for a job
     """
     route = ''
-    num_nodes = 0
-    cores_per_node = 0
-    memory_per_node = 0
-    disk_size = 0
-    want_mpi = False
     condor_host = CONFIG.get('htcondor', 'manager')
-    proc_id = 0
-    job_status = 0
-    my_groups = []
-    dag_node_name = None
-    identity = None
-    iwd = None
-    factory_id = 0
 
     classad_in = sys.stdin.read().split('------')
 
@@ -281,30 +278,24 @@ def translate_classad():
     job_ad = classad.parseOne(classad_in[1], parser=classad.Parser.Old)
     classad_new = job_ad
 
-    if 'Iwd' in job_ad:
-        iwd = job_ad['Iwd']
-    if 'DAGNodeName' in job_ad:
-        dag_node_name = job_ad['DAGNodeName']
-    if 'ClusterId' in job_ad:
-        cluster_id = int(job_ad['ClusterId'])
-    if 'ProcId' in job_ad:
-        proc_id = int(job_ad['ProcId'])
-    if 'JobStatus' in job_ad:
-        job_status = int(job_ad['JobStatus'])
-    if 'ProminenceIdentity' in job_ad:
-        identity = job_ad['ProminenceIdentity']
-    if 'ProminenceWantMPI' in job_ad:
-        if job_ad['ProminenceWantMPI']:
-            want_mpi = True
-    if 'ProminenceJobUniqueIdentifier' in job_ad:
-        uid = job_ad['ProminenceJobUniqueIdentifier']
-        uid_raw = uid
-    if 'ProminenceGroup' in job_ad:
-        my_groups = job_ad['ProminenceGroup'].split(',')
-    if 'ProminenceFactoryId' in job_ad:
-        factory_id = int(job_ad['ProminenceFactoryId'])
+    iwd = get_from_classad('Iwd', job_ad)
+    dag_node_name = get_from_classad('DAGNodeName', job_ad)
+    cluster_id = int(get_from_classad('ClusterId', job_ad, -1))
+    proc_id = int(get_from_classad('ProcId', job_ad, 0))
+    job_status = int(get_from_classad('JobStatus', job_ad, 0))
+    identity = get_from_classad('ProminenceIdentity', job_ad)
+    uid = get_from_classad('ProminenceJobUniqueIdentifier', job_ad)
+    my_groups = get_from_classad('ProminenceGroup', job_ad).split(',')
+    factory_id = int(get_from_classad('ProminenceFactoryId', job_ad, 0))
+    want_mpi = get_from_classad('ProminenceWantMPI', job_ad)
+
+    if want_mpi:
+        want_mpi = True
+    else:
+        want_mpi = False
 
     job_id = '%s.%s' % (cluster_id, proc_id)
+    uid_raw = uid
     uid = "%s-%d" % (uid, factory_id)
 
     logger.info('[%s] Starting cloud_hook_translate_job', job_id)
@@ -471,7 +462,7 @@ def translate_classad():
             data['requirements']['tags'] = {}
             data['requirements']['tags']['multi-node-jobs'] = 'true'
 
-        data['radl'] = base64.b64encode(radl_contents)
+        data['radl'] = base64.b64encode(radl_contents.encode('utf8'))
         data['identifier'] = job_id
         data['identity'] = identity
 
