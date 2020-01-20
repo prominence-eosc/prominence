@@ -1,3 +1,4 @@
+"""Update any presigned URLs which will expire too soon"""
 import boto3
 import ConfigParser
 import json
@@ -14,7 +15,6 @@ except ImportError: # Python 3
 logger = logging.getLogger(__name__)
 
 CONFIG = ConfigParser.ConfigParser()
-#CONFIG.read('/opt/prominence/etc/prominence.ini')
 CONFIG.read('/etc/prominence/prominence.ini')
 
 THRESHOLD = 5*24*60*60
