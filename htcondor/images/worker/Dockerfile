@@ -42,4 +42,5 @@ COPY write-resources.py /usr/local/bin/
 
 # Entrypoint
 COPY docker-entrypoint.sh /
+RUN chmod a+xr /docker-entrypoint.sh
 ENTRYPOINT ["/docker-entrypoint.sh"]
