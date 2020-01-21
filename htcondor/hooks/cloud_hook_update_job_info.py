@@ -1,15 +1,17 @@
 #!/usr/bin/python
 from __future__ import print_function
+import ConfigParser
 import logging
 from logging.handlers import RotatingFileHandler
+import os
 import sys
 import time
-import ConfigParser
 import requests
 from requests.auth import HTTPBasicAuth
 import classad
 import htcondor
-import os
+
+import update_presigned_urls
 
 def get_from_classad(name, class_ad, default=None):
     """
@@ -83,9 +85,17 @@ def update_classad():
     infra_site = get_from_classad('ProminenceInfrastructureSite', job_ad)
     uid = get_from_classad('ProminenceJobUniqueIdentifier', job_ad)
     remote_host = get_from_classad('RemoteHost', job_ad)
+    iwd = get_from_classad('Iwd', job_ad)
+    args = get_from_classad('Args', job_ad)
 
     state = None
     job_id = '%s.%s' % (cluster_id, proc_id)
+
+    # Update any presigned URLs as necessary
+    if job_status == 1:
+        new_args = update_presigned_urls.update_presigned_urls(args, '%s/.job.mapped.json' % iwd)
+        if new_args:
+            print('Args = "%s"' % new_args)
 
     if infra_id is not None and str(infra_type) == 'cloud' and infra_state != 'configured':
         (state, reason, cloud) = get_infrastructure_status_with_retries(infra_id)
@@ -139,8 +149,8 @@ def update_classad():
     # Create a lock file
     try:
         open(lock_file, 'a').close()
-    except Exception as exc:
-        logger.critical('[%s] Unable to write lock file, exiting...', job_id)
+    except Exception as err:
+        logger.critical('[%s] Unable to write lock file due to %s, exiting...', job_id, err)
 
 if __name__ == "__main__":
     # Read config file
