@@ -1,0 +1,4 @@
+#!/bin/sh
+
+# Make user's working directory
+mkdir -p userhome
