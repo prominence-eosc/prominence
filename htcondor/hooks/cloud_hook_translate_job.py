@@ -3,13 +3,9 @@ from __future__ import print_function
 import base64
 import calendar
 import ConfigParser
-from cryptography.hazmat.primitives import serialization as crypto_serialization
-from cryptography.hazmat.primitives.asymmetric import rsa
-from cryptography.hazmat.backends import default_backend as crypto_default_backend
 import json
 import logging
 from logging.handlers import RotatingFileHandler
-import M2Crypto
 import re
 from string import Template
 import sys
@@ -18,7 +14,13 @@ import uuid
 import requests
 import requests.packages.urllib3
 from requests.auth import HTTPBasicAuth
+from cryptography.hazmat.primitives import serialization as crypto_serialization
+from cryptography.hazmat.primitives.asymmetric import rsa
+from cryptography.hazmat.backends import default_backend as crypto_default_backend
 import classad
+
+import make_x509_proxy
+import update_presigned_urls
 
 requests.packages.urllib3.disable_warnings()
 
@@ -51,125 +53,6 @@ def create_ssh_keypair():
 
     return (private_key, public_key)
 
-def emptyCallback1(p1):
-   return
-
-def emptyCallback2(p1, p2):
-   return
-
-def makeX509Proxy(certPath, keyPath, expirationTime, isLegacyProxy=False, cn=None):
-   """
-   Return a PEM-encoded limited proxy as a string in either Globus Legacy
-   or RFC 3820 format. Checks that the existing cert/proxy expires after
-   the given expirationTime, but no other checks are done.
-   """
-
-   # First get the existing priviate key
-
-   try:
-     oldKey = M2Crypto.RSA.load_key(keyPath, emptyCallback1)
-   except Exception as e:
-     raise IOError('Failed to get private key from ' + keyPath + ' (' + str(e) + ')')
-
-   # Get the chain of certificates (just one if a usercert or hostcert file)
-
-   try:
-     certBIO = M2Crypto.BIO.File(open(certPath))
-   except Exception as e:
-     raise IOError('Failed to open certificate file ' + certPath + ' (' + str(e) + ')')
-
-   oldCerts = []
-
-   while True:
-     try:
-       oldCerts.append(M2Crypto.X509.load_cert_bio(certBIO))
-     except:
-       certBIO.close()
-       break
-
-   if len(oldCerts) == 0:
-     raise IOError('Failed get certificate from ' + certPath)
-
-   # Check the expirationTime
-
-   if int(calendar.timegm(time.strptime(str(oldCerts[0].get_not_after()), "%b %d %H:%M:%S %Y %Z"))) < expirationTime:
-     raise IOError('Cert/proxy ' + certPath + ' expires before given expiration time ' + str(expirationTime))
-
-   # Create the public/private keypair for the new proxy
-
-   newKey = M2Crypto.EVP.PKey()
-   newKey.assign_rsa(M2Crypto.RSA.gen_key(1024, 65537, emptyCallback2))
-
-   # Start filling in the new certificate object
-
-   newCert = M2Crypto.X509.X509()
-   newCert.set_pubkey(newKey)
-   newCert.set_serial_number(int(time.time() * 100))
-   newCert.set_issuer_name(oldCerts[0].get_subject())
-   newCert.set_version(2) # "2" is X.509 for "v3" ...
-
-   # Construct the legacy or RFC style subject
-
-   newSubject = oldCerts[0].get_subject()
-
-   if isLegacyProxy:
-     # Globus legacy proxy
-     newSubject.add_entry_by_txt(field = "CN",
-                                 type  = 0x1001,
-                                 entry = 'limited proxy',
-                                 len   = -1,
-                                 loc   = -1,
-                                 set   = 0)
-   elif cn:
-     # RFC proxy, probably with machinetypeName as proxy CN
-     newSubject.add_entry_by_txt(field = "CN",
-                                 type  = 0x1001,
-                                 entry = cn,
-                                 len   = -1,
-                                 loc   = -1,
-                                 set   = 0)
-   else:
-     # RFC proxy, with Unix time as CN
-     newSubject.add_entry_by_txt(field = "CN",
-                                 type  = 0x1001,
-                                 entry = str(int(time.time() * 100)),
-                                 len   = -1,
-                                 loc   = -1,
-                                 set   = 0)
-
-   newCert.set_subject_name(newSubject)
-
-   # Set start and finish times
-
-   newNotBefore = M2Crypto.ASN1.ASN1_UTCTIME()
-   newNotBefore.set_time(int(time.time()))
-   newCert.set_not_before(newNotBefore)
-
-   newNotAfter = M2Crypto.ASN1.ASN1_UTCTIME()
-   newNotAfter.set_time(expirationTime)
-   newCert.set_not_after(newNotAfter)
-
-   # Add extensions, possibly including RFC-style proxyCertInfo
-
-   newCert.add_ext(M2Crypto.X509.new_extension("keyUsage", "Digital Signature, Key Encipherment, Key Agreement", 1))
-
-   if not isLegacyProxy:
-     newCert.add_ext(M2Crypto.X509.new_extension("proxyCertInfo", "critical, language:1.3.6.1.4.1.3536.1.1.1.9", 1, 0))
-
-   # Sign the certificate with the old private key
-   oldKeyEVP = M2Crypto.EVP.PKey()
-   oldKeyEVP.assign_rsa(oldKey)
-   newCert.sign(oldKeyEVP, 'sha256')
-
-   # Return proxy as a string of PEM blocks
-
-   proxyString = newCert.as_pem() + newKey.as_pem(cipher = None)
-
-   for oneOldCert in oldCerts:
-     proxyString += oneOldCert.as_pem()
-
-   return proxyString
-
 def create_infrastructure_with_retries(uid, data):
     """
     Create infrastructure with retries & backoff
@@ -179,6 +62,8 @@ def create_infrastructure_with_retries(uid, data):
     success = None
     while count < max_retries and success is None:
         success = create_infrastructure(uid, data)
+        if not success:
+            logging.warning('Infrastructe create request failed')
         count += 1
         time.sleep(count/2)
     return success
@@ -207,11 +92,11 @@ def create_infrastructure(uid, data):
         return response.json()['id']
     return None
 
-def prepare_credential_content(filename, itype=False, file=True):
+def prepare_credential_content(filename, itype=False, use_file=True):
     """
     Format strings for inclusion in radl templates
     """
-    if file:
+    if use_file:
         with open(filename) as file_in:
             content = file_in.readlines()
     else:
@@ -234,23 +119,23 @@ def create_worker_credentials(itype=False):
     mapfile = prepare_credential_content(CONFIG.get('credentials', 'mapfile'), itype)
 
     # Proxy for HTCondor auth
-    expiry_time = int(time.time()) + 7*24*60*60
-    proxy = makeX509Proxy(CONFIG.get('credentials', 'host-cert'),
-                          CONFIG.get('credentials', 'host-key'),
-                          expiry_time,
-                          isLegacyProxy=False,
-                          cn=None)
+    expiry_time = int(time.time()) + 30*24*60*60
+    proxy = make_x509_proxy.make_x509_proxy(CONFIG.get('credentials', 'host-cert'),
+                                            CONFIG.get('credentials', 'host-key'),
+                                            expiry_time,
+                                            is_legacy_proxy=False,
+                                            cn=None)
 
-    proxy = prepare_credential_content(proxy, itype, file=False)
+    proxy = prepare_credential_content(proxy, itype, False)
 
     # Prepare ssh keys
     (private_ssh_key_1, public_ssh_key_1) = create_ssh_keypair()
     (private_ssh_key_2, public_ssh_key_2) = create_ssh_keypair()
 
-    private_ssh_key_1 = prepare_credential_content(private_ssh_key_1, itype, file=False)
-    public_ssh_key_1 = prepare_credential_content(public_ssh_key_1, itype, file=False)
-    private_ssh_key_2 = prepare_credential_content(private_ssh_key_2, itype, file=False)
-    public_ssh_key_2 = prepare_credential_content(public_ssh_key_2, itype, file=False)
+    private_ssh_key_1 = prepare_credential_content(private_ssh_key_1, itype, False)
+    public_ssh_key_1 = prepare_credential_content(public_ssh_key_1, itype, False)
+    private_ssh_key_2 = prepare_credential_content(private_ssh_key_2, itype, False)
+    public_ssh_key_2 = prepare_credential_content(public_ssh_key_2, itype, False)
 
     return (root_ca,
             proxy,
@@ -288,6 +173,8 @@ def translate_classad():
     my_groups = get_from_classad('ProminenceGroup', job_ad).split(',')
     factory_id = int(get_from_classad('ProminenceFactoryId', job_ad, 0))
     want_mpi = get_from_classad('ProminenceWantMPI', job_ad)
+    existing_route_name = get_from_classad('RouteName', job_ad)
+    args = get_from_classad('Args', job_ad)
 
     if want_mpi:
         want_mpi = True
@@ -317,6 +204,10 @@ def translate_classad():
         sys.exit(0)
     elif job_status == 1:
         logger.info('[%s] Attempting to create cloud infrastructure', job_id)
+
+        # Handle jobs submitted directly to HTCondor
+        if existing_route_name:
+            classad_new['TransferOutput'] = "promlet.0.log,promlet.0.json"
 
         # Current time
         epoch = int(time.time())
@@ -354,24 +245,25 @@ def translate_classad():
         add_mounts = ''
 
         if 'storage' in job_json:
-           if 'mountpoint' in job_json['storage']:
-               storage_mountpoint = job_json['storage']['mountpoint']
-           if 'type' in job_json['storage']:
-               if job_json['storage']['type'] == 'b2drop':
-                   if 'b2drop' in job_json['storage']:
-                       if 'app-username' in job_json['storage']['b2drop']:
-                           b2drop_app_username = job_json['storage']['b2drop']['app-username']
-                       if 'app-password' in job_json['storage']['b2drop']:
-                           b2drop_app_password = job_json['storage']['b2drop']['app-password']
+            if 'mountpoint' in job_json['storage']:
+                storage_mountpoint = job_json['storage']['mountpoint']
+            if 'type' in job_json['storage']:
+                if job_json['storage']['type'] == 'b2drop':
+                    if 'b2drop' in job_json['storage']:
+                        if 'app-username' in job_json['storage']['b2drop']:
+                            b2drop_app_username = job_json['storage']['b2drop']['app-username']
+                        if 'app-password' in job_json['storage']['b2drop']:
+                            b2drop_app_password = job_json['storage']['b2drop']['app-password']
 
         if storage_mountpoint:
-            add_mounts = '-v /mnt%s:/home/user%s' % (storage_mountpoint, storage_mountpoint)
+            #add_mounts = '-v /mnt%s:/home/user%s' % (storage_mountpoint, storage_mountpoint)
+            add_mounts = '-v /mnt%s:%s' % (storage_mountpoint, storage_mountpoint)
         logger.info('[%s] Using mounts="%s"', job_id, add_mounts)
 
         try:
             with open(radl_file) as data:
                 radl_template = Template(data.read())
-        except IOError as e: 
+        except IOError as e:
             logger.critical('[%s] Exiting due to IO error opening RADL template: %s', job_id, e)
             exit(1)
         except Exception as e:
@@ -380,7 +272,7 @@ def translate_classad():
 
         use_hostname = '%s-%d' % (uid, epoch)
         use_uid = use_hostname
-     
+
         # Generate RADL based on existing template
         try:
             radl_contents = radl_template.substitute(cores_per_node=job_json['resources']['cpus'],
@@ -482,6 +374,10 @@ def translate_classad():
             classad_new['ProminenceProcId'] = str('%d' % proc_id)
 
             logger.info('[%s] Initiated infrastructure deployment with id "%s"', job_id, infra_id)
+
+            new_args = update_presigned_urls.update_presigned_urls(args, '%s/.job.mapped.json' % iwd)
+            if new_args:
+                classad_new['Args'] = str('%s' % new_args)
 
     # Write out updated ClassAd to stdout
     print(classad_new.printOld())
