@@ -1,0 +1,59 @@
+DAEMON_LIST = MASTER, STARTD
+
+CCB_HEARTBEAT_INTERVAL = 120
+
+# Run all jobs as user user
+STARTER_ALLOW_RUNAS_OWNER = FALSE
+SLOT1_USER = user
+DEDICATED_EXECUTE_ACCOUNT_REGEXP = user
+
+TRUST_UID_DOMAIN = True
+
+# Shutdown startd if idle for too long
+STARTD_NOCLAIM_SHUTDOWN = 1200
+
+# Go back to Unclaimed/Idle after running a job which runs for > 1 second
+CLAIM_WORKLIFE = 1
+
+# Shutdown startd if idle after running a job
+STARTD.DAEMON_SHUTDOWN = Activity == "Idle" && (CurrentTime - EnteredCurrentActivity > 30) && (TotalTimeClaimedBusy =!= UNDEFINED && TotalTimeClaimedBusy > 0)
+
+# Shutdown the master if the startd exits
+# - MonitorSelfAge shouldn't be needed, but once I experienced the master
+#   shutting down before the startd had actually started due to STARTD_StartTime
+#   being zero
+MASTER.DAEMON_SHUTDOWN = STARTD_StartTime =?= 0 && MonitorSelfAge > 1200
+
+# We want only a single slot
+NUM_SLOTS = 1
+
+# Advertise cores & machines
+STARTD_ATTRS = $(STARTD_ATTRS), PROM_NODES, PROM_CORES_TOTAL, PROM_CLOUD, PROMINENCE_LOCATION
+
+# TCP keepalive fix for Azure
+#TCP_KEEPALIVE_INTERVAL = 60
+
+# Execute directory
+EXECUTE = /home/prominence/condor
+
+# Setup cgroups
+#BASE_CGROUP = 
+BASE_CGROUP = htcondor
+CGROUP_MEMORY_LIMIT_POLICY = hard
+
+# Needed to allow Singularity to work
+DOCKER_DROP_ALL_CAPABILITIES = False
+
+# Job prepare hook
+CONTAINER_HOOK_PREPARE_JOB = /usr/local/bin/job-prepare-hook
+
+# File transfer plugin
+FILETRANSFER_PLUGINS = /usr/local/libexec/condor_url_fetch
+
+# Disable MOUNT_UNDER_SCRATCH (temporarily)
+MOUNT_UNDER_SCRATCH = ""
+
+# How often the collector should be updated
+UPDATE_OFFSET = $RANDOM_INTEGER(0, 20)
+UPDATE_INTERVAL = 200
+
