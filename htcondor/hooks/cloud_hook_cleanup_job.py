@@ -1,12 +1,56 @@
 #!/usr/bin/python
+import ConfigParser
+import json
 import logging
 from logging.handlers import RotatingFileHandler
+import os
 import sys
 import time
-import ConfigParser
 import requests
 from requests.auth import HTTPBasicAuth
 import classad
+
+def send_email(event, job_id_original, job_id_routed, email):
+    """
+    Send a notification email
+    """
+    logging.info('[%d] Sending notification email to %s for event %s for job %d', job_id_routed, email, event, job_id_original)
+
+    subject = 'Your PROMINENCE job with id %d has finished' % job_id_original
+    content = ''
+
+def handle_notifications(iwd, job_id_original, job_id_routed, email):
+    """
+    Check if any notifications are required
+    """
+    # Check if we need to run, as it is possible the cleanup hook may be run multiple times
+    # and we only want to send a single notification
+    lock_file = os.path.join(iwd, '.lock-cleanup-%d' % job_id_original)
+    if os.path.isfile(lock_file):
+        return
+
+    # Create a lock file
+    try:
+        open(lock_file, 'a').close()
+    except Exception:
+        logging.critical('[%d] Unable to write lock file, will ignore notifications...', job_id_routed)
+        return
+
+    # Open JSON job description
+    try:
+        filename = '%s/.job.json' % iwd
+        with open(filename, 'r') as json_file:
+            job_json = json.load(json_file)
+    except Exception as err:
+        logging.error('[%d] Unable to open JSON job description due to: %s', job_id_routed, err)
+        return
+
+    # Check if we need to generate any notifications, and do so if necessary
+    if 'notifications' in job_json:
+        for notification in job_json['notifications']:
+            if notification['event'] == 'jobFinished':
+                if notification['type'] == 'email':
+                    send_email('jobFinished', job_id_original, job_id_routed, email)
 
 def get_from_classad(name, class_ad, default=None):
     """
@@ -57,20 +101,25 @@ def cleanup_infrastructure():
     # Read ClassAd
     job_ad = classad.parseOne(sys.stdin, parser=classad.Parser.Old)
 
-    iwd = get_from_classad(iwd, job_ad)
+    iwd = get_from_classad('Iwd', job_ad)
     cluster_id = int(get_from_classad('ClusterId', job_ad, -1))
     proc_id = int(get_from_classad('ProcId', job_ad, 0))
+    cluster_id_user = int(float(get_from_classad('RoutedFromJobId', job_ad, -1)))
     job_status = int(get_from_classad('JobStatus', job_ad, -1))
     infra_id = get_from_classad('ProminenceInfrastructureId', job_ad)
     infra_state = get_from_classad('ProminenceInfrastructureState', job_ad)
     infra_site = get_from_classad('ProminenceInfrastructureSite', job_ad)
     infra_type = get_from_classad('ProminenceInfrastructureType', job_ad)
-    uid = get_from_classad('ProminenceJobUniqueIdentifier', job_ad)
+    email = get_from_classad('ProminenceEmail', job_ad)
 
     job_id = '%s.%s' % (cluster_id, proc_id)
     exit_code = -1
 
     logger.info('[%s] Started working on infrastructure with id %s of type %s on site %s with state %s', job_id, infra_id, infra_type, infra_site, infra_state)
+
+    # Send any notifications if necessary, currently we only consider completed jobs
+    if job_status == 4:
+        handle_notifications(iwd, cluster_id_user, cluster_id, email)
 
     if str(infra_type) == 'batch':
         logger.info('[%s] Batch infrastructure, so no need to do anything', job_id)
