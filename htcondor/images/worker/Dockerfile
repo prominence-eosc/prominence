@@ -30,6 +30,7 @@ RUN curl -sS  http://get.onedata.org/oneclient.sh | bash
 # Configuration
 COPY 00-ports /etc/condor/config.d/
 COPY 10-worker /etc/condor/config.d/
+COPY 11-health /etc/condor/config.d/
 COPY 22-security /etc/condor/config.d/
 
 # Scripts
@@ -37,6 +38,7 @@ COPY condor_url_fetch /usr/local/libexec/
 COPY job-prepare-hook /usr/local/bin/
 COPY get-location /usr/local/bin/
 COPY write-resources.py /usr/local/bin/
+COPY healthcheck.py  /usr/local/bin/
 
 # Entrypoint
 COPY docker-entrypoint.sh /
