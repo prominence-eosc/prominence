@@ -1,0 +1,8 @@
+#!/usr/bin/python
+import urllib
+import json
+
+url = "https://geoip-db.com/json"
+response = urllib.urlopen(url)
+data = json.loads(response.read())
+print 'PROMINENCE_LOCATION="%f,%f"' % (data['latitude'],data['longitude'])
