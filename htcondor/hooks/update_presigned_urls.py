@@ -61,6 +61,10 @@ def update_presigned_urls(args, json_file):
     """
     Update & replace any presigned URLs as necessary
     """
+    # Check if object storage is enabled; return immediately if it is not
+    if CONFIG.get('s3', 'url') == '':
+        return args
+    
     # Regular expression
     url = CONFIG.get('s3', 'url').replace('/', '\/').replace(':', '\:').replace('.', '\.')
     url_regex = url + '\/' + CONFIG.get('s3', 'bucket') + '\/[\w\/\%\&\=\?\.\-]+'
