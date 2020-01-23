@@ -142,6 +142,10 @@ def list_jobs(self, job_ids, identity, active, completed, workflow, num, detail,
         stageout_u = {}
         if 'stageout' in job_u:
             stageout_u = job_u['stageout']
+  
+        stagein_u = {}
+        if 'stagein' in job_u:
+            stagein_u = job_u['stagein']
 
         # Job parameters
         parameters = {}
@@ -151,6 +155,26 @@ def list_jobs(self, job_ids, identity, active, completed, workflow, num, detail,
                 for match in matches:
                     parameters[match[0]] = match[1]
             jobj['parameters'] = parameters
+
+        # Return status as failed if artifact download failed
+        for item in stagein_u:
+            if 'status' in item:
+                if item['status'] == 'failedDownload':
+                    jobj['status'] = 'failed'
+                    jobj['statusReason'] = 'Artifact download failed'
+                if item['status'] == 'failedUncompress':
+                    jobj['status'] = 'failed'
+                    jobj['statusReason'] = 'Artifact uncompress failed'
+
+        # Return status as failed if stageout failed
+        for item in stageout_u:
+            if 'status' in item:
+                if item['status'] == 'failedNoSuchFile':
+                    jobj['status'] = 'failed'
+                    jobj['statusReason'] = 'Stageout failed due to no such file or directory'
+                if item['status'] == 'failedUpload':
+                    jobj['status'] = 'failed'
+                    jobj['statusReason'] = 'Unable to stageout output to object storage'
 
         # Return status as failed if container image pull failed
         if 'ProminenceImagePullSuccess' in job:
@@ -164,7 +188,6 @@ def list_jobs(self, job_ids, identity, active, completed, workflow, num, detail,
                     jobj['status'] = 'failed'
                     jobj['statusReason'] = 'Container image pull failed'
 
-        # Generate useful error messages
         if 'JobRunCount' in job:
             if job['JobStatus'] == 1 and job['JobRunCount'] > 0:
                 jobj['status'] = 'failed'
@@ -263,7 +286,7 @@ def list_jobs(self, job_ids, identity, active, completed, workflow, num, detail,
                 jobj['constraints'] = job_json_file['constraints']
 
             if 'storage' in job_json_file:
-                jobj['storage'] = redact_storage_creds(job_json_file['storage'])
+                jobj['storage'] = utilities.redact_storage_creds(job_json_file['storage'])
 
             execution = {}
             if 'ProminenceInfrastructureSite' in job:
