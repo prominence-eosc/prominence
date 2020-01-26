@@ -114,6 +114,8 @@ def _create_htcondor_job(self, username, groups, email, uid, jjob, job_path, wor
     cjob['stream_error'] = 'true'
     cjob['stream_output'] = 'true'
 
+    cjob['transfer_input_files'] = str(','.join(input_files))
+
     # Job name
     if 'name' in jjob:
         cjob['+ProminenceName'] = condor_str(jjob['name'])
@@ -174,8 +176,6 @@ def _create_htcondor_job(self, username, groups, email, uid, jjob, job_path, wor
                 url_exists = validate_presigned_url(artifact_url)
                 if not url_exists:
                     return (1, {"error":"Artifact %s does not exist" % artifact_original}, cjob)
-            input_files.append(artifact_url)
-    cjob['transfer_input_files'] = str(','.join(input_files))
 
     # Output files
     if 'outputFiles' in jjob:
