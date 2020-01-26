@@ -29,6 +29,115 @@ except ImportError: # Python 3
 
 CURRENT_SUBPROCS = set()
 FINISH_NOW = False
+DOWNLOAD_CONN_TIMEOUT = 10
+
+def process_file(filename, cmd):
+    """
+    Process a file
+    """
+    process = subprocess.Popen('%s %s' % (cmd, filename),
+                               cwd=os.path.dirname(filename),
+                               shell=True,
+                               env=dict(os.environ,
+                                        PATH='/usr/local/bin:/usr/bin:/usr/local/sbin:/usr/sbin'),
+                               stdout=subprocess.PIPE,
+                               stderr=subprocess.PIPE)
+    stdout, stderr = process.communicate()
+    return_code = process.returncode
+
+    if return_code != 0:
+        logging.error(stdout)
+        logging.error(stderr)
+        return False
+
+    return True
+
+def download_artifacts(job, path):
+    """
+    Download any artifacts
+    """
+    json_out_files = []
+    success = True
+
+    if 'artifacts' in job:
+        for artifact in job['artifacts']:
+            logging.info('Downloading URL %s', artifact['url'])
+
+            # Create filename
+            urlpath = urlsplit(artifact['url']).path
+            filename = posixpath.basename(unquote(urlpath))
+            json_out_file = {'name':filename}
+            filename = os.path.join(path, filename)
+
+            # Download file
+            json_out_file['status'] = 'success'
+            time_begin = time.time()
+
+            try:
+                response = requests.get(artifact['url'], allow_redirects=True, stream=True, timeout=DOWNLOAD_CONN_TIMEOUT)
+                if response.status_code == 200:
+                    with open(filename, 'wb') as file_image:
+                        for chunk in response.iter_content(chunk_size=1024*1024):
+                            if chunk:
+                                file_image.write(chunk)
+                else:
+                    logging.error('Unable to download artifact, status code %d, with url: %s', response.status_code, artifact['url'])
+                    json_out_file['status'] = 'failedDownload'
+            except requests.exceptions.RequestException as ex:
+                logging.error('Unable to download artifact due to a RequestException: %s', ex)
+                json_out_file['status'] = 'failedDownload'
+            except IOError as ex:
+                logging.error('Unable to download artifact due to an IOError: %s', ex)
+                json_out_file['status'] = 'failedDownload'
+
+            duration = time.time() - time_begin
+            json_out_file['time'] = duration
+
+            if json_out_file['status'] != 'success':
+                json_out_files.append(json_out_file)
+                return False, json_out_files
+
+            # Process file
+            success = False
+            remove_file = True
+            if filename.endswith('.tgz') or filename.endswith('.tar.gz'):
+                if process_file(filename, 'tar xzf'):
+                    success = True
+            elif filename.endswith('.tar'):
+                if process_file(filename, 'tar xf'):
+                    success = True
+            elif filename.endswith('.gz'):
+                if process_file(filename, 'gunzip'):
+                    success = True
+            elif filename.endswith('.tar.bz2'):
+                if process_file(filename, 'tar xjf'):
+                    success = True
+            elif filename.endswith('.bz2'):
+                if process_file(filename, 'bunzip2'):
+                    success = True
+            elif filename.endswith('.zip'):
+                if process_file(filename, 'unzip'):
+                    success = True
+            else:
+                remove_file = False
+                success = True
+
+            duration = time.time() - time_begin
+            json_out_file['time'] = duration
+
+            if not success:
+                json_out_file['status'] = 'failedUncompress'
+
+            if remove_file:
+                if os.path.exists(filename):
+                    try:
+                        os.remove(filename)
+                    except Exception as err:
+                        logging.critical('Unable to delete file %s due to %s', filename, err)
+
+            json_out_files.append(json_out_file)
+
+    return success, json_out_files
 
 def replace_output_urls(job, outfiles, outdirs):
     """
@@ -387,7 +496,7 @@ def download_singularity(image, image_new, location, path):
 
     if re.match(r'^http', image):
         try:
-            response = requests.get(image, allow_redirects=True, stream=True)
+            response = requests.get(image, allow_redirects=True, stream=True, timeout=DOWNLOAD_CONN_TIMEOUT)
             if response.status_code == 200:
                 with open(image_new, 'wb') as file_image:
                     for chunk in response.iter_content(chunk_size=1024*1024):
@@ -433,6 +542,31 @@ def download_singularity(image, image_new, location, path):
 
     return 0, False
 
+def download_tarball(image, location):
+    """
+    Download a container image tarball
+    """
+    try:
+        response = requests.get(image, allow_redirects=True, stream=True, timeout=DOWNLOAD_CONN_TIMEOUT)
+        if response.status_code == 200:
+            with open('%s/image.tar' % location, 'wb') as tar_file:
+                for chunk in response.iter_content(chunk_size=1024*1024):
+                    if chunk:
+                        tar_file.write(chunk)
+        else:
+            logging.error('Unable to download container image')
+            return False
+    except requests.exceptions.RequestException as e:
+        logging.error('Unable to download container image due to: %s', e)
+        return False
+    except IOError as e:
+        logging.error('Unable to download container image due to: %s', e)
+        return False
+
+    logging.info('Container imaage tarball downloaded from URL and written to file %s/image.tar' % location)
+
+    return True
+
 def get_udocker(path):
     """
     Check if udocker is installed
@@ -451,7 +585,7 @@ def install_udocker(location):
     Install  udocker if necessary
     """
     if not os.path.exists('%s/.udocker/bin/proot-x86_64' % location):
-        logging.info('Installing udockertools')
+        logging.info('Installing udockertools in %s', location)
 
         attempt = 0
         installed = False
@@ -474,7 +608,7 @@ def install_udocker(location):
             output = process.communicate()[0]
             return_code = process.returncode
 
-            if 'Error: installation of udockertools failed' in output or return_code != 0:
+            if 'Error: installation of udockertools failed' in str(output) or return_code != 0:
                 logging.error('Installation of udockertools failed')
             else:
                 logging.info('udockertools installation successful')
@@ -482,7 +616,7 @@ def install_udocker(location):
             attempt += 1
 
     else:
-        logging.info('Found existing udocker installation')
+        logging.info('Found existing udocker installation in %s', location)
         installed = True
 
     if not installed:
@@ -503,24 +637,8 @@ def download_udocker(image, location, label, path):
 
     if re.match(r'^http', image):
         # Download tarball
-        try:
-            response = requests.get(image, allow_redirects=True, stream=True)
-            if response.status_code == 200:
-                with open('%s/image.tar' % location, 'wb') as tar_file:
-                    for chunk in response.iter_content(chunk_size=1024*1024):
-                        if chunk:
-                            tar_file.write(chunk)
-            else:
-                logging.error('Unable to download udocker image')
-                return 1, False
-        except requests.exceptions.RequestException as e:
-            logging.error('Unable to download udocker image due to: %s', e)
+        if not download_tarball(image, location):
             return 1, False
-        except IOError as e:
-            logging.error('Unable to download udocker image due to: %s', e)
-            return 1, False
-
-        logging.info('udocker tarball downloaded from URL and written to file %s/image.tar' % location)
 
         # Load image
         process = subprocess.Popen('udocker load -i %s/image.tar' % location,
@@ -1161,6 +1279,12 @@ if __name__ == "__main__":
     # Mount user-specified storage if necessary
     mount_storage(job)
 
+    # Download any artifacts
+    logging.info('Stagein any input files if necessary')
+    (success_stagein, json_stagein) = download_artifacts(job, path)
+    if not success_stagein:
+        logging.error('Got error downloading artifact')
+
     # Run tasks
     try:
         (success_tasks, json_tasks) = run_tasks(job, path, is_batch)
@@ -1170,12 +1294,14 @@ if __name__ == "__main__":
         json_tasks = {}
 
     # Upload output files if necessary
+    logging.info('Stageout any output files/dirs if necessary')
     (success_stageout, json_stageout) = stageout(job, path)
 
     # Write json job details
     json_output = {}
     json_output['tasks'] = json_tasks
     json_output['stageout'] = json_stageout
+    json_output['stagein'] = json_stagein
 
     try:
         with open('promlet.%d.json' % args.id, 'w') as file:
@@ -1187,7 +1313,7 @@ if __name__ == "__main__":
     unmount_storage(job)
 
     # Return appropriate exit code - necessary for retries of DAG nodes
-    if not success_tasks or not success_stageout:
+    if not success_tasks or not success_stageout or not success_stagein:
         logging.info('Exiting promlet with failure')
         exit(1)
 
