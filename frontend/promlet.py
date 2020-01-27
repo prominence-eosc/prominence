@@ -35,19 +35,23 @@ def process_file(filename, cmd):
     """
     Process a file
     """
-    process = subprocess.Popen('%s %s' % (cmd, filename),
-                               cwd=os.path.dirname(filename),
-                               shell=True,
-                               env=dict(os.environ,
-                                        PATH='/usr/local/bin:/usr/bin:/usr/local/sbin:/usr/sbin'),
-                               stdout=subprocess.PIPE,
-                               stderr=subprocess.PIPE)
-    stdout, stderr = process.communicate()
-    return_code = process.returncode
+    try:
+        process = subprocess.Popen('%s %s' % (cmd, filename),
+                                   cwd=os.path.dirname(filename),
+                                   shell=True,
+                                   env=dict(os.environ,
+                                            PATH='/usr/local/bin:/usr/bin:/usr/local/sbin:/usr/sbin'),
+                                   stdout=subprocess.PIPE,
+                                   stderr=subprocess.PIPE)
+        stdout, stderr = process.communicate()
+        return_code = process.returncode
+    except Exception as ex:
+        logging.error('Failed to run "%s" due to: %s', cmd, ex)
+        return False
 
     if return_code != 0:
-        logging.error(stdout)
-        logging.error(stderr)
+        logging.error('Failed to run "%s", stdout: %s', cmd, stdout)
+        logging.error('Failed to run "%s", stderr: %s', cmd, stderr)
         return False
 
     return True
@@ -307,7 +311,7 @@ def upload(filename, url):
     try:
         with open(filename, 'rb') as file_obj:
             response = requests.put(url, data=file_obj, timeout=120)
-    except requests.exceptions.RequestException as exc:
+    except requests.exceptions.RequestException:
         logging.warning('RequestException when trying to upload file %s', filename)
         return None
     except IOError:
