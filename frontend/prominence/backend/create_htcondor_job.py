@@ -165,7 +165,6 @@ def _create_htcondor_job(self, username, groups, email, uid, jjob, job_path, wor
     if 'artifacts' in jjob:
         for artifact in jjob['artifacts']:
             artifact_url = artifact['url']
-            artifacts.append(artifact_url)
             if 'http' not in artifact_url:
                 artifact_original = artifact_url
                 if '/' in artifact_url:
@@ -176,6 +175,10 @@ def _create_htcondor_job(self, username, groups, email, uid, jjob, job_path, wor
                 url_exists = validate_presigned_url(artifact_url)
                 if not url_exists:
                     return (1, {"error":"Artifact %s does not exist" % artifact_original}, cjob)
+                artifact['url'] = artifact_url
+            artifacts.append(artifact)
+
+        jjob_mapped['artifacts'] = artifacts
 
     # Output files
     if 'outputFiles' in jjob:
