@@ -93,6 +93,31 @@ fi
 exit $?
 """
 
+def download_from_url(url, filename):
+    """
+    Download from a URL to a file
+    """
+    try:
+        response = requests.get(url, allow_redirects=True, stream=True, timeout=DOWNLOAD_CONN_TIMEOUT)
+        if response.status_code == 200:
+            with open(filename, 'wb') as tar_file:
+                for chunk in response.iter_content(chunk_size=1024*1024):
+                    if chunk:
+                        tar_file.write(chunk)
+        else:
+            logging.error('Unable to download file from URL %s, status code is %d', url, response.status_code)
+            return False
+    except requests.exceptions.RequestException as exc:
+        logging.error('Unable to download file from URL %s due to: %s', url, exc)
+        return False
+    except IOError as exc:
+        logging.error('Unable to download file from URL %s due to: %s', url, exc)
+        return False
+
+    logging.info('File downloaded successfully from URL %s', url)
+
+    return True
+
 def process_file(filename, cmd):
     """
     Process a file
@@ -135,21 +160,7 @@ def download_artifacts(job, path):
             json_out_file['status'] = 'success'
             time_begin = time.time()
 
-            try:
-                response = requests.get(artifact['url'], allow_redirects=True, stream=True, timeout=DOWNLOAD_CONN_TIMEOUT)
-                if response.status_code == 200:
-                    with open(filename, 'wb') as file_image:
-                        for chunk in response.iter_content(chunk_size=1024*1024):
-                            if chunk:
-                                file_image.write(chunk)
-                else:
-                    logging.error('Unable to download artifact, status code %d, with url: %s', response.status_code, artifact['url'])
-                    json_out_file['status'] = 'failedDownload'
-            except requests.exceptions.RequestException as ex:
-                logging.error('Unable to download artifact due to a RequestException: %s', ex)
-                json_out_file['status'] = 'failedDownload'
-            except IOError as ex:
-                logging.error('Unable to download artifact due to an IOError: %s', ex)
+            if not download_from_url(artifact['url'], filename):
                 json_out_file['status'] = 'failedDownload'
 
             duration = time.time() - time_begin
@@ -704,21 +715,7 @@ def download_singularity(image, image_new, location, path):
     Download a Singularity image from a URL or pull an image from Docker Hub
     """
     if re.match(r'^http', image):
-        try:
-            response = requests.get(image, allow_redirects=True, stream=True, timeout=DOWNLOAD_CONN_TIMEOUT)
-            if response.status_code == 200:
-                with open(image_new, 'wb') as file_image:
-                    for chunk in response.iter_content(chunk_size=1024*1024):
-                        if chunk:
-                            file_image.write(chunk)
-            else:
-                logging.error('Unable to download Singularity image')
-                return 1, False
-        except requests.exceptions.RequestException as ex:
-            logging.error('Unable to download Singularity image due to a RequestException: %s', ex)
-            return 1, False
-        except IOError as ex:
-            logging.error('Unable to download Singularity image due to an IOError: %s', ex)
+        if not download_from_url(image, image_new):
             return 1, False
 
         logging.info('Singularity image downloaded from URL and written to file %s', image_new)
@@ -750,31 +747,6 @@ def download_singularity(image, image_new, location, path):
         logging.info('Image file %s does not exist', image_new)
 
     return 0, False
-
-def download_tarball(image, location):
-    """
-    Download a container image tarball
-    """
-    try:
-        response = requests.get(image, allow_redirects=True, stream=True, timeout=DOWNLOAD_CONN_TIMEOUT)
-        if response.status_code == 200:
-            with open('%s/image.tar' % location, 'wb') as tar_file:
-                for chunk in response.iter_content(chunk_size=1024*1024):
-                    if chunk:
-                        tar_file.write(chunk)
-        else:
-            logging.error('Unable to download container image')
-            return False
-    except requests.exceptions.RequestException as e:
-        logging.error('Unable to download container image due to: %s', e)
-        return False
-    except IOError as e:
-        logging.error('Unable to download container image due to: %s', e)
-        return False
-
-    logging.info('Container imaage tarball downloaded from URL and written to file %s/image.tar' % location)
-
-    return True
 
 def get_udocker(path):
     """
@@ -844,7 +816,7 @@ def download_udocker(image, location, label, path):
 
     if re.match(r'^http', image):
         # Download tarball
-        if not download_tarball(image, location):
+        if not download_from_url(image, '%s/image.tar' % location):
             return 1, False
 
         # Load image
