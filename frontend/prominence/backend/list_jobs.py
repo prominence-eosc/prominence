@@ -5,6 +5,8 @@ import re
 import classad
 import htcondor
 
+import utilities
+
 def list_jobs(self, job_ids, identity, active, completed, workflow, num, detail, constraint):
     """
     List jobs or describe a specified job
@@ -155,6 +157,14 @@ def list_jobs(self, job_ids, identity, active, completed, workflow, num, detail,
                 for match in matches:
                     parameters[match[0]] = match[1]
             jobj['parameters'] = parameters
+
+        # Return status as failed if any fuse mounts failed
+        if 'mounts' in job_u:
+            for mount in job_u['mounts']:
+                if 'status' in mount:
+                    if mount['status'] == 'failed':
+                        jobj['status'] = 'failed'
+                        jobj['statusReason'] = 'Unable to mount storage volume'
 
         # Return status as failed if artifact download failed
         for item in stagein_u:
