@@ -653,6 +653,8 @@ def mount_storage(job):
     Mount user-specified storage
     """
     path = '/home/user'
+    json_mounts = []
+
     if 'storage' in job:
         storage_type = job['storage']['type']
         storage_mountpoint = job['storage']['mountpoint']
@@ -663,18 +665,38 @@ def mount_storage(job):
             storage_provider = job['storage']['onedata']['provider']
             storage_token = job['storage']['onedata']['token']
 
-            process = subprocess.Popen('/usr/bin/oneclient -t %s -H %s %s/%s' % (storage_token,
-                                                                                 storage_provider,
-                                                                                 path,
-                                                                                 storage_mountpoint),
-                                       shell=True,
-                                       stdout=subprocess.PIPE,
-                                       stderr=subprocess.PIPE)
-            #process.wait()
-            stdout, stderr = process.communicate()
+            try:
+                process = subprocess.Popen('/usr/bin/oneclient -t %s -H %s %s/%s' % (storage_token,
+                                                                                     storage_provider,
+                                                                                     path,
+                                                                                     storage_mountpoint),
+                                           shell=True,
+                                           stdout=subprocess.PIPE,
+                                           stderr=subprocess.PIPE)
+                stdout, stderr = process.communicate()
+                return_code = process.returncode
+            except Exception as exc:
+                logging.critical('Unable to mount OneData due to %s', exc)
+                json_mounts.append({'mountpoint':storage_mountpoint,
+                                    'type':'onedata',
+                                    'status':'failed'})
+                return False, json_mounts
+
             logging.info('mount-stdout=%s', stdout)
             logging.info('mount-stderr=%s', stderr)
-    return True
+
+            if return_code == 0:
+                json_mounts.append({'mountpoint':storage_mountpoint,
+                                    'type':'onedata',
+                                    'status':'success'})
+            else:
+                logging.critical('Unable to mount OneData')
+                json_mounts.append({'mountpoint':storage_mountpoint,
+                                    'type':'onedata',
+                                    'status':'failed'})
+                return False, json_mounts
+
+    return True, json_mounts
 
 def unmount_storage(job):
     """
@@ -1354,36 +1376,49 @@ if __name__ == "__main__":
         logging.critical('Unable to read job description due to %s', ex)
         exit(1)
 
+    # Initialization
+    json_mounts = []
+    json_stagein = []
+    json_tasks = []
+    json_stageout = []
+
+    success_stagein = False
+    success_tasks = False
+    success_stageout = False
+
     # Mount user-specified storage if necessary
-    mount_storage(job)
+    (success_mounts, json_mounts) = mount_storage(job)
 
-    # Replace output file/dir URL addresses if necessary
-    if args.outfile or args.outdir:
-        replace_output_urls(job, args.outfile, args.outdir)
+    if success_mounts:
+        # Replace output file/dir URL addresses if necessary
+        if args.outfile or args.outdir:
+            replace_output_urls(job, args.outfile, args.outdir)
 
-    # Create the user home & tmp directories
-    create_dirs(path)
+        # Create the user home & tmp directories
+        create_dirs(path)
 
-    # Download any artifacts
-    logging.info('Stagein any input files if necessary')
-    (success_stagein, json_stagein) = download_artifacts(job, path)
-    if not success_stagein:
-        logging.error('Got error downloading artifact')
+        # Download any artifacts
+        logging.info('Stagein any input files if necessary')
+        (success_stagein, json_stagein) = download_artifacts(job, path)
 
-    # Run tasks
-    try:
-        (success_tasks, json_tasks) = run_tasks(job, path, is_batch)
-    except OSError as exc:
-        logging.critical('Got exception running tasks: %s', exc)
-        success_tasks = False
-        json_tasks = {}
+        if not success_stagein:
+            logging.error('Got error downloading artifact(s)')
+        else: 
 
-    # Upload output files if necessary
-    logging.info('Stageout any output files/dirs if necessary')
-    (success_stageout, json_stageout) = stageout(job, path)
+            # Run tasks
+            try:
+                (success_tasks, json_tasks) = run_tasks(job, path, is_batch)
+            except OSError as exc:
+                logging.critical('Got exception running tasks: %s', exc)
+                success_tasks = False
+
+            # Upload output files if necessary, even if tasks failed
+            logging.info('Stageout any output files/dirs if necessary')
+            (success_stageout, json_stageout) = stageout(job, path)
 
     # Write json job details
     json_output = {}
+    json_output['mounts'] = json_mounts
     json_output['stagein'] = json_stagein
     json_output['tasks'] = json_tasks
     json_output['stageout'] = json_stageout
@@ -1398,7 +1433,7 @@ if __name__ == "__main__":
     unmount_storage(job)
 
     # Return appropriate exit code - necessary for retries of DAG nodes
-    if not success_stagein or not success_tasks or not success_stageout:
+    if not success_mounts or not success_stagein or not success_tasks or not success_stageout:
         logging.info('Exiting promlet with failure')
         exit(1)
 
