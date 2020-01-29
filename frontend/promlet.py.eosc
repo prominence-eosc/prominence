@@ -1384,9 +1384,9 @@ if __name__ == "__main__":
 
     # Write json job details
     json_output = {}
+    json_output['stagein'] = json_stagein
     json_output['tasks'] = json_tasks
     json_output['stageout'] = json_stageout
-    json_output['stagein'] = json_stagein
 
     try:
         with open('%s/promlet.%d.json' % (path, args.id), 'w') as file:
@@ -1398,7 +1398,7 @@ if __name__ == "__main__":
     unmount_storage(job)
 
     # Return appropriate exit code - necessary for retries of DAG nodes
-    if not success_tasks or not success_stageout or not success_stagein:
+    if not success_stagein or not success_tasks or not success_stageout:
         logging.info('Exiting promlet with failure')
         exit(1)
 
