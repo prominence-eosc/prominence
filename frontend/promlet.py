@@ -9,11 +9,9 @@ import os
 import posixpath
 import re
 import shlex
-import shutil
 import signal
 from string import Template
 import subprocess
-import sys
 import tarfile
 import time
 from functools import wraps
@@ -30,6 +28,55 @@ except ImportError: # Python 3
 CURRENT_SUBPROCS = set()
 FINISH_NOW = False
 DOWNLOAD_CONN_TIMEOUT = 10
+DOWNLOAD_MAX_RETRIES = 2
+DOWNLOAD_BACKOFF = 1
+
+def download_from_url_with_retries(url, filename, max_retries=DOWNLOAD_MAX_RETRIES, backoff=DOWNLOAD_BACKOFF):
+    """
+    Download a file from a URL with retries and backoff
+    """
+    count = 0
+    success = False
+
+    while count < 1 + max_retries and not success:
+        success = download_from_url(url, filename)
+
+        # Delete anything if necessary
+        if not success and os.path.exists(filename):
+            try:
+                os.remove(filename)
+            except Exception:
+                pass
+
+        count += 1
+        time.sleep(count*backoff)
+
+    return success, count
+        
+def download_from_url(url, filename):
+    """
+    Download from a URL to a file
+    """
+    try:
+        response = requests.get(url, allow_redirects=True, stream=True, timeout=DOWNLOAD_CONN_TIMEOUT)
+        if response.status_code == 200:
+            with open(filename, 'wb') as tar_file:
+                for chunk in response.iter_content(chunk_size=1024*1024):
+                    if chunk:
+                        tar_file.write(chunk)
+        else:
+            logging.error('Unable to download file from URL %s, status code is %d', url, response.status_code)
+            return False
+    except requests.exceptions.RequestException as exc:
+        logging.error('Unable to download file from URL %s due to: %s', url, exc)
+        return False
+    except IOError as exc:
+        logging.error('Unable to download file from URL %s due to: %s', url, exc)
+        return False
+
+    logging.info('File downloaded successfully from URL %s', url)
+
+    return True
 
 def process_file(filename, cmd):
     """
@@ -60,7 +107,7 @@ def download_artifacts(job, path):
     """
     Download any artifacts
     """
-    json_out_files = []
+    json_artifacts = []
     success = True
 
     if 'artifacts' in job:
@@ -70,36 +117,24 @@ def download_artifacts(job, path):
             # Create filename
             urlpath = urlsplit(artifact['url']).path
             filename = posixpath.basename(unquote(urlpath))
-            json_out_file = {'name':filename}
+            json_artifact = {'name':filename}
             filename = os.path.join(path, filename)
 
             # Download file
-            json_out_file['status'] = 'success'
+            json_artifact['status'] = 'success'
             time_begin = time.time()
 
-            try:
-                response = requests.get(artifact['url'], allow_redirects=True, stream=True, timeout=DOWNLOAD_CONN_TIMEOUT)
-                if response.status_code == 200:
-                    with open(filename, 'wb') as file_image:
-                        for chunk in response.iter_content(chunk_size=1024*1024):
-                            if chunk:
-                                file_image.write(chunk)
-                else:
-                    logging.error('Unable to download artifact, status code %d, with url: %s', response.status_code, artifact['url'])
-                    json_out_file['status'] = 'failedDownload'
-            except requests.exceptions.RequestException as ex:
-                logging.error('Unable to download artifact due to a RequestException: %s', ex)
-                json_out_file['status'] = 'failedDownload'
-            except IOError as ex:
-                logging.error('Unable to download artifact due to an IOError: %s', ex)
-                json_out_file['status'] = 'failedDownload'
+            (success, attempts) = download_from_url_with_retries(artifact['url'], filename)
+            logging.info('Number of attempts to download file %s was %d', filename, attempts)
+            if not success:
+                json_artifact['status'] = 'failedDownload'
 
             duration = time.time() - time_begin
-            json_out_file['time'] = duration
+            json_artifact['time'] = duration
 
-            if json_out_file['status'] != 'success':
-                json_out_files.append(json_out_file)
-                return False, json_out_files
+            if json_artifact['status'] != 'success':
+                json_artifacts.append(json_artifact)
+                return False, json_artifacts
 
             # Process file
             success = False
@@ -127,10 +162,10 @@ def download_artifacts(job, path):
                 success = True
 
             duration = time.time() - time_begin
-            json_out_file['time'] = duration
+            json_artifact['time'] = duration
 
             if not success:
-                json_out_file['status'] = 'failedUncompress'
+                json_artifact['status'] = 'failedUncompress'
 
             if remove_file:
                 if os.path.exists(filename):
@@ -139,9 +174,9 @@ def download_artifacts(job, path):
                     except Exception as err:
                         logging.critical('Unable to delete file %s due to %s', filename, err)
 
-            json_out_files.append(json_out_file)
+            json_artifacts.append(json_artifact)
 
-    return success, json_out_files
+    return success, json_artifacts
 
 def replace_output_urls(job, outfiles, outdirs):
     """
@@ -499,21 +534,9 @@ def download_singularity(image, image_new, location, path):
     logging.info('Pulling Singularity image for task')
 
     if re.match(r'^http', image):
-        try:
-            response = requests.get(image, allow_redirects=True, stream=True, timeout=DOWNLOAD_CONN_TIMEOUT)
-            if response.status_code == 200:
-                with open(image_new, 'wb') as file_image:
-                    for chunk in response.iter_content(chunk_size=1024*1024):
-                        if chunk:
-                            file_image.write(chunk)
-            else:
-                logging.error('Unable to download Singularity image')
-                return 1, False
-        except requests.exceptions.RequestException as ex:
-            logging.error('Unable to download Singularity image due to a RequestException: %s', ex)
-            return 1, False
-        except IOError as ex:
-            logging.error('Unable to download Singularity image due to an IOError: %s', ex)
+        (success, attempts) = download_from_url_with_retries(image, image_new)
+        logging.info('Number of attempts to download file %s was %d', filename, attempts)
+        if not success:
             return 1, False
 
         logging.info('Singularity image downloaded from URL and written to file %s', image_new)
@@ -524,19 +547,33 @@ def download_singularity(image, image_new, location, path):
         else:
             cmd = 'singularity pull --name "image.simg" docker://%s' % image
 
-        process = subprocess.Popen(cmd,
-                                   cwd=os.path.dirname(image_new),
-                                   shell=True,
-                                   env=dict(os.environ,
-                                            PATH='/usr/local/bin:/usr/bin:/usr/local/sbin:/usr/sbin'),
-                                   stdout=subprocess.PIPE,
-                                   stderr=subprocess.PIPE)
-        stdout, stderr = process.communicate()
-        return_code = process.returncode
+        count = 0
+        success = False
 
-        if return_code != 0:
-            logging.error(stdout)
-            logging.error(stderr)
+        while count < DOWNLOAD_MAX_RETRIES and not success:
+            try:
+                process = subprocess.Popen(cmd,
+                                           cwd=os.path.dirname(image_new),
+                                           shell=True,
+                                           env=dict(os.environ,
+                                                    PATH='/usr/local/bin:/usr/bin:/usr/local/sbin:/usr/sbin'),
+                                           stdout=subprocess.PIPE,
+                                           stderr=subprocess.PIPE)
+                stdout, stderr = process.communicate()
+                return_code = process.returncode
+            except Exception as exc:
+                logging.error('Unable to pull Singularity image due to %s', exc)
+            else:
+                if return_code == 0:
+                    success = True
+                else:
+                    logging.error(stdout)
+                    logging.error(stderr)
+
+            count += 1
+
+        if not success:
+            logging.error('Unable to pull Singularity image successfully after %d attempts', count)
             return 1, False
 
     if os.path.exists(image_new):
@@ -545,31 +582,6 @@ def download_singularity(image, image_new, location, path):
         logging.info('Image file %s does not exist', image_new)
 
     return 0, False
-
-def download_tarball(image, location):
-    """
-    Download a container image tarball
-    """
-    try:
-        response = requests.get(image, allow_redirects=True, stream=True, timeout=DOWNLOAD_CONN_TIMEOUT)
-        if response.status_code == 200:
-            with open('%s/image.tar' % location, 'wb') as tar_file:
-                for chunk in response.iter_content(chunk_size=1024*1024):
-                    if chunk:
-                        tar_file.write(chunk)
-        else:
-            logging.error('Unable to download container image')
-            return False
-    except requests.exceptions.RequestException as e:
-        logging.error('Unable to download container image due to: %s', e)
-        return False
-    except IOError as e:
-        logging.error('Unable to download container image due to: %s', e)
-        return False
-
-    logging.info('Container imaage tarball downloaded from URL and written to file %s/image.tar' % location)
-
-    return True
 
 def get_udocker(path):
     """
@@ -641,7 +653,9 @@ def download_udocker(image, location, label, path):
 
     if re.match(r'^http', image):
         # Download tarball
-        if not download_tarball(image, location):
+        (success, attempts) = download_from_url_with_retries(image, '%s/image.tar' % location)
+        logging.info('Number of attempts to download file %s was %d', '%s/image.tar' % location, attempts)
+        if not success:
             return 1, False
 
         # Load image
