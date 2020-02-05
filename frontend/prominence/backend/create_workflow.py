@@ -1,13 +1,10 @@
 import json
 import os
 import re
-import shlex
 import shutil
-import subprocess
-import threading
 import uuid
 
-from utilities import condor_str, kill_proc
+from utilities import condor_str, kill_proc, run
 from write_htcondor_job import write_htcondor_job
 
 def write_parameter_value(value):
@@ -40,18 +37,6 @@ def output_params(workflow):
                 count += 1
 
     return params
-
-def run(cmd, cwd, timeout_sec):
-    """
-    Run a subprocess, capturing stdout & stderr, with a timeout
-    """
-    proc = subprocess.Popen(shlex.split(cmd), stdout=subprocess.PIPE, stderr=subprocess.PIPE, cwd=cwd)
-    timeout = {"value": False}
-    timer = threading.Timer(timeout_sec, kill_proc, [proc, timeout])
-    timer.start()
-    stdout, stderr = proc.communicate()
-    timer.cancel()
-    return proc.returncode, stdout, stderr, timeout["value"]
 
 def _output_urls(self, workflow, uid, label):
     """

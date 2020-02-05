@@ -14,6 +14,7 @@ class ProminenceBackend(object):
     from create_workflow import create_workflow, _output_urls
     from list_workflows import list_workflows
     from delete_workflow import delete_workflow
+    from rerun_workflow import rerun_workflow
     from get_stdout import get_stdout
     from get_stderr import get_stderr
     from execute_command import execute_command

@@ -219,3 +219,22 @@ def submit_workflow(username, group, email):
         retval = 400
 
     return jsonify(data), retval
+
+@workflows.route("/prominence/v1/workflows/<int:workflow_id>", methods=['PUT'])
+@requires_auth
+def rerun_workflow(username, group, email, workflow_id):
+    """
+    Re-run any failed jobs from a completed workflow
+    """
+
+    app.logger.info('%s WorkflowReRun user:%s group:%s id:%d' % (get_remote_addr(request), username, group, workflow_id))
+
+    backend = ProminenceBackend(app.config)
+    (return_code, data) = backend.rerun_workflow(username, group, email, workflow_id)
+
+    retval = 200
+    if return_code == 1:
+        retval = 400
+
+    return jsonify(data), retval
+

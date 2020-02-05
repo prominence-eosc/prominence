@@ -1,8 +1,23 @@
 from functools import wraps
+import shlex
+import subprocess
+import threading
 import time
 
 import classad
 import htcondor
+
+def run(cmd, cwd, timeout_sec):
+    """
+    Run a subprocess, capturing stdout & stderr, with a timeout
+    """
+    proc = subprocess.Popen(shlex.split(cmd), stdout=subprocess.PIPE, stderr=subprocess.PIPE, cwd=cwd)
+    timeout = {"value": False}
+    timer = threading.Timer(timeout_sec, kill_proc, [proc, timeout])
+    timer.start()
+    stdout, stderr = proc.communicate()
+    timer.cancel()
+    return proc.returncode, stdout, stderr, timeout["value"]
 
 def kill_proc(proc, timeout):
     """
