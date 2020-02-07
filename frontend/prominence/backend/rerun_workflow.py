@@ -1,5 +1,6 @@
 import json
 import re
+import shutil
 import uuid
 
 import htcondor
@@ -69,5 +70,11 @@ def rerun_workflow(self, username, groups, email, workflow_id):
     else:
         retval = 1
         data = {"error":"Workflow resubmission failed"}
+
+    try:
+        shutil.copyfile('%s/workflow.dag.status' % iwd,
+                        '%s/workflow.dag.status-%d' % (iwd, workflow_id))
+    except:
+        pass
 
     return (retval, data)

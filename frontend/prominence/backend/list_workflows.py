@@ -1,4 +1,5 @@
 import json
+import os
 
 import classad
 import htcondor
@@ -109,7 +110,9 @@ def list_workflows(self, workflow_ids, identity, active, completed, num, detail,
 
         node_stats = {}
 
-        file = '%s/workflow.dag.status' % wf['Iwd']
+        file = '%s/workflow.dag.status-%d' % (wf['Iwd'], int(wf['ClusterId']))
+        if not os.path.exists(file):
+            file = '%s/workflow.dag.status' % wf['Iwd']
 
         node_state_map = {0:'waiting',
                           1:'idle',
