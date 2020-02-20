@@ -32,19 +32,20 @@ def get_usage(username,
     num_jobs = {}
 
     for hit in search:
-        if hit.type == 'job':
-            cpus = hit.resources['cpus']
-            if 'tasks' in hit.execution:
-                if hit.username not in wall_time:
-                    wall_time[hit.username] = 0
-                    cpu_time[hit.username] = 0
-                    num_jobs[hit.username] = 0
-                num_jobs[hit.username] += 1
-                for task in hit.execution['tasks']:
-                    if 'wallTimeUsage' in task:
-                        wall_time[hit.username] += task['wallTimeUsage']*cpus
-                    if 'cpuTimeUsage' in task:
-                        cpu_time[hit.username] += task['cpuTimeUsage']
+        if 'type' in hit:
+            if hit['type'] == 'job':
+                cpus = hit.resources['cpus']
+                if 'tasks' in hit.execution:
+                    if hit.username not in wall_time:
+                        wall_time[hit.username] = 0
+                        cpu_time[hit.username] = 0
+                        num_jobs[hit.username] = 0
+                    num_jobs[hit.username] += 1
+                    for task in hit.execution['tasks']:
+                        if 'wallTimeUsage' in task:
+                            wall_time[hit.username] += task['wallTimeUsage']*cpus
+                        if 'cpuTimeUsage' in task:
+                            cpu_time[hit.username] += task['cpuTimeUsage']
 
     data = {}
     data['usage'] = {}
