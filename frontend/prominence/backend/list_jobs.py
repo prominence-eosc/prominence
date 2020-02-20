@@ -18,6 +18,7 @@ def list_jobs(self, job_ids, identity, active, completed, workflow, num, detail,
                       'DAGManJobId',
                       'ProminenceInfrastructureSite',
                       'ProminenceInfrastructureState',
+                      'ProminenceInfrastructureStateReason',
                       'ProminenceInfrastructureType',
                       'QDate',
                       'GridJobStatus',
@@ -100,6 +101,11 @@ def list_jobs(self, job_ids, identity, active, completed, workflow, num, detail,
                 if 'ProminenceFactoryId' in job:
                     jobj['name'] = '%s/%s' % (jobj['name'], job['ProminenceFactoryId'])
 
+        # Get the status reason if possible
+        status_reason = None
+        if 'ProminenceInfrastructureStateReason' in job:
+            status_reason = job['ProminenceInfrastructureStateReason']
+
         # Set job status as appropriate
         if 'ProminenceInfrastructureState' in job:
             if job['JobStatus'] == 1 and job['ProminenceInfrastructureState'] == 'configured':
@@ -108,7 +114,12 @@ def list_jobs(self, job_ids, identity, active, completed, workflow, num, detail,
                 jobj['status'] = 'deploying'
             if job['JobStatus'] == 1 and job['ProminenceInfrastructureState'] == 'unable':
                 jobj['status'] = 'idle'
-                jobj['statusReason'] = 'No matching resources'
+                if status_reason == 'NoMatchingResources':
+                    jobj['statusReason'] = 'No matching resources'
+                elif status_reason == 'NoMatchingResourcesAvailable':
+                    jobj['statusReason'] = 'No matching resources currently available'
+                else:
+                    jobj['statusReason'] = ''
             if job['JobStatus'] == 1 and job['ProminenceInfrastructureState'] == 'failed':
                 jobj['status'] = 'idle'
                 jobj['statusReason'] = 'Deployment failed'
@@ -210,7 +221,12 @@ def list_jobs(self, job_ids, identity, active, completed, workflow, num, detail,
                     reason = 'Infrastructure deployment failed'
                     jobj['status'] = 'failed'
                 if job['ProminenceInfrastructureState'] == "unable":
-                    reason = 'No resources meet the specified requirements'
+                    if status_reason == 'NoMatchingResources':
+                        reason = 'No matching resources'
+                    elif status_reason == 'NoMatchingResourcesAvailable':
+                        reason = 'No matching resources currently available'
+                    else:
+                        reason = 'Unable to provision resources'
                     jobj['status'] = 'failed'
             if 'RemoveReason' in job:
                 if 'Python-initiated action' in job['RemoveReason']:
