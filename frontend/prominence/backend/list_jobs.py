@@ -117,6 +117,7 @@ def list_jobs(self, job_ids, identity, active, completed, workflow, num, detail,
                 if status_reason == 'NoMatchingResources':
                     jobj['statusReason'] = 'No matching resources'
                 elif status_reason == 'NoMatchingResourcesAvailable':
+                    jobj['status'] = 'waiting'
                     jobj['statusReason'] = 'No matching resources currently available'
                 else:
                     jobj['statusReason'] = ''
