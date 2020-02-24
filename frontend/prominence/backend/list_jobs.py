@@ -113,16 +113,15 @@ def list_jobs(self, job_ids, identity, active, completed, workflow, num, detail,
             if job['JobStatus'] == 1 and (job['ProminenceInfrastructureState'] == 'deployment-init' or job['ProminenceInfrastructureState'] == 'creating'):
                 jobj['status'] = 'deploying'
             if job['JobStatus'] == 1 and job['ProminenceInfrastructureState'] == 'unable':
-                jobj['status'] = 'idle'
+                jobj['status'] = 'waiting'
                 if status_reason == 'NoMatchingResources':
+                    jobj['status'] = 'failed'
                     jobj['statusReason'] = 'No matching resources'
                 elif status_reason == 'NoMatchingResourcesAvailable':
-                    jobj['status'] = 'waiting'
                     jobj['statusReason'] = 'No matching resources currently available'
                 else:
                     jobj['statusReason'] = ''
             if job['JobStatus'] == 1 and job['ProminenceInfrastructureState'] == 'failed':
-                jobj['status'] = 'idle'
                 jobj['statusReason'] = 'Deployment failed'
 
         # Handle idle jobs on remote batch systems
