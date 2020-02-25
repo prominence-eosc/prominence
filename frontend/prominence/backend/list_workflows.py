@@ -6,7 +6,7 @@ import htcondor
 
 from utilities import redact_storage_creds
 
-def list_workflows(self, workflow_ids, identity, active, completed, num, detail, constraint):
+def list_workflows(self, workflow_ids, identity, active, completed, num, detail, constraint, name_constraint):
     """
     List workflows or describe a specified workflow
     """
@@ -43,6 +43,9 @@ def list_workflows(self, workflow_ids, identity, active, completed, num, detail,
             constraints.append('ClusterId == %d' % int(workflow_id))
         constraintc = '(%s) && %s' % (' || '.join(constraints), constraintc)
         num = len(workflow_ids)
+
+    if name_constraint is not None:
+        constraintc = 'ProminenceName =?= "%s" && %s' % (name_constraint, constraintc)
 
     # Get completed workflows if necessary
     if completed:

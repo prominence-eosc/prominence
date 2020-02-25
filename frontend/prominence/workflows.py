@@ -29,6 +29,7 @@ def list_workflows(username, group, email):
             active = False
         if 'num' in request.args:
             num = request.args.get('num')
+
     constraint = (None, None)
     if 'constraint' in request.args:
         if '=' in request.args.get('constraint'):
@@ -39,6 +40,10 @@ def list_workflows(username, group, email):
                 return errors.invalid_constraint()
         else:
             return errors.invalid_constraint()
+
+    name_constraint = None
+    if 'name' in request.args:
+        name_constraint = request.args.get('name')
 
     if 'all' in request.args:
         completed = True
@@ -57,7 +62,7 @@ def list_workflows(username, group, email):
         active = True
 
     backend = ProminenceBackend(app.config)
-    data = backend.list_workflows(workflow_ids, username, active, completed, num, detail, constraint)
+    data = backend.list_workflows(workflow_ids, username, active, completed, num, detail, constraint, name_constraint)
 
     return jsonify(data)
 
