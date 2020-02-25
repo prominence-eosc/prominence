@@ -45,7 +45,7 @@ def list_workflows(self, workflow_ids, identity, active, completed, num, detail,
         num = len(workflow_ids)
 
     if name_constraint is not None:
-        constraintc = 'ProminenceName =?= "%s" && %s' % (name_constraint, constraintc)
+        constraintc = 'ProminenceName =?= "%s" && %s' % (str(name_constraint), constraintc)
 
     # Get completed workflows if necessary
     if completed:

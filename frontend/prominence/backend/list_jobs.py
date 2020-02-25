@@ -70,7 +70,7 @@ def list_jobs(self, job_ids, identity, active, completed, workflow, num, detail,
         constraintc = '(DAGManJobId == %d) && %s' % (int(job_ids[0]), constraintc)
 
     if name_constraint is not None:
-        constraintc = 'ProminenceName =?= "%s" && %s' % (name_constraint, constraintc)
+        constraintc = 'ProminenceName =?= "%s" && %s' % (str(name_constraint), constraintc)
 
     # Get completed jobs if necessary
     if completed:
