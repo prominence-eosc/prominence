@@ -108,7 +108,7 @@ def get_job(username, group, email, job_id):
     app.logger.info('%s DescribeJob user:%s group:%s id:%d' % (get_remote_addr(request), username, group, job_id))
 
     backend = ProminenceBackend(app.config)
-    data = backend.list_jobs([job_id], username, True, True, False, 1, 1, (None, None))
+    data = backend.list_jobs([job_id], username, True, True, False, 1, 1, (None, None), None)
     return jsonify(data)
 
 @jobs.route("/prominence/v1/jobs/<int:job_id>/exec", methods=['POST'])

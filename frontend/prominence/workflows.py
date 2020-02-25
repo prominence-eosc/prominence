@@ -75,7 +75,7 @@ def get_workflow(username, group, email, workflow_id):
     app.logger.info('%s DescribeWorkflow user:%s group:%s id:%d' % (get_remote_addr(request), username, group, workflow_id))
 
     backend = ProminenceBackend(app.config)
-    data = backend.list_workflows([workflow_id], username, True, True, 1, 1, (None, None))
+    data = backend.list_workflows([workflow_id], username, True, True, 1, 1, (None, None), None)
     return jsonify(data)
 
 @workflows.route("/prominence/v1/workflows/<int:workflow_id>/<string:job>/stdout", methods=['GET'])
