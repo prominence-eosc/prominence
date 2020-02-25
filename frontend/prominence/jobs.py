@@ -67,6 +67,10 @@ def list_jobs(username, group, email):
         else:
             return errors.invalid_constraint()
 
+    name_constraint = None
+    if 'name' in request.args:
+        name_constraint = request.args.get('name')
+       
     if 'all' in request.args:
         completed = True
         active = True
@@ -91,7 +95,7 @@ def list_jobs(username, group, email):
             active = True
 
     backend = ProminenceBackend(app.config)
-    data = backend.list_jobs(job_ids, username, active, completed, workflow, num, detail, constraint)
+    data = backend.list_jobs(job_ids, username, active, completed, workflow, num, detail, constraint, name_constraint)
 
     return jsonify(data)
 

@@ -7,7 +7,7 @@ import htcondor
 
 import utilities
 
-def list_jobs(self, job_ids, identity, active, completed, workflow, num, detail, constraint):
+def list_jobs(self, job_ids, identity, active, completed, workflow, num, detail, constraint, name_constraint):
     """
     List jobs or describe a specified job
     """
@@ -68,6 +68,9 @@ def list_jobs(self, job_ids, identity, active, completed, workflow, num, detail,
 
     if workflow and len(job_ids) > 0:
         constraintc = '(DAGManJobId == %d) && %s' % (int(job_ids[0]), constraintc)
+
+    if name_constraint is not None:
+        constraintc = 'ProminenceName =?= "%s" && %s' % (name_constraint, constraintc)
 
     # Get completed jobs if necessary
     if completed:
