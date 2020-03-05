@@ -258,6 +258,7 @@ def validate_job(job):
                        'preemptible',
                        'maximumTimeInQueue',
                        'maximumIdleTimePerResource',
+                       'leaveInQueue',
                        'placement']
 
     valid_events = ['jobFinished']
