@@ -271,3 +271,21 @@ def create_snapshot(username, group, email, job_id):
 
     backend.create_snapshot(uid, job_id, path)
     return jsonify({}), 200
+
+@jobs.route("/prominence/v1/jobs/<int:job_id>/remove", methods=['PUT'])
+@requires_auth
+def remove_job(username, group, email, job_id):
+    """
+    Remove a completed job from the queue
+    """
+    app.logger.info('%s RemoveFromQueue user:%s group:%s id:%d' % (get_remote_addr(request), username, group, job_id))
+
+    backend = ProminenceBackend(app.config)
+    (uid, identity, iwd, _, _, _, status) = backend.get_job_unique_id(job_id)
+    if not identity:
+        return errors.no_such_job()
+    if username != identity:
+        return errors.not_auth_job()
+
+    backend.remove_job(job_id)
+    return jsonify({}), 200
