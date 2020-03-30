@@ -40,6 +40,11 @@ def redact_storage_creds(storage):
             storage['onedata']['provider'] = '***'
         if 'token' in storage['onedata']:
             storage['onedata']['token'] = '***'
+    elif 'webdav' in storage:
+        if 'username' in storage['webdav']:
+            storage['webdav']['username'] = '***'
+        if 'password' in storage['webdav']:
+            storage['webdav']['password'] = '***'
     return storage
 
 def condor_str(str_in):
