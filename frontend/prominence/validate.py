@@ -425,8 +425,8 @@ def validate_job(job):
     if 'storage' in job:
         if 'type' not in job['storage']:
             return (False, 'storage type must be defined')
-        if job['storage']['type'] != 'onedata' and job['storage']['type'] != 'b2drop':
-            return (False, 'storage type must be either b2drop or onedata')
+        if job['storage']['type'] != 'onedata' and job['storage']['type'] != 'b2drop' and job['storage']['type'] != 'webdav':
+            return (False, 'storage type must be either b2drop, webdav or onedata')
         if 'mountpoint' not in job['storage']:
             return (False, 'a mount point must be defined')
         if not job['storage']['mountpoint'].startswith('/'):
@@ -434,7 +434,7 @@ def validate_job(job):
 
         if job['storage']['type'] == 'b2drop':
             if 'b2drop' not in job['storage']:
-                return (False, 'b2drop storage details must be defined')
+                return (False, 'B2DROP storage details must be defined')
             if 'app-username' not in job['storage']['b2drop']:
                 return (False, 'B2DROP app username must be defined')
             if 'app-password' not in job['storage']['b2drop']:
@@ -446,6 +446,13 @@ def validate_job(job):
                 return (False, 'OneData provider must be defined')
             if 'token' not in job['storage']['onedata']:
                 return (False, 'OneData token must be defined')
+        elif job['storage']['type'] == 'webdav':
+            if 'webdav' not in job['storage']:
+                return (False, 'WebDAV storage details must be defined')
+            if 'username' not in job['storage']['webdav']:
+                return (False, 'WebDAV username must be defined')
+            if 'password' not in job['storage']['webdav']:
+                return (False, 'WebDAV password must be defined')
 
     # Polices
     if 'policies' in job:
