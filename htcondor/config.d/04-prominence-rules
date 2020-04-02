@@ -1,0 +1,42 @@
+# Note that:
+# - if we remove the original job, this will be visible to the user (their job will disappear)
+# - if we remove the routed job, the JobRouter will create a new one and this will not be visible to the user
+# The rules below only apply to original jobs. Currently set_PeriodicRemove is used in the JobRouter to 
+# handle routed jobs.
+
+# Job in the held state
+ProminenceJobHeld = JobStatus == 5
+
+# Job in the idle but had previously been running (i.e. evicted)
+ProminenceJobEvicted = JobStatus == 1 && LastJobStatus == 2 && ProminenceInfrastructureState =?= "configured"
+
+# Infrastructure deployment failed
+ProminenceJobInfraFailed = JobStatus == 1 && ProminenceInfrastructureState =?= "failed"
+
+# Infrastructure deployment unable - fatal
+ProminenceJobInfraUnableFatal = JobStatus == 1 && ProminenceInfrastructureState =?= "unable" && ProminenceInfrastructureStateReason =?= "NoMatchingResources"
+
+# Infrastructure deployment unable - temporary
+ProminenceJobInfraUnable = JobStatus == 1 && ProminenceInfrastructureState =?= "unable" && ProminenceInfrastructureStateReason =?= "NoMatchingResourcesAvailable"
+
+# Infrastructure deployed but job is taking too long to start running
+ProminenceJobNotRunning = JobStatus == 1 && ProminenceInfrastructureState =?= "configured" && CurrentTime - ProminenceInfrastructureEnteredCurrentStatus > 600
+
+# Fatal errors
+ProminenceJobFatal = $(ProminenceJobInfraUnableFatal)
+
+# Transient errors
+ProminenceJobTransient = ($(ProminenceJobHeld) || $(ProminenceJobEvicted) || \
+                          $(ProminenceJobInfraFailed) || $(ProminenceJobInfraUnable) || \
+                          $(ProminenceJobNotRunning)) && \
+                         (ProminenceMaxTimeInQueue == -1 || \
+                          ProminenceMaxTimeInQueue > 0 && CurrentTime - QDate > ProminenceMaxTimeInQueue)
+
+SYSTEM_PERIODIC_REMOVE = isUndefined(RouteName) && isUndefined(DAGManJobId) && ($(ProminenceJobFatal) || $(ProminenceJobTransient))
+
+SYSTEM_PERIODIC_REMOVE_REASON = ifThenElse($(ProminenceJobHeld), "Job was held", \
+                                ifThenElse($(ProminenceJobEvicted), "Job was evicted", \
+                                ifThenElse($(ProminenceJobInfraFailed), "Infrastructure deployment failed", \
+                                ifThenElse($(ProminenceJobInfraUnable), "No resources match the specified requirements", \
+                                ifThenElse($(ProminenceJobInfraUnableFatal), "No resources match the specified requirements", \
+                                ifThenElse($(ProminenceJobNotRunning), "Infrastructure deployment failed", ""))))))
