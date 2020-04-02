@@ -1,0 +1,23 @@
+# Maybe not needed anymore?
+SHADOW_WORKLIFE = 0
+
+# Ensure auto clusters take into account ProminenceJobUniqueIdentifier
+ADD_SIGNIFICANT_ATTRIBUTES = ProminenceJobUniqueIdentifier
+
+# Don't ignore other idle jobs in the same cluster if one job fails to be matched
+NEGOTIATE_ALL_JOBS_IN_CLUSTER = True
+
+# Shadows should update schedd every 5 mins (default is 15)
+SHADOW_QUEUE_UPDATE_INTERVAL = 300
+
+# Audit log
+SCHEDD_AUDIT_LOG = $(LOG)/AuditLog
+MAX_SCHEDD_AUDIT_LOG = 1d
+MAX_NUM_SCHEDD_AUDIT_LOG = 90
+
+# Job lease duration (default is 40 mins)
+JobLeaseDuration = 600
+SUBMIT_ATTRS = $(SUBMIT_ATTRS), JobLeaseDuration
+
+# Per job history files
+PER_JOB_HISTORY_DIR = /var/spool/prominence/completed_jobs
