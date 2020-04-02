@@ -1,0 +1,51 @@
+use SECURITY: Strong
+
+# By default deny the unknowns
+DENY_READ          = anonymous@*
+DENY_WRITE         = anonymous@*
+DENY_ADMINISTRATOR = anonymous@*
+DENY_DAEMON        = anonymous@*
+DENY_NEGOTIATOR    = anonymous@*
+DENY_CLIENT        = anonymous@*
+
+# Privacy settings
+SEC_CLIENT_INTEGRITY  = REQUIRED
+SEC_CLIENT_ENCRYPTION = REQUIRED
+
+SEC_DAEMON_INTEGRITY  = REQUIRED
+SEC_DAEMON_ENCRYPTION = REQUIRED
+
+SEC_DEFAULT_INTEGRITY  = REQUIRED
+SEC_DEFAULT_ENCRYPTION = REQUIRED
+
+# Authentication settings
+SEC_CLIENT_AUTHENTICATION  = REQUIRED
+SEC_DAEMON_AUTHENTICATION  = REQUIRED
+SEC_DEFAULT_AUTHENTICATION = REQUIRED
+
+SEC_CLIENT_AUTHENTICATION_METHODS  = FS, GSI
+SEC_DAEMON_AUTHENTICATION_METHODS  = FS, GSI
+SEC_DEFAULT_AUTHENTICATION_METHODS = FS, GSI
+
+ALLOW_DAEMON = 127.0.0.1, $(IP_ADDRESS), <ip>, condor@*/*
+HOSTALLOW_WRITE = *
+ALLOW_WRITE = *
+ALLOW_READ = *
+HOSTALLOW_DAEMON = $(IP_ADDRESS), <ip>
+ALLOW_NEGOTIATOR = $(IP_ADDRESS), <ip>
+
+SCHEDD.ALLOW_WRITE               = condor@*/*, prominence@*/*
+COLLECTOR.ALLOW_ADVERTISE_STARTD = condor@*
+COLLECTOR.ALLOW_ADVERTISE_SCHEDD = condor@*
+COLLECTOR.ALLOW_ADVERTISE_MASTER = condor@*
+SHADOW.ALLOW_WRITE               = condor@*
+NEGOTIATOR.ALLOW_WRITE           = condor@*/*
+
+# GSI settings
+GSI_DAEMON_CERT           = /etc/condor/certs/hostcert.pem
+GSI_DAEMON_KEY            = /etc/condor/certs/hostkey.pem
+GSI_DAEMON_TRUSTED_CA_DIR = /etc/condor/certs/ca
+CERTIFICATE_MAPFILE       = /etc/condor/condor_mapfile
+
+# We don't use a dedicated certificate per worker, so disable host checks
+GSI_SKIP_HOST_CHECK = True
