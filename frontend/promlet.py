@@ -534,10 +534,51 @@ def download_singularity(image, image_new, location, path):
     logging.info('Pulling Singularity image for task')
 
     if re.match(r'^http', image):
-        (success, attempts) = download_from_url_with_retries(image, image_new)
-        logging.info('Number of attempts to download file %s was %d', filename, attempts)
-        if not success:
-            return 1, False
+        if image_name(image).endswith('.tar'):
+            # We need to download the Docker tarball then convert it to the Singularity format
+            image_new_tmp = image_new.replace('image.simg', 'image.tar')
+            (success, attempts) = download_from_url_with_retries(image, image_new_tmp)
+            logging.info('Number of attempts to download file %s was %d', image, attempts)
+
+            if not success:
+                return 1, False
+
+            # Create singularity image from Docker archive
+            cmd = 'singularity build %s docker-archive://%s' % (image_new, image_new_tmp)
+
+            try:
+                process = subprocess.Popen(cmd,
+                                           cwd=os.path.dirname(image_new),
+                                           shell=True,
+                                           env=dict(os.environ,
+                                                    PATH='/usr/local/bin:/usr/bin:/usr/local/sbin:/usr/sbin'),
+                                           stdout=subprocess.PIPE,
+                                           stderr=subprocess.PIPE)
+                stdout, stderr = process.communicate()
+                return_code = process.returncode
+            except Exception as exc:
+                logging.error('Unable to build Singularity image from Docker archive due to %s', exc)
+            else:
+                if return_code == 0:
+                    success = True
+                else:
+                    logging.error(stdout)
+                    logging.error(stderr)
+
+            if not success:
+                return 1, False
+
+            # Remove temporary file
+            try:
+                os.remove(image_new_tmp)
+            except Exception:
+                pass
+
+        else:
+            (success, attempts) = download_from_url_with_retries(image, image_new)
+            logging.info('Number of attempts to download file %s was %d', image, attempts)
+            if not success:
+                return 1, False
 
         logging.info('Singularity image downloaded from URL and written to file %s', image_new)
     else:
