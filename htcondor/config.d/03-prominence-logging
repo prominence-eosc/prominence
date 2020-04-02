@@ -1,0 +1,8 @@
+# Maximum log file size
+MAX_DEFAULT_LOG = 30 Mb
+
+# Number of log files to keep
+MAX_NUM_COLLECTOR_LOG = 10
+MAX_NUM_SCHEDD_LOG = 10
+MAX_NUM_SHADOW_LOG = 10
+MAX_NUM_JOBROUTER_LOG = 10
