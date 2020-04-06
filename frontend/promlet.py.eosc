@@ -336,7 +336,7 @@ def mpi_setup(runtime, cmd, env, path, mpi, mpi_processes, mpi_procs_per_node):
             os.chmod('%s/userhome/.id_rsa' % path, 0o600)
 
         else:
-            create_mpi_files(path)
+            create_mpi_files(mpi_hosts)
 
     # Setup differences between runtimes
     extras = ''
@@ -1359,9 +1359,10 @@ if __name__ == "__main__":
     # Handle HPC systems
     is_batch = False
     if args.batch or (not os.path.isdir('/home/prominence') and not os.path.isdir('/mnt/beeond/prominence')):
-        if 'HOME' in os.environ:
-            path = os.environ['HOME']
+        if 'PWD' in os.environ:
+            path = os.environ['PWD']
         is_batch = True
+        logging.info('Assuming running on a batch system')
 
     # Setup logging
     logging.basicConfig(filename='%s/promlet.%d.log' % (path, args.id), level=logging.INFO, format='%(asctime)s %(message)s')
@@ -1369,7 +1370,7 @@ if __name__ == "__main__":
 
     # Write empty json job details, so no matter what happens next, at least an empty file exists
     try:
-        with open('promlet.%d.json' % args.id, 'w') as file:
+        with open('%s/promlet.%d.json' % (path, args.id), 'w') as file:
             json.dump({}, file)
     except Exception as exc:
         logging.critical('Unable to write promlet.json due to: %s', exc)
