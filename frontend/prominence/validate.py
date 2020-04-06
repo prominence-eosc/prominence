@@ -449,6 +449,8 @@ def validate_job(job):
         elif job['storage']['type'] == 'webdav':
             if 'webdav' not in job['storage']:
                 return (False, 'WebDAV storage details must be defined')
+            if 'url' not in job['storage']['webdav']:
+                return (False, 'WebDAV URL must be defined')
             if 'username' not in job['storage']['webdav']:
                 return (False, 'WebDAV username must be defined')
             if 'password' not in job['storage']['webdav']:
