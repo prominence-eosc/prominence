@@ -1286,6 +1286,7 @@ if __name__ == "__main__":
         if 'HOME' in os.environ:
             path = os.environ['HOME']
         is_batch = True
+        logging.info('Assuming running on a batch system')
 
     # Setup logging
     logging.basicConfig(filename='%s/promlet.%d.log' % (path, args.id), level=logging.INFO, format='%(asctime)s %(message)s')
