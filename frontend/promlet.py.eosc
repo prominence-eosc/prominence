@@ -446,6 +446,25 @@ def create_mpi_files(path):
 
         return True
 
+    elif '_PROMINENCE_OPENMPI_HOSTS_FILE' in os.environ:
+        logging.info('Environment variable _PROMINENCE_OPENMPI_HOSTS_FILE detected')
+        try:
+            with open(os.environ['_PROMINENCE_OPENMPI_HOSTS_FILE'], 'r') as pbs_nodefile:
+                pbs_lines = pbs_nodefile.readlines()
+        except IOError as exc:
+            logging.critical('Unable to open _PROMINENCE_OPENMPI_HOSTS_FILE due to: %s', exc)
+            return False
+
+        try:
+            with open(os.path.join(path, '.hosts-openmpi'), 'w') as mpi_file:
+                for line in pbs_lines:
+                    mpi_file.write(line)
+        except IOError as exc:
+            logging.critical('Unable to write MPI hosts file')
+            return False
+
+        return True
+
     elif 'SLURM_JOB_NODELIST' in os.environ:
         logging.info('Environment variable SLURM_JOB_NODELIST detected')
         process = subprocess.Popen('scontrol show hostnames $SLURM_JOB_NODELIST',
