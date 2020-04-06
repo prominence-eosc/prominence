@@ -36,8 +36,6 @@ def redact_storage_creds(storage):
         if 'app-password' in storage['b2drop']:
             storage['b2drop']['app-password'] = '***'
     elif 'onedata' in storage:
-        if 'provider' in storage['onedata']:
-            storage['onedata']['provider'] = '***'
         if 'token' in storage['onedata']:
             storage['onedata']['token'] = '***'
     elif 'webdav' in storage:
