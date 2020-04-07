@@ -87,7 +87,7 @@ fi
 if [[ -z "${SINGULARITY_CONTAINER}" ]]; then
     ssh -i /home/user/.id_rsa -o LogLevel=quiet -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null $_PARAM $_HOST env UDOCKER_DIR=$UDOCKER_DIR \$\(which udocker\) -q run --hostauth --hostenv -v /etc/ssh -v $PROMINENCE_PATH:/home/user --workdir=$PROMINENCE_PWD --user=user -v /home/user/tmp:/tmp $container_names $_COMMAND
 else
-    ssh -i /home/user/.id_rsa -o LogLevel=quiet -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null $_PARAM $_HOST \$\(which singularity\) exec -B /etc/ssh -B /home/user/tmp:/tmp --home $PROMINENCE_PATH:/home/user --pwd $PROMINENCE_PWD $PROMINENCE_IMAGE $_COMMAND
+    ssh -o LogLevel=quiet -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null $_PARAM $_HOST env -i /usr/bin/singularity exec --home $PROMINENCE_PATH:/home/user --pwd $PROMINENCE_PWD $PROMINENCE_CONTAINER_PATH/$SINGULARITY_CONTAINER $_COMMAND
 fi
 
 exit $?
@@ -265,6 +265,15 @@ def create_dirs(path):
     else:
         logging.info('Using existing tmp directory')
 
+    # Create mpi hosts directory
+    logging.info('Creating mpihome directory')
+    if not os.path.isdir(path + '/mpihome'):
+        try:
+            os.mkdir(path + '/mpihome')
+        except Exception as exc:
+            logging.error('Unable to create mpihome directory due to: %s', exc)
+            exit(1)
+
 def move_inputs(job, path):
     """
     Move any input files to the userhome directory
@@ -307,14 +316,14 @@ def mpi_setup(runtime, cmd, env, path, mpi, mpi_processes, mpi_procs_per_node):
     if mpi:
         logging.info('This is an MPI task, so writing ssh_container script')
         mpi_ssh = '/home/user/ssh_container'
-        with open('%s/userhome/ssh_container' % path, "w") as text_file:
+        with open('%s/mpihome/ssh_container' % path, "w") as text_file:
             text_file.write(MPI_SSH_SCRIPT)
-        os.chmod('%s/userhome/ssh_container' % path, 0o775)
+        os.chmod('%s/mpihome/ssh_container' % path, 0o775)
     else:
         logging.info('This is not an MPI task')
 
     # Copy MPI hosts files into userhome directory
-    mpi_hosts = '%s/userhome' % path
+    mpi_hosts = '%s/mpihome' % path
     if mpi:
         if not is_batch:
             logging.info('Writing new MPI files...')
@@ -324,16 +333,16 @@ def mpi_setup(runtime, cmd, env, path, mpi, mpi_processes, mpi_procs_per_node):
             mpi_hosts = '/home/user'
             try:
                 shutil.copyfile('%s/.hosts-openmpi' % src_dir,
-                                '%s/userhome/.hosts-openmpi' % path)
+                                '%s/mpihome/.hosts-openmpi' % path)
                 shutil.copyfile('%s/.hosts-mpich' % src_dir,
-                                '%s/userhome/.hosts-mpich' % path)
+                                '%s/mpihome/.hosts-mpich' % path)
                 shutil.copyfile('/home/user/.ssh/id_rsa',
-                                '%s/userhome/.id_rsa' % path)
+                                '%s/mpihome/.id_rsa' % path)
             except:
                 logging.error('Unable to copy MPI files')
                 exit(1)
 
-            os.chmod('%s/userhome/.id_rsa' % path, 0o600)
+            os.chmod('%s/mpihome/.id_rsa' % path, 0o600)
 
         else:
             create_mpi_files(mpi_hosts)
@@ -353,13 +362,13 @@ def mpi_setup(runtime, cmd, env, path, mpi, mpi_processes, mpi_procs_per_node):
             mpi_per_node = '-N %d --bind-to none' % mpi_procs_per_node
         mpi_env = " -x %s -x PROMINENCE_PWD -x HOME -x TEMP -x TMP -x PROMINENCE_PATH " % container_env_name
         mpi_env += " ".join('-x %s' % key for key in env)
-        cmd = ("mpirun --hostfile %s/.hosts-openmpi"
+        cmd = ("mpirun --hostfile /home/user/.hosts-openmpi"
                " -np %d"
                " %s"
                " %s"
                " -mca btl_base_warn_component_unused 0"
                " %s"
-               " -mca plm_rsh_agent %s %s") % (mpi_hosts, mpi_processes, mpi_per_node, mpi_env, extras, mpi_ssh, cmd)
+               " -mca plm_rsh_agent %s %s") % (mpi_processes, mpi_per_node, mpi_env, extras, mpi_ssh, cmd)
     elif mpi == 'intelmpi':
         if mpi_procs_per_node > 0:
             mpi_per_node = '-perhost %d' % mpi_procs_per_node
@@ -441,7 +450,15 @@ def create_mpi_files(path):
                 for line in pbs_lines:
                     mpi_file.write(line)
         except IOError as exc:
-            logging.critical('Unable to write MPI hosts file')
+            logging.critical('Unable to write OpenMPI hosts file')
+            return False
+
+        try:
+            with open(os.path.join(path, '.hosts-mpich'), 'w') as mpi_file:
+                for line in pbs_lines:
+                    mpi_file.write(line)
+        except IOError as exc:
+            logging.critical('Unable to write MPICH hosts file')
             return False
 
         return True
@@ -460,7 +477,15 @@ def create_mpi_files(path):
                 for line in pbs_lines:
                     mpi_file.write(line)
         except IOError as exc:
-            logging.critical('Unable to write MPI hosts file')
+            logging.critical('Unable to write OpenMPI hosts file')
+            return False
+
+        try:
+            with open(os.path.join(path, '.hosts-mpich'), 'w') as mpi_file:
+                for line in pbs_lines:
+                    mpi_file.write(line)
+        except IOError as exc:
+            logging.critical('Unable to write MPICH hosts file')
             return False
 
         return True
@@ -479,7 +504,15 @@ def create_mpi_files(path):
                 for line in stdout.split('/n'):
                     mpi_file.write(line)
         except IOError as exc:
-            logging.critical('Unable to write MPI hosts file')
+            logging.critical('Unable to write OpenMPI hosts file')
+            return False
+
+        try:
+            with open(os.path.join(path, '.hosts-mpich'), 'w') as mpi_file:
+                for line in stdout.split('/n'):
+                    mpi_file.write(line)
+        except IOError as exc:
+            logging.critical('Unable to write MPICH hosts file')
             return False
 
         return True
@@ -1010,8 +1043,12 @@ def run_singularity(image, cmd, workdir, env, path, mpi, mpi_processes, mpi_proc
     Execute a task using Singularity
     """
     # Create command to run
+    job_home = 'userhome'
+    home_type = '--home'
     if mpi:
         cmd = mpi_setup('singularity', cmd, env, path, mpi, mpi_processes, mpi_procs_per_node)
+        job_home = 'mpihome'
+        home_type = '--bind'
 
     command = 'exec'
     if cmd is None:
@@ -1035,11 +1072,11 @@ def run_singularity(image, cmd, workdir, env, path, mpi, mpi_processes, mpi_proc
 
     # Prepare Singularity command
     run_command = ("singularity %s"
-                   " --home %s/userhome:/home/user"
+                   " %s %s/%s:/home/user"
                    " --bind %s:/tmp"
                    " %s"
                    " --pwd %s"
-                   " %s %s") % (command, path, user_tmp_dir, mounts, workdir, image, cmd)
+                   " %s %s") % (command, home_type, path, job_home, user_tmp_dir, mounts, workdir, image, cmd)
 
     # Setup job CPUs & memory available
     job_cpus = -1
@@ -1063,6 +1100,7 @@ def run_singularity(image, cmd, workdir, env, path, mpi, mpi_processes, mpi_proc
                                                    PROMINENCE_CONTAINER_LOCATION='%s' % os.path.dirname(image),
                                                    PROMINENCE_PATH='%s/userhome' % path,
                                                    PROMINENCE_CONTAINER_RUNTIME='singularity',
+                                                   I_MPI_HYDRA_BOOTSTRAP_AUTOFORK='off',
                                                    PROMINENCE_PWD='%s' % workdir,
                                                    PROMINENCE_CPUS='%d' % job_cpus,
                                                    PROMINENCE_MEMORY='%d' % job_memory),
@@ -1362,11 +1400,13 @@ if __name__ == "__main__":
         if 'PWD' in os.environ:
             path = os.environ['PWD']
         is_batch = True
-        logging.info('Assuming running on a batch system')
 
     # Setup logging
     logging.basicConfig(filename='%s/promlet.%d.log' % (path, args.id), level=logging.INFO, format='%(asctime)s %(message)s')
     logging.info('Started promlet using path "%s"' % path)
+
+    if is_batch:
+        logging.info('Running on a batch system')
 
     # Write empty json job details, so no matter what happens next, at least an empty file exists
     try:
