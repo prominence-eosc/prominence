@@ -393,7 +393,7 @@ def mpi_setup(runtime, cmd, env, path, mpi, mpi_processes, mpi_procs_per_node, w
                " -wdir %s"
                " -envlist %s"
                " -launcher ssh"
-               " -launcher-exec %s %s") % (mpi_processes, mpi_per_node, workdir, mpi_env, mpi_ssh, cmd)               
+               " -launcher-exec %s %s") % (mpi_processes, mpi_per_node, workdir, mpi_env, mpi_ssh, cmd)
 
     return cmd 
 
