@@ -28,6 +28,7 @@ def list_jobs(self, job_ids, identity, active, completed, workflow, num, detail,
                       'CompletionDate',
                       'EnteredCurrentStatus',
                       'LastVacateTime',
+                      'JobFinishedHookDone',
                       'RemoveReason',
                       'RemoteWallClockTime',
                       'LastHoldReasonSubCode',
@@ -299,6 +300,15 @@ def list_jobs(self, job_ids, identity, active, completed, workflow, num, detail,
                         events['endTime'] = int(job['LastVacateTime'])
                 else:
                     events['endTime'] = int(job['LastVacateTime'])
+
+        # Also try JobFinishedHookDone
+        if 'JobFinishedHookDone' in job and (job['JobStatus'] == 3 or job['JobStatus'] == 4):
+            if int(job['JobFinishedHookDone']) > 0:
+                if 'endTime' in events:
+                    if int(job['JobFinishedHookDone']) > events['endTime']:
+                        events['endTime'] = int(job['JobFinishedHookDone'])
+                else:
+                    events['endTime'] = int(job['JobFinishedHookDone'])
 
         if detail > 0:
             jobj['resources'] = job_json_file['resources']
