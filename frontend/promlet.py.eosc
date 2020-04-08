@@ -382,14 +382,18 @@ def mpi_setup(runtime, cmd, env, path, mpi, mpi_processes, mpi_procs_per_node, w
                " -envlist %s"
                " -bootstrap-exec %s %s") % (mpi_processes, mpi_per_node, workdir, mpi_env, mpi_ssh, cmd)
     elif mpi == 'mpich':
-        env_list = [container_env_name, 'PROMINENCE_PWD', 'HOME', 'TMP', 'TEMP', 'PROMINENCE_PATH']
+        if mpi_procs_per_node > 0:
+            mpi_per_node = '-ppn %d' % mpi_procs_per_node
+        env_list = [container_env_name, 'PROMINENCE_PWD', 'HOME', 'TMP', 'TEMP', 'TMPDIR', 'PROMINENCE_PATH']
         env_list.extend(env.keys())
         mpi_env = ",".join('%s' % item for item in env_list)
         cmd = ("mpirun -f /home/mpi/.hosts-mpich"
                " -np %d"
+               " %s"
+               " -wdir %s"
                " -envlist %s"
                " -launcher ssh"
-               " -launcher-exec %s %s") % (mpi_processes, mpi_env, mpi_ssh, cmd)               
+               " -launcher-exec %s %s") % (mpi_processes, mpi_per_node, workdir, mpi_env, mpi_ssh, cmd)               
 
     return cmd 
 
