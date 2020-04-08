@@ -830,14 +830,17 @@ def run_udocker(image, cmd, workdir, env, path, mpi, mpi_processes, mpi_procs_pe
                " -envlist %s"
                " -bootstrap-exec %s %s") % (mpi_processes, mpi_per_node, mpi_env, mpi_ssh, cmd)
     elif mpi == 'mpich':
+        if mpi_procs_per_node > 0:
+            mpi_per_node = '-ppn %d' % mpi_procs_per_node
         env_list = ['PROMINENCE_PWD', 'UDOCKER_DIR', 'TMP', 'TEMP', 'TMPDIR']
         env_list.extend(env.keys())
         mpi_env = ",".join('%s' % item for item in env_list)
         cmd = ("mpirun -f /home/user/.hosts-mpich"
                " -np %d"
+               " %s"
                " -envlist %s"
                " -launcher ssh"
-               " -launcher-exec %s %s") % (mpi_processes, mpi_env, mpi_ssh, cmd)
+               " -launcher-exec %s %s") % (mpi_processes, mpi_per_node, mpi_env, mpi_ssh, cmd)
 
     # Get storage mountpoint
     mountpoint = get_storage_mountpoint()
