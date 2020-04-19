@@ -247,6 +247,12 @@ def list_jobs(self, job_ids, identity, active, completed, workflow, num, detail,
                     reason = 'Infrastructure took too long to be deployed'
                 if 'OtherJobRemoveRequirements = DAGManJobId' in job['RemoveReason'] and 'was removed' in job['RemoveReason']:
                     reason = 'Job part of a workflow which was deleted by user'
+                if job['RemoveReason'] == 'NoMatchingResourcesAvailable':
+                    reason = 'No matching resources currently available'
+                    jobj['status'] = 'failed'
+                if job['RemoveReason'] == 'NoMatchingResources':
+                    reason = 'No matching resources'
+                    jobj['status'] = 'failed'
 
             if 'LastHoldReasonSubCode' in job:
                 if job['LastHoldReasonSubCode'] == 1001:
