@@ -36,7 +36,6 @@ MPI_SSH_SCRIPT = \
 
 _LOCALHOST='localhost'
 _LOCALIP='127.0.0.1'
-_HOSTNAME=`hostname --short`
 _HAS_PARAMS="bcDeFIiLlmOopRSWw"
 
 while (( "$#" )); do
@@ -87,7 +86,7 @@ fi
 if [[ -z "${SINGULARITY_CONTAINER}" ]]; then
     ssh -i /home/user/.id_rsa -o LogLevel=quiet -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null $_PARAM $_HOST env UDOCKER_DIR=$UDOCKER_DIR \$\(which udocker\) -q run --hostauth --hostenv -v /etc/ssh -v $PROMINENCE_PATH:/home/user --workdir=$PROMINENCE_PWD --user=user -v /home/user/tmp:/tmp $container_names $_COMMAND
 else
-    ssh -o LogLevel=quiet -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null $_PARAM $_HOST env -i /usr/bin/singularity exec --home $PROMINENCE_PATH:/home/user --pwd $PROMINENCE_PWD --contain $PROMINENCE_IMAGE $_COMMAND
+    ssh -o LogLevel=quiet -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null $_PARAM $_HOST env -i /usr/bin/singularity exec --home $PROMINENCE_PATH:/home/user --pwd $PROMINENCE_PWD $PROMINENCE_IMAGE $_COMMAND
 fi
 
 exit $?
@@ -304,7 +303,7 @@ def find_mpi_hosts():
    
     return src_dir
 
-def mpi_setup(runtime, cmd, env, path, mpi, mpi_processes, mpi_procs_per_node, workdir):
+def mpi_setup(runtime, cmd, env, path, mpi, mpi_processes, mpi_procs_per_node, num_nodes, workdir):
     """
     Setup for MPI jobs and create MPI command
     """
@@ -315,17 +314,17 @@ def mpi_setup(runtime, cmd, env, path, mpi, mpi_processes, mpi_procs_per_node, w
 
     if mpi:
         logging.info('This is an MPI task, so writing ssh_container script')
-        mpi_ssh = '/home/mpi/ssh_container'
-        with open('%s/mpihome/ssh_container' % path, "w") as text_file:
+        mpi_ssh = '/home/user/.ssh_container'
+        with open('%s/userhome/.ssh_container' % path, "w") as text_file:
             text_file.write(MPI_SSH_SCRIPT)
-        os.chmod('%s/mpihome/ssh_container' % path, 0o775)
+        os.chmod('%s/userhome/.ssh_container' % path, 0o775)
     else:
         logging.info('This is not an MPI task')
 
     # Copy MPI hosts files into userhome directory
     mpi_hosts = '%s/mpihome' % path
     if mpi:
-        if not is_batch:
+        if not is_batch and num_nodes > 1:
             logging.info('Writing new MPI files...')
 
             src_dir = find_mpi_hosts()
@@ -345,7 +344,7 @@ def mpi_setup(runtime, cmd, env, path, mpi, mpi_processes, mpi_procs_per_node, w
             os.chmod('%s/mpihome/.id_rsa' % path, 0o600)
 
         else:
-            create_mpi_files(mpi_hosts)
+            create_mpi_files(mpi_hosts, num_nodes)
 
     # Setup differences between runtimes
     extras = ''
@@ -366,20 +365,21 @@ def mpi_setup(runtime, cmd, env, path, mpi, mpi_processes, mpi_procs_per_node, w
                " -np %d"
                " %s"
                " %s"
-               " -mca btl_base_warn_component_unused 0"
                " %s"
+               " -mca btl_base_warn_component_unused 0"
                " -mca plm_rsh_agent %s %s") % (mpi_processes, mpi_per_node, mpi_env, extras, mpi_ssh, cmd)
     elif mpi == 'intelmpi':
         if mpi_procs_per_node > 0:
-            mpi_per_node = '-perhost %d' % mpi_procs_per_node
+            mpi_per_node = '-ppn %d' % mpi_procs_per_node
         env_list = [container_env_name, 'PROMINENCE_PWD', 'HOME', 'TMP', 'TEMP', 'TMPDIR', 'PROMINENCE_PATH']
         env_list.extend(env.keys())
         mpi_env = ",".join('%s' % item for item in env_list)
         cmd = ("mpirun -machine /home/mpi/.hosts-mpich"
-               " -np %d"
-               " %s"
+               " -np %d %s"
+               " -gtool \"bash -c\":all=exclusive@aldi" # hack to disable Intel's Singularity magic
                " -wdir %s"
                " -envlist %s"
+               " -launcher ssh"
                " -bootstrap-exec %s %s") % (mpi_processes, mpi_per_node, workdir, mpi_env, mpi_ssh, cmd)
     elif mpi == 'mpich':
         if mpi_procs_per_node > 0:
@@ -437,11 +437,28 @@ def check_beeond():
         return False
     return True
 
-def create_mpi_files(path):
+def create_mpi_files(path, num_nodes):
     """
     Create MPI hosts file if necessary
     """
-    if 'PBS_NODEFILE' in os.environ:
+    if num_nodes == 1:
+        logging.info('Single node MPI, will write localhost into MPI machine files')
+
+        try:
+            with open(os.path.join(path, '.hosts-openmpi'), 'w') as mpi_file:
+                mpi_file.write('localhost')
+        except IOError as exc:
+            logging.critical('Unable to write OpenMPI hosts file')
+            return False
+
+        try:
+            with open(os.path.join(path, '.hosts-mpich'), 'w') as mpi_file:
+                mpi_file.write('localhost')
+        except IOError as exc:
+            logging.critical('Unable to write MPICH hosts file')
+            return False
+
+    elif 'PBS_NODEFILE' in os.environ:
         logging.info('Environment variable PBS_NODEFILE detected')
         try:
             with open(os.environ['PBS_NODEFILE'], 'r') as pbs_nodefile:
@@ -584,10 +601,10 @@ def upload(filename, url):
         with open(filename, 'rb') as file_obj:
             response = requests.put(url, data=file_obj, timeout=120)
     except requests.exceptions.RequestException as exc:
-        logging.warning('RequestException when trying to upload file %s', filename)
+        logging.warning('RequestException when trying to upload file %s, error is: %s', filename, exc)
         return None
-    except IOError:
-        logging.warning('IOError when trying to upload file %s', filename)
+    except IOError as exc:
+        logging.warning('IOError when trying to upload file %s, error is: %s', filename, exc)
         return None
 
     if response.status_code == 200:
@@ -968,7 +985,7 @@ def download_udocker(image, location, label, path):
 
     return 0, False
 
-def run_udocker(image, cmd, workdir, env, path, mpi, mpi_processes, mpi_procs_per_node, artifacts, walltime_limit, mountpoint, is_batch):
+def run_udocker(image, cmd, workdir, env, path, mpi, mpi_processes, mpi_procs_per_node, num_nodes, artifacts, walltime_limit, mountpoint, is_batch):
     """
     Execute a task using udocker
     """
@@ -1000,7 +1017,7 @@ def run_udocker(image, cmd, workdir, env, path, mpi, mpi_processes, mpi_procs_pe
 
     # Setup for MPI
     if mpi:
-        cmd = mpi_setup('udocker', cmd, env, path, mpi, mpi_processes, mpi_procs_per_node, workdir)
+        cmd = mpi_setup('udocker', cmd, env, path, mpi, mpi_processes, mpi_procs_per_node, num_nodes, workdir)
 
     # Set source directory for /tmp in container
     user_tmp_dir = path + '/usertmp'
@@ -1009,7 +1026,7 @@ def run_udocker(image, cmd, workdir, env, path, mpi, mpi_processes, mpi_procs_pe
 
     # Artifact mounts
     for artifact in artifacts:
-        mounts = mounts + ' -v %s/%s:%s ' % (path, artifact, artifacts[artifact])
+        mounts = mounts + ' -v %s/userhome/%s:%s ' % (path, artifact, artifacts[artifact])
 
     # Prepare udocker command
     run_command = ("udocker -q run %s"
@@ -1043,7 +1060,7 @@ def run_udocker(image, cmd, workdir, env, path, mpi, mpi_processes, mpi_procs_pe
 
     return return_code, timed_out
 
-def run_singularity(image, cmd, workdir, env, path, mpi, mpi_processes, mpi_procs_per_node, artifacts, walltime_limit, mountpoint, is_batch):
+def run_singularity(image, cmd, workdir, env, path, mpi, mpi_processes, mpi_procs_per_node, num_nodes, artifacts, walltime_limit, mountpoint, is_batch):
     """
     Execute a task using Singularity
     """
@@ -1051,9 +1068,10 @@ def run_singularity(image, cmd, workdir, env, path, mpi, mpi_processes, mpi_proc
     home_type = '--home'
     mpi_home = ''
     if mpi:
-        cmd = mpi_setup('singularity', cmd, env, path, mpi, mpi_processes, mpi_procs_per_node, workdir)
+        cmd = mpi_setup('singularity', cmd, env, path, mpi, mpi_processes, mpi_procs_per_node, num_nodes, workdir)
         mpi_home = '--bind %s/mpihome:/home/mpi' % path
-        home_type = '--bind'
+        if num_nodes > 1:
+            home_type = '--bind'
 
     command = 'exec'
     if cmd is None:
@@ -1064,11 +1082,11 @@ def run_singularity(image, cmd, workdir, env, path, mpi, mpi_processes, mpi_proc
     mounts = ''
     if mountpoint is not None:
         logging.info('Mount point is %s', mountpoint)
-        mounts = '--bind /home/user/%s:%s ' % (mountpoint, mountpoint)
+        mounts = '--bind %s ' % mountpoint
 
     # Artifact mounts
     for artifact in artifacts:
-        mounts = mounts + ' --bind %s/%s:%s ' % (path, artifact, artifacts[artifact])
+        mounts = mounts + ' --bind %s/userhome/%s:%s ' % (path, artifact, artifacts[artifact])
 
     # Set source directory for /tmp in container
     user_tmp_dir = path + '/usertmp'
@@ -1197,7 +1215,8 @@ def run_tasks(job, path, is_batch):
 
         env = {}
         if 'env' in task:
-            env = task['env']
+            for item in task['env']:
+                env[item] = task['env'][item]
 
         if args.param:
             for pair in args.param:
@@ -1230,6 +1249,9 @@ def run_tasks(job, path, is_batch):
  
         if procs_per_node > 0:
             mpi_processes = procs_per_node*num_nodes
+        else:
+            # Set processes per node to the number of CPUs
+            procs_per_node = num_cpus
 
         metrics_download = ProcessMetrics()
         metrics_task = ProcessMetrics()
@@ -1279,6 +1301,7 @@ def run_tasks(job, path, is_batch):
                                            mpi,
                                            mpi_processes,
                                            procs_per_node,
+                                           num_nodes,
                                            artifacts,
                                            task_time_limit,
                                            mountpoint,
@@ -1313,6 +1336,7 @@ def run_tasks(job, path, is_batch):
                                            mpi,
                                            mpi_processes,
                                            procs_per_node,
+                                           num_nodes,
                                            artifacts,
                                            task_time_limit,
                                            mountpoint,
