@@ -726,7 +726,6 @@ def mount_storage(job):
     """
     Mount user-specified storage
     """
-    path = '/home/user'
     json_mounts = []
 
     if 'storage' in job:
@@ -740,9 +739,8 @@ def mount_storage(job):
             storage_token = job['storage']['onedata']['token']
 
             try:
-                process = subprocess.Popen('/usr/bin/oneclient -t %s -H %s %s/%s' % (storage_token,
+                process = subprocess.Popen('/usr/bin/oneclient -t %s -H %s %s' % (storage_token,
                                                                                      storage_provider,
-                                                                                     path,
                                                                                      storage_mountpoint),
                                            shell=True,
                                            stdout=subprocess.PIPE,
@@ -1013,7 +1011,7 @@ def run_udocker(image, cmd, workdir, env, path, mpi, mpi_processes, mpi_procs_pe
     mounts = ''
     if mountpoint is not None:
         logging.info('Mount point is %s', mountpoint)
-        mounts = '-v /home/user/%s:%s ' % (mountpoint, mountpoint)
+        mounts = '-v %s ' % mountpoint
 
     # Setup for MPI
     if mpi:
@@ -1077,6 +1075,10 @@ def run_singularity(image, cmd, workdir, env, path, mpi, mpi_processes, mpi_proc
     if cmd is None:
         cmd = ''
         command = 'run'
+  
+    autofork = 'on'
+    if mpi and num_nodes > 1:
+        autofork = 'off'
 
     # Get storage mountpoint
     mounts = ''
@@ -1124,7 +1126,7 @@ def run_singularity(image, cmd, workdir, env, path, mpi, mpi_processes, mpi_proc
                                                    PROMINENCE_CONTAINER_LOCATION='%s' % os.path.dirname(image),
                                                    PROMINENCE_PATH='%s/userhome' % path,
                                                    PROMINENCE_CONTAINER_RUNTIME='singularity',
-                                                   I_MPI_HYDRA_BOOTSTRAP_AUTOFORK='off',
+                                                   I_MPI_HYDRA_BOOTSTRAP_AUTOFORK='%s' % autofork,
                                                    PROMINENCE_PWD='%s' % workdir,
                                                    PROMINENCE_CPUS='%d' % job_cpus,
                                                    PROMINENCE_MEMORY='%d' % job_memory),
