@@ -65,8 +65,8 @@ def validate_workflow(workflow):
 
     # Name
     if 'name' in workflow:
-        if len(workflow['name']) > 256:
-            return (False, 'workflow name must be less than 256 characters in length')
+        if len(workflow['name']) > 512:
+            return (False, 'workflow name must be less than 512 characters in length')
 
         if workflow['name'] != '' and not re.match(r'^[a-zA-Z0-9\-\_\s\.]+$', workflow['name']):
             return (False, 'invalid workflow name')
@@ -203,10 +203,10 @@ def validate_workflow(workflow):
         if not isinstance(workflow['labels'], dict):
             return (False, 'labels must be defined as a dict')
         for label in workflow['labels']:
-            if len(label) > 64:
-                return (False, 'label names must be less than 64 characters in length')
-            if len(workflow['labels'][label]) > 64:
-                return (False, 'label values must be less than 64 characters in length')
+            if len(label) > 512:
+                return (False, 'label names must be less than 512 characters in length')
+            if len(workflow['labels'][label]) > 512:
+                return (False, 'label values must be less than 512 characters in length')
 
             if not re.match(r'^[a-zA-Z0-9]+$', label):
                 return (False, 'label name "%s" is invalid' % label)
@@ -270,8 +270,8 @@ def validate_job(job):
 
     # Name
     if 'name' in job:
-        if len(job['name']) > 256:
-            return (False, 'job name must be less than 256 characters in length')
+        if len(job['name']) > 512:
+            return (False, 'job name must be less than 512 characters in length')
 
         if job['name'] != '' and not re.match(r'^[a-zA-Z0-9\-\_\s\.]+$', job['name']):
             return (False, 'invalid job name')
@@ -281,10 +281,10 @@ def validate_job(job):
         if not isinstance(job['labels'], dict):
             return (False, 'labels must be defined as a dict')
         for label in job['labels']:
-            if len(label) > 64:
-                return (False, 'label names must be less than 64 characters in length')
-            if len(job['labels'][label]) > 64:
-                return (False, 'label values must be less than 64 characters in length')
+            if len(label) > 512:
+                return (False, 'label names must be less than 512 characters in length')
+            if len(job['labels'][label]) > 512:
+                return (False, 'label values must be less than 512 characters in length')
 
             if not re.match(r'^[a-zA-Z0-9]+$', label):
                 return (False, 'label name "%s" is invalid' % label)
