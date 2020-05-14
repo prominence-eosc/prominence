@@ -287,5 +287,7 @@ def remove_job(username, group, email, job_id):
     if username != identity:
         return errors.not_auth_job()
 
-    backend.remove_job(job_id)
+    if not backend.remove_job(job_id):
+        return errors.removal_failed()
+
     return jsonify({}), 200

@@ -64,3 +64,11 @@ def func_disabled():
     """
     with app.app_context():
         return jsonify({'error':'Functionality disabled'}), 401
+
+def removal_failed():
+    """
+    User has tried to remove a job which does not exist or has already completed
+    """
+    with app.app_context():
+        return jsonify({'error':'Job is no longer in the queue'}), 400
+
