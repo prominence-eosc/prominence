@@ -4,7 +4,7 @@ from functools import wraps
 import time
 import requests
 import jwt
-from flask import Flask, jsonify, request
+from flask import jsonify, request
 from flask import current_app as app
 
 import errors
@@ -49,7 +49,7 @@ def get_user_details(token):
 
     groups = None
     if 'groups' in response.json():
-        if len(response.json()['groups']) > 0:
+        if response.json()['groups'] > 0:
             groups = ','.join(str(group) for group in response.json()['groups'])
 
     allowed = False
@@ -117,4 +117,3 @@ def requires_auth(function):
 
         return function(username, group, email, *args, **kwargs)
     return decorated
-
