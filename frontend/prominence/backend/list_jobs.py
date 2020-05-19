@@ -260,11 +260,11 @@ def list_jobs(self, job_ids, identity, active, completed, workflow, num, detail,
                     jobj['status'] = 'killed'
             jobj['statusReason'] = reason
 
-        # Return status as failed if walltime limit execeed
+        # Return status as killed if walltime limit execeed
         if tasks_u:
             for task_u in tasks_u:
                 if 'error' in task_u:
-                    jobj['status'] = 'failed'
+                    jobj['status'] = 'killed'
                     jobj['statusReason'] = 'Walltime limit exceeded'
 
         if 'ProminencePreemptible' in job:
