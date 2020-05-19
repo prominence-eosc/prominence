@@ -167,6 +167,11 @@ def list_workflows(self, workflow_ids, identity, active, completed, num, detail,
 
         wfj['progress'] = nodes
 
+        # Return a single pending state instead of idle, deploying & waiting
+        if 'USE_PENDING_STATE' in self._config:
+            if wfj['status'] in ('idle', 'waiting'):
+                wfj['status'] = 'pending'
+
         wfs.append(wfj)
 
     return wfs

@@ -316,6 +316,14 @@ def list_jobs(self, job_ids, identity, active, completed, workflow, num, detail,
                 else:
                     events['endTime'] = int(job['JobFinishedHookDone'])
 
+        # Return a single pending state instead of idle, deploying & waiting
+        if 'USE_PENDING_STATE' in self._config:
+            if jobj['status'] in ('idle', 'waiting'):
+                jobj['status'] = 'pending'
+            elif jobj['status'] == 'deploying':
+                jobj['status'] = 'pending' 
+                jobj['statusReason'] = 'Creating infrastructure to run job'
+
         if detail > 0:
             jobj['resources'] = job_json_file['resources']
 
