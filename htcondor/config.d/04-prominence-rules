@@ -17,7 +17,7 @@ ProminenceJobInfraFailed = JobStatus == 1 && ProminenceInfrastructureState =?= "
 ProminenceJobInfraUnableFatal = JobStatus == 1 && ProminenceInfrastructureState =?= "unable" && ProminenceInfrastructureStateReason =?= "NoMatchingResources"
 
 # Infrastructure deployment unable - temporary
-ProminenceJobInfraUnable = JobStatus == 1 && ProminenceInfrastructureState =?= "unable" && ProminenceInfrastructureStateReason =?= "NoMatchingResourcesAvailable"
+ProminenceJobInfraUnable = JobStatus == 1 && (ProminenceInfrastructureState =?= "unable" && ProminenceInfrastructureStateReason =?= "NoMatchingResourcesAvailable" || ProminenceInfrastructureState =?= "waiting")
 
 # Infrastructure deployed but job is taking too long to start running
 ProminenceJobNotRunning = JobStatus == 1 && ProminenceInfrastructureState =?= "configured" && CurrentTime - ProminenceInfrastructureEnteredCurrentStatus > 600
@@ -37,6 +37,6 @@ SYSTEM_PERIODIC_REMOVE = isUndefined(RouteName) && isUndefined(DAGManJobId) && (
 SYSTEM_PERIODIC_REMOVE_REASON = ifThenElse($(ProminenceJobHeld), "Job was held", \
                                 ifThenElse($(ProminenceJobEvicted), "Job was evicted", \
                                 ifThenElse($(ProminenceJobInfraFailed), "Infrastructure deployment failed", \
-                                ifThenElse($(ProminenceJobInfraUnable), "No resources match the specified requirements", \
-                                ifThenElse($(ProminenceJobInfraUnableFatal), "No resources match the specified requirements", \
+                                ifThenElse($(ProminenceJobInfraUnable), "NoMatchingResourcesAvailable", \
+                                ifThenElse($(ProminenceJobInfraUnableFatal), "NoMatchingResources", \
                                 ifThenElse($(ProminenceJobNotRunning), "Infrastructure deployment failed", ""))))))

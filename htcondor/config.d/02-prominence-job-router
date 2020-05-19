@@ -51,4 +51,5 @@ PROMINENCE_ATTRS_TO_COPY = ProminenceInfrastructureType, \
                            ProminenceExitCode, \
                            JobCurrentStartExecutingDate, \
                            LastVacateTime, \
-                           EnteredCurrentStatus
+                           EnteredCurrentStatus, \
+                           JobFinishedHookDone
