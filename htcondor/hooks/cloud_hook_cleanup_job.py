@@ -24,7 +24,7 @@ def send_completed_email(event, job_id_original, job_id_routed, identity, email,
     """
     Send a notification email
     """
-    logging.info('[%d] Sending notification email to %s for event %s for job %d', job_id_routed, email, event, job_id_original)
+    logger.info('[%d] Sending notification email to %s for event %s for job %d', job_id_routed, email, event, job_id_original)
 
     name = ''
     if job_name:
@@ -72,7 +72,7 @@ def handle_notifications(iwd, job_id_original, job_id_routed, identity, email, s
     try:
         open(lock_file, 'a').close()
     except Exception:
-        logging.critical('[%d] Unable to write lock file, will ignore notifications...', job_id_routed)
+        logger.critical('[%d] Unable to write lock file, will ignore notifications...', job_id_routed)
         return
 
     # Open JSON job description
@@ -81,7 +81,7 @@ def handle_notifications(iwd, job_id_original, job_id_routed, identity, email, s
         with open(filename, 'r') as json_file:
             job_json = json.load(json_file)
     except Exception as err:
-        logging.error('[%d] Unable to open JSON job description due to: %s', job_id_routed, err)
+        logger.error('[%d] Unable to open JSON job description due to: %s', job_id_routed, err)
         return
 
     job_name = None
@@ -94,7 +94,7 @@ def handle_notifications(iwd, job_id_original, job_id_routed, identity, email, s
         with open(filename, 'r') as json_file:
             promlet_json = json.load(json_file)
     except Exception as err:
-        logging.error('[%d] Unable to open JSON promlet due to: %s', job_id_routed, err)
+        logger.error('[%d] Unable to open JSON promlet due to: %s', job_id_routed, err)
 
     # Check if we need to generate any notifications, and do so if necessary
     if 'notifications' in job_json:
