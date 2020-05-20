@@ -205,6 +205,9 @@ def translate_classad():
     elif job_status == 1:
         logger.info('[%s] Attempting to create cloud infrastructure', job_id)
 
+        # Create infrastructure ID
+        uid_infra = str(uuid.uuid4())
+
         # Handle jobs submitted directly to HTCondor
         if existing_route_name:
             classad_new['TransferOutput'] = "promlet.0.log,promlet.0.json"
@@ -216,7 +219,7 @@ def translate_classad():
 
         # Get appropriate RADL template depending on job type
         spacing_type = False
-        if want_mpi:
+        if want_mpi and job_json['resources']['nodes'] > 1:
             radl_file = CONFIG.get('templates', 'multi-node-mpi')
             spacing_type = True
         else:
@@ -242,6 +245,9 @@ def translate_classad():
         storage_mountpoint = None
         onedata_provider = None
         onedata_token = None
+        webdav_username = None
+        webdav_password = None
+        webdav_url = None
         add_mounts = ''
 
         if 'storage' in job_json:
@@ -254,10 +260,18 @@ def translate_classad():
                             b2drop_app_username = job_json['storage']['b2drop']['app-username']
                         if 'app-password' in job_json['storage']['b2drop']:
                             b2drop_app_password = job_json['storage']['b2drop']['app-password']
+                elif job_json['storage']['type'] == 'webdav':
+                    if 'webdav' in job_json['storage']:
+                        if 'username' in job_json['storage']['webdav']:
+                            webdav_username = job_json['storage']['webdav']['username']
+                        if 'password' in job_json['storage']['webdav']:
+                            webdav_password = job_json['storage']['webdav']['password']
+                        if 'url' in job_json['storage']['webdav']:
+                            webdav_url = job_json['storage']['webdav']['url']
 
         if storage_mountpoint:
-            #add_mounts = '-v /mnt%s:/home/user%s' % (storage_mountpoint, storage_mountpoint)
-            add_mounts = '-v /mnt%s:%s' % (storage_mountpoint, storage_mountpoint)
+            add_mounts = '-v /mnt%s:/home/user%s' % (storage_mountpoint, storage_mountpoint)
+            #add_mounts = '-v /mnt%s:%s' % (storage_mountpoint, storage_mountpoint)
         logger.info('[%s] Using mounts="%s"', job_id, add_mounts)
 
         try:
@@ -270,7 +284,7 @@ def translate_classad():
             logger.critical('[%s] Exiting due to unexpected error opening RADL template: %s', job_id, e)
             exit(1)
 
-        use_hostname = '%s-%d' % (uid, epoch)
+        use_hostname = '%s-%d' % (uid_infra, epoch)
         use_uid = use_hostname
 
         # Generate RADL based on existing template
@@ -295,6 +309,9 @@ def translate_classad():
                                                      public_ssh_key_2=public_ssh_key_2,
                                                      b2drop_app_username=b2drop_app_username,
                                                      b2drop_app_password=b2drop_app_password,
+                                                     webdav_username=webdav_username,
+                                                     webdav_password=webdav_password,
+                                                     webdav_url=webdav_url,
                                                      storage_mount_point=storage_mountpoint,
                                                      onedata_provider=onedata_provider,
                                                      onedata_token=onedata_token,
@@ -357,9 +374,9 @@ def translate_classad():
         data['radl'] = base64.b64encode(radl_contents.encode('utf8'))
         data['identifier'] = job_id
         data['identity'] = identity
+        data['want'] = use_uid
 
         # Create infrastructure
-        uid_infra = str(uuid.uuid4())
         logger.info('[%s] About to create infrastructure with Idempotency-Key "%s"', job_id, uid_infra)
         infra_id = create_infrastructure_with_retries(uid_infra, data)
 
