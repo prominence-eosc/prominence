@@ -137,21 +137,10 @@ def _create_htcondor_job(self, username, groups, email, uid, jjob, job_path, wor
         cjob['+ProminenceEmail'] = condor_str(email)
 
     # Memory required
-    cjob['+ProminenceMemoryPerNode'] = str(jjob['resources']['memory'])
     cjob['RequestMemory'] = str(1000*int(jjob['resources']['memory']))
 
     # CPUs required
-    cjob['+ProminenceCpusPerNode'] = str(jjob['resources']['cpus'])
     cjob['RequestCpus'] = str(jjob['resources']['cpus'])
-
-    # Nodes
-    cjob['+ProminenceNumNodes'] = str(jjob['resources']['nodes'])
-
-    # Disk
-    if 'disk' not in jjob['resources']:
-        cjob['+ProminenceSharedDiskSize'] = str(10)
-    else:
-        cjob['+ProminenceSharedDiskSize'] = str(jjob['resources']['disk'])
 
     # Preemptible
     if 'preemptible' in jjob:
