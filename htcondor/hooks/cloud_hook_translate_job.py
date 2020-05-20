@@ -271,7 +271,6 @@ def translate_classad():
 
         if storage_mountpoint:
             add_mounts = '-v /mnt%s:/home/user%s' % (storage_mountpoint, storage_mountpoint)
-            #add_mounts = '-v /mnt%s:%s' % (storage_mountpoint, storage_mountpoint)
         logger.info('[%s] Using mounts="%s"', job_id, add_mounts)
 
         try:
