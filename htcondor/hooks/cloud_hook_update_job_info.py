@@ -113,6 +113,12 @@ def update_classad():
             print('ProminenceInfrastructureState = "failed"')
             print('ProminenceInfrastructureStateReason = "%s"' % reason)
             print('ProminenceInfrastructureEnteredCurrentStatus = %d' % int(time.time()))
+            
+        if state == 'waiting':
+            logger.info('[%s] Infrastructure with id %s is in state waiting', job_id, infra_id)
+            print('ProminenceInfrastructureState = "waiting"')
+            print('ProminenceInfrastructureStateReason = "%s"' % reason)
+            print('ProminenceInfrastructureEnteredCurrentStatus = %d' % int(time.time()))
 
         if state == 'unable':
             logger.info('[%s] Infrastructure with id %s is in state "unable"', job_id, infra_id)

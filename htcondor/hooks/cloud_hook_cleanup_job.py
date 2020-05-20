@@ -10,16 +10,55 @@ import requests
 from requests.auth import HTTPBasicAuth
 import classad
 
-def send_email(event, job_id_original, job_id_routed, email):
+import send_email
+
+def format_duration(tis):
+    """
+    Format a duration nicely
+    """
+    days = int(tis/86400)
+    time_fmt = '%H:%M:%S'
+    return '%d+%s' % (days, time.strftime(time_fmt, time.gmtime(tis)))
+
+def send_completed_email(event, job_id_original, job_id_routed, identity, email, job_name, site, promlet_json):
     """
     Send a notification email
     """
     logging.info('[%d] Sending notification email to %s for event %s for job %d', job_id_routed, email, event, job_id_original)
 
-    subject = 'Your PROMINENCE job with id %d has finished' % job_id_original
-    content = ''
+    name = ''
+    if job_name:
+        name = ' (%s)' % job_name
+    subject = 'Your PROMINENCE job with id %d%s has finished' % (job_id_original, name)
 
-def handle_notifications(iwd, job_id_original, job_id_routed, email):
+    memory_usage = 0
+    cpu_usage = 0
+    wall_usage = 0
+    if 'tasks' in promlet_json:
+        if 'maxMemoryUsageKB' in promlet_json['tasks']:
+            memory_usage = int(promlet_json['tasks']['maxMemoryUsageKB'])/1000
+        for task in promlet_json['tasks']:
+            if 'cpuTimeUsage' in task:
+                cpu_usage += task['cpuTimeUsage']
+            if 'wallTimeUsage' in task:
+                wall_usage += task['wallTimeUsage']
+
+    cpu_usage = format_duration(cpu_usage)
+    wall_usage = format_duration(wall_usage)
+
+    content = ("CPU time usage   %s\n"
+               "Wall time usage  %s\n"
+               "Memory usage     %d MB\n"
+               "\n"
+               "Site             %s\n"
+               "\n"
+               "\n"
+               "--\n"
+               "Please do not reply to this email") % (cpu_usage, wall_usage, memory_usage, site)
+
+    send_email.send_email(email, identity, subject, content)
+
+def handle_notifications(iwd, job_id_original, job_id_routed, identity, email, site):
     """
     Check if any notifications are required
     """
@@ -45,12 +84,24 @@ def handle_notifications(iwd, job_id_original, job_id_routed, email):
         logging.error('[%d] Unable to open JSON job description due to: %s', job_id_routed, err)
         return
 
+    job_name = None
+    if 'name' in job_json:
+        job_name = job_json['name']
+
+    # Open promlet json file
+    try:
+        filename = '%s/promlet.0.json' % iwd
+        with open(filename, 'r') as json_file:
+            promlet_json = json.load(json_file)
+    except Exception as err:
+        logging.error('[%d] Unable to open JSON promlet due to: %s', job_id_routed, err)
+
     # Check if we need to generate any notifications, and do so if necessary
     if 'notifications' in job_json:
         for notification in job_json['notifications']:
             if notification['event'] == 'jobFinished':
                 if notification['type'] == 'email':
-                    send_email('jobFinished', job_id_original, job_id_routed, email)
+                    send_completed_email('jobFinished', job_id_original, job_id_routed, identity, email, job_name, site, promlet_json)
 
 def get_from_classad(name, class_ad, default=None):
     """
@@ -111,6 +162,7 @@ def cleanup_infrastructure():
     infra_site = get_from_classad('ProminenceInfrastructureSite', job_ad)
     infra_type = get_from_classad('ProminenceInfrastructureType', job_ad)
     email = get_from_classad('ProminenceEmail', job_ad)
+    identity = get_from_classad('ProminenceIdentity', job_ad)
 
     job_id = '%s.%s' % (cluster_id, proc_id)
     exit_code = -1
@@ -119,7 +171,7 @@ def cleanup_infrastructure():
 
     # Send any notifications if necessary, currently we only consider completed jobs
     if job_status == 4:
-        handle_notifications(iwd, cluster_id_user, cluster_id, email)
+        handle_notifications(iwd, cluster_id_user, cluster_id, identity, email, infra_site)
 
     if str(infra_type) == 'batch':
         logger.info('[%s] Batch infrastructure, so no need to do anything', job_id)
