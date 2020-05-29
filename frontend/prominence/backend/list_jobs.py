@@ -46,7 +46,7 @@ def list_jobs(self, job_ids, identity, active, completed, workflow, num, detail,
                       'Args']
     jobs_state_map = {1:'idle',
                       2:'running',
-                      3:'deleted',
+                      3:'failed',
                       4:'completed',
                       5:'failed'}
 
