@@ -221,8 +221,6 @@ def _create_htcondor_job(self, username, groups, email, uid, jjob, job_path, wor
     if 'walltime' in jjob['resources']:
         if jjob['resources']['walltime'] > -1:
             max_run_time = int(jjob['resources']['walltime'])*60*3
-    cjob['periodic_hold'] = str('JobStatus == 2 && CurrentTime - EnteredCurrentStatus > %d && isUndefined(RouteName)' % max_run_time)
-    cjob['periodic_hold_subcode'] = str('ifThenElse(JobStatus == 2 && CurrentTime - EnteredCurrentStatus > %d && isUndefined(RouteName), 1001, 1000)' % max_run_time)
     cjob['+ProminenceMaxRunTime'] = str("%d" % (max_run_time/60))
 
     # Is job MPI?
@@ -249,7 +247,7 @@ def _create_htcondor_job(self, username, groups, email, uid, jjob, job_path, wor
     cjob['+ProminenceMaxIdleTime'] = str("%d" % max_idle_time)
 
     # Maximum time in queue
-    max_time_in_queue = -1
+    max_time_in_queue = 0
     if 'policies' in jjob:
         if 'maximumTimeInQueue' in jjob['policies']:
             # Convert mins to secs
