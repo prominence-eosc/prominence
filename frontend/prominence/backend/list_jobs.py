@@ -271,6 +271,9 @@ def list_jobs(self, job_ids, identity, active, completed, workflow, num, detail,
                 if job['HoldReason'] == 'NoMatchingResources':
                     reason = 'No matching resources'
                     jobj['status'] = 'failed'
+                if job['HoldReason'] == 'Job was queued for too long':
+                    reason = 'Maximum time queued was exceeded'
+                    jobj['status'] = 'failed'
 
             jobj['statusReason'] = reason
 
