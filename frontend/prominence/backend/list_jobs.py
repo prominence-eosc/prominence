@@ -30,8 +30,8 @@ def list_jobs(self, job_ids, identity, active, completed, workflow, num, detail,
                       'LastVacateTime',
                       'JobFinishedHookDone',
                       'RemoveReason',
+                      'HoldReason',
                       'RemoteWallClockTime',
-                      'LastHoldReasonSubCode',
                       'ProminenceUserEnvironment',
                       'ProminenceUserMetadata',
                       'TransferInput',
@@ -239,6 +239,7 @@ def list_jobs(self, job_ids, identity, active, completed, workflow, num, detail,
                     else:
                         reason = 'Unable to provision resources'
                     jobj['status'] = 'failed'
+
             if 'RemoveReason' in job:
                 if 'Python-initiated action' in job['RemoveReason']:
                     reason = 'Job deleted by user'
@@ -254,10 +255,23 @@ def list_jobs(self, job_ids, identity, active, completed, workflow, num, detail,
                     reason = 'No matching resources'
                     jobj['status'] = 'failed'
 
-            if 'LastHoldReasonSubCode' in job:
-                if job['LastHoldReasonSubCode'] == 1001:
-                    reason = 'Runtime limit exceeded'
-                    jobj['status'] = 'killed'
+            if 'HoldReason' in job:
+                if 'Infrastructure took too long to be deployed' in job['HoldReason']:
+                    reason = 'Infrastructure took too long to be deployed'
+                    jobj['status'] = 'failed'
+                if 'Job took too long to start running' in job['HoldReason']:
+                    reason = 'Job took too long to start running after deployment'
+                    jobj['status'] = 'failed'
+                if 'Job was evicted' in job['HoldReason']:
+                    reason = 'Job was evicted'
+                    jobj['status'] = 'failed'
+                if job['HoldReason'] == 'NoMatchingResourcesAvailable':
+                    reason = 'No matching resources currently available'
+                    jobj['status'] = 'failed'
+                if job['HoldReason'] == 'NoMatchingResources':
+                    reason = 'No matching resources'
+                    jobj['status'] = 'failed'
+
             jobj['statusReason'] = reason
 
         # Return status as killed if walltime limit execeed
