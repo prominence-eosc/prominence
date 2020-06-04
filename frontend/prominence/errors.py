@@ -72,3 +72,23 @@ def removal_failed():
     with app.app_context():
         return jsonify({'error':'Job is no longer in the queue'}), 400
 
+def start_date_missing():
+    """
+    User has requested accounting data but the start date is missing
+    """
+    with app.app_context():
+        return jsonify({'error':'Start date must be provided'}), 400
+
+def end_date_missing():
+    """
+    User has requested accounting data but the end data is missing
+    """
+    with app.app_context():
+        return jsonify({'error':'End date must be provided'}), 400
+
+def usage_data_error():
+    """
+    There is a problem obtaining usage data
+    """
+    with app.app_context():
+        return jsonify({'error':'Unable to retrieve usage data'}), 400
