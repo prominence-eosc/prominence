@@ -75,7 +75,7 @@ def authenticate():
     """
     Sends a 401 response
     """
-    return jsonify({'error':'Authentication failure'}), 401
+    return errors.auth_failure()
 
 def requires_auth(function):
     """
@@ -103,7 +103,7 @@ def requires_auth(function):
         (success, username, group, email, allowed) = get_user_details(token)
 
         if not success:
-            return jsonify({'error':'Unable to connect to OIDC server'}), 401
+            return errors.oidc_error()
 
         if not username:
             app.logger.warning('%s AuthenticationFailure username not returned from identity provider' % get_remote_addr(request))
