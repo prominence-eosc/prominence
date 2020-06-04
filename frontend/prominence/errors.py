@@ -106,3 +106,38 @@ def oidc_error():
     """
     with app.app_context():
         return jsonify({'error':'Unable to connect to OIDC server'}), 401
+
+def command_failed():
+    """
+    Unable to execute command
+    """
+    with app.app_context():
+        return jsonify({'error':'Unable to execute command'}), 400
+
+def job_id_required():
+    """
+    Job id or list of ids missing
+    """
+    with app.app_context():
+        return jsonify({'error':'a job id or list of job ids must be provided'}), 400
+
+def workflow_id_required():
+    """
+    Workflow id or list of workflow ids missing
+    """
+    with app.app_context():
+        return jsonify({'error':'a workflow id or list of workflow ids must be provided'}), 400
+
+def snapshot_path_required():
+    """
+    Snapshot path required
+    """
+    with app.app_context():
+        return jsonify({'error':'A path to snapshot must be specified'}), 400
+
+def snapshot_invalid_path():
+    """
+    An invalid path was specified
+    """
+    with app.app_context():
+        return jsonify({'error':'Invalid path'}), 400
