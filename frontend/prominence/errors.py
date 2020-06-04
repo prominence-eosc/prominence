@@ -92,3 +92,17 @@ def usage_data_error():
     """
     with app.app_context():
         return jsonify({'error':'Unable to retrieve usage data'}), 400
+
+def auth_failure():
+    """
+    Authentication failure
+    """
+    with app.app_context():
+        return jsonify({'error':'Authentication failure'}), 401
+
+def oidc_error():
+    """
+    Problem connecting to the OIDC server
+    """
+    with app.app_context():
+        return jsonify({'error':'Unable to connect to OIDC server'}), 401
