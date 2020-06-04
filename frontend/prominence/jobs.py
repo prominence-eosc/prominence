@@ -140,7 +140,7 @@ def exec_in_job(username, group, email, job_id):
     if output is not None:
         return output, 200
  
-    return jsonify({'error':'Unable to execute command'}), 400
+    return errors.command_failed()
 
 @jobs.route("/prominence/v1/jobs", methods=['DELETE'])
 @requires_auth
@@ -149,7 +149,7 @@ def delete_jobs(username, group, email):
     Delete the specified job(s)
     """
     if 'id' not in request.args:
-        return jsonify({'error':'a job id or list of job ids must be provided'}), 400
+        return errors.job_id_required()
 
     app.logger.info('%s DeleteJobs user:%s group:%s id:%s' % (get_remote_addr(request), username, group, request.args.get('id')))
 
@@ -263,11 +263,11 @@ def create_snapshot(username, group, email, job_id):
     if 'path' in request.args:
         path = request.args.get('path')
     else:
-        return jsonify({'error':'A path to snapshot must be specified'}), 400
+        return errors.snapshot_path_req()
 
     path = backend.validate_snapshot_path(iwd, path)
     if not path:
-        return jsonify({'error':'Invalid path'}), 400
+        return errors.snapshot_invalid_path()
 
     backend.create_snapshot(uid, job_id, path)
     return jsonify({}), 200

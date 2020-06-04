@@ -188,7 +188,7 @@ def delete_workflows(username, group, email):
     Delete the specified workflow(s)
     """
     if 'id' not in request.args:
-        return jsonify({'error':'a workflow id or list of workflow ids must be provided'}), 400
+        return errors.workflow_id_required()
 
     app.logger.info('%s DeleteWorkflows user:%s group:%s id:%s' % (get_remote_addr(request), username, group, request.args.get('id')))
 
