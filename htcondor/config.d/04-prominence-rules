@@ -4,9 +4,6 @@
 # The rules below only apply to original jobs. Currently set_PeriodicRemove is used in the JobRouter to 
 # handle routed jobs.
 
-# Job in the held state
-ProminenceJobHeld = JobStatus == 5
-
 # Job in the idle but had previously been running (i.e. evicted)
 ProminenceJobEvicted = JobStatus == 1 && LastJobStatus == 2 && ProminenceInfrastructureState =?= "configured"
 
@@ -26,17 +23,20 @@ ProminenceJobNotRunning = JobStatus == 1 && ProminenceInfrastructureState =?= "c
 ProminenceJobFatal = $(ProminenceJobInfraUnableFatal)
 
 # Transient errors
-ProminenceJobTransient = ($(ProminenceJobHeld) || $(ProminenceJobEvicted) || \
-                          $(ProminenceJobInfraFailed) || $(ProminenceJobInfraUnable) || \
-                          $(ProminenceJobNotRunning)) && \
+ProminenceJobTransient = ($(ProminenceJobNotRunning) || $(ProminenceJobEvicted) || \
+                          $(ProminenceJobInfraFailed) || $(ProminenceJobInfraUnable)) && \
                          (ProminenceMaxTimeInQueue == -1 || \
                           ProminenceMaxTimeInQueue > 0 && CurrentTime - QDate > ProminenceMaxTimeInQueue)
 
-SYSTEM_PERIODIC_REMOVE = isUndefined(RouteName) && isUndefined(DAGManJobId) && ($(ProminenceJobFatal) || $(ProminenceJobTransient))
+SYSTEM_PERIODIC_HOLD = isUndefined(RouteName) && isUndefined(DAGManJobId) && ($(ProminenceJobFatal) || $(ProminenceJobTransient))
 
-SYSTEM_PERIODIC_REMOVE_REASON = ifThenElse($(ProminenceJobHeld), "Job was held", \
-                                ifThenElse($(ProminenceJobEvicted), "Job was evicted", \
-                                ifThenElse($(ProminenceJobInfraFailed), "Infrastructure deployment failed", \
-                                ifThenElse($(ProminenceJobInfraUnable), "NoMatchingResourcesAvailable", \
-                                ifThenElse($(ProminenceJobInfraUnableFatal), "NoMatchingResources", \
-                                ifThenElse($(ProminenceJobNotRunning), "Infrastructure deployment failed", ""))))))
+SYSTEM_PERIODIC_HOLD_REASON = ifThenElse($(ProminenceJobEvicted), "Job was evicted", \
+                              ifThenElse($(ProminenceJobInfraFailed), "Infrastructure deployment failed", \
+                              ifThenElse($(ProminenceJobInfraUnable), "NoMatchingResourcesAvailable", \
+                              ifThenElse($(ProminenceJobInfraUnableFatal), "NoMatchingResources", \
+                              ifThenElse($(ProminenceJobNotRunning), "Infrastructure deployment failed", \
+                                                                     "Infrastructure deployment failed")))))
+
+SYSTEM_PERIODIC_HOLD_SUBCODE = 11
+
+SYSTEM_PERIODIC_REMOVE = JobStatus == 5 && HoldReasonSubCode == 11
