@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 """PROMINENCE REST API"""
 import logging
 import os
