@@ -23,6 +23,7 @@ class ProminenceBackend(object):
     from data import create_presigned_url, list_objects, delete_object
     from get_job_unique_id import get_job_unique_id
     from create_htcondor_job import _create_htcondor_job
+    from health import get_health
 
     def create_sandbox(self, uid):
         """
