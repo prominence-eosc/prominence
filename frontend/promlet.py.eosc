@@ -1026,9 +1026,20 @@ def download_udocker(image, location, label, path):
 
     if re.match(r'^http', image):
         # Download tarball
+        logging.info('Downloading udocker image from URL')
         if not download_from_url(image, '%s/image.tar' % location):
             return 1, False
 
+    if image.startswith('/') and image.endswith('.tar'):
+        # Handle image stored on attached POSIX-like storage
+        logging.info('Copying udocker image from source on attached storage')
+        try:
+            shutil.copyfile('/mnt/%s' % image, '%s/image.tar' % location)
+        except:
+            logging.error('Unable to copy container image from source location on attached storage')
+            return 1, False
+
+    if re.match(r'^http', image) or (image.startswith('/') and image.endswith('.tar')):
         # Load image
         process = subprocess.Popen('udocker load -i %s/image.tar' % location,
                                    env=dict(os.environ,
@@ -1070,6 +1081,7 @@ def download_udocker(image, location, label, path):
 
         # Delete tarball
         os.unlink('%s/image.tar' % location)
+
     else:
         # Pull image
         process = subprocess.Popen('udocker pull %s' % image,
