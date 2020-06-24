@@ -569,6 +569,8 @@ def handle_signal(signum, frame):
     """
     Send signal to current subprocesses
     """
+    logging.info('Received signal %d', signum)
+
     global FINISH_NOW
     FINISH_NOW = True
     for proc in CURRENT_SUBPROCS:
