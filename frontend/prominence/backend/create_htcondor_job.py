@@ -58,10 +58,9 @@ def _create_htcondor_job(self, username, groups, email, uid, jjob, job_path, wor
     tasks_mapped = []
     count_task = 0
     for task in jjob['tasks']:
-        if 'http' not in task['image'] and ('.tar' in task['image'] or
-                                            '.tgz' in task['image'] or
-                                            '.simg' in task['image'] or
-                                            '.sif' in task['image']):
+        if ('http' not in task['image'] and not task['image'].startswith('/')) and \
+           ('.tar' in task['image'] or '.tgz' in task['image'] or
+            '.simg' in task['image'] or '.sif' in task['image']):
             image = task['image']
 
             # Check if image is the same as a previous task
