@@ -1,4 +1,5 @@
 
+# Reduced from the default of 5 mins
 CCB_HEARTBEAT_INTERVAL = 120
 
 PRIVATE_NETWORK_NAME = htcondor
@@ -23,10 +24,7 @@ CLAIM_WORKLIFE = 1
 STARTD.DAEMON_SHUTDOWN = Activity == "Idle" && (CurrentTime - EnteredCurrentActivity > 30) && (TotalTimeClaimedBusy =!= UNDEFINED && TotalTimeClaimedBusy > 0)
 
 # Shutdown the master if the startd exits
-# - MonitorSelfAge shouldn't be needed, but once I experienced the master
-#   shutting down before the startd had actually started due to STARTD_StartTime
-#   being zero
-MASTER.DAEMON_SHUTDOWN = STARTD_StartTime =?= 0 && MonitorSelfAge > 1200
+MASTER.DAEMON_SHUTDOWN = STARTD_StartTime =?= 0 && MonitorSelfAge > 120
 
 # We want only a single slot
 NUM_SLOTS = 1
@@ -35,24 +33,17 @@ NUM_SLOTS = 1
 STARTD_ATTRS = $(STARTD_ATTRS), PROM_NODES, PROM_CORES_TOTAL, PROM_CLOUD, PROMINENCE_LOCATION
 
 # TCP keepalive fix for Azure
-#TCP_KEEPALIVE_INTERVAL = 60
+TCP_KEEPALIVE_INTERVAL = 60
 
 # Execute directory
 EXECUTE = /home/prominence/condor
 
 # Setup cgroups
-#BASE_CGROUP = 
 BASE_CGROUP = htcondor
 CGROUP_MEMORY_LIMIT_POLICY = hard
 
-# Needed to allow Singularity to work
-DOCKER_DROP_ALL_CAPABILITIES = False
-
 # Job prepare hook
 CONTAINER_HOOK_PREPARE_JOB = /usr/local/bin/job-prepare-hook
-
-# File transfer plugin
-FILETRANSFER_PLUGINS = /usr/local/libexec/condor_url_fetch
 
 # Disable MOUNT_UNDER_SCRATCH (temporarily)
 MOUNT_UNDER_SCRATCH = ""
