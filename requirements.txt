@@ -1,0 +1,3 @@
+Django
+django-widget-tweaks
+django-allauth

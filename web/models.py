@@ -1,0 +1,20 @@
+from django.db import models
+from django.contrib.auth.models import User
+
+class Storage(models.Model):
+    WEBDAV = 1
+    ONEDATA = 2
+    STORAGE_TYPES = (
+        (WEBDAV, 'WebDAV'),
+        (ONEDATA, 'OneData'),
+    )
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="storage_systems", null=True)
+    name = models.CharField(max_length=120)
+    hostname = models.CharField(max_length=120)
+    username = models.CharField(max_length=120, blank=True)
+    password = models.CharField(max_length=120)
+    storage_type = models.PositiveSmallIntegerField(choices=STORAGE_TYPES)
+
+    def __str__(self):
+        return self.name
+

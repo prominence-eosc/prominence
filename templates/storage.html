@@ -1,0 +1,44 @@
+{% extends 'home.html' %}
+
+{% load static %}
+
+{% block title %}
+  Storage
+{% endblock %}
+
+{% block javascript %}
+  <script src="{% static 'js/storage.js' %}"></script>
+{% endblock %}
+
+{% block contentuser %}
+  <h2>Storage systems</h2>
+
+  <p>
+    <button type="button" class="btn btn-primary js-add-storage" data-url="{% url 'storage_add' %}">
+      <span class="fa fa-plus"></span>
+      Add storage
+    </button>
+  </p>
+
+  <table class="table" id="storage-table">
+    <thead>
+      <tr>
+        <th>Name</th>
+        <th>Type</th>
+        <th>Hostname</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% include 'storage_list.html' %}
+    </tbody>
+  </table>
+
+  <div class="modal fade" id="modal-storage">
+    <div class="modal-dialog">
+      <div class="modal-content">
+      </div>
+    </div>
+  </div>
+
+{% endblock %}

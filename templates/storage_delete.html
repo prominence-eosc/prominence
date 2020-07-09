@@ -1,0 +1,16 @@
+<form method="post" action="{% url 'storage_delete' storage.id %}" class="js-storage-delete-form">
+  {% csrf_token %}
+  <div class="modal-header">
+    <h5 class="modal-title">Confirm storage deletion</h5>
+    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+      <span aria-hidden="true">&times;</span>
+    </button>
+  </div>
+  <div class="modal-body">
+    <p class="lead">Are you sure you want to delete the storage system <strong>{{ storage.name }}</strong>?</p>
+  </div>
+  <div class="modal-footer">
+    <button type="button" class="btn btn-outline-dark" data-dismiss="modal">Close</button>
+    <button type="submit" class="btn btn-danger">Delete storage</button>
+  </div>
+</form>

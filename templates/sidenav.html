@@ -1,0 +1,48 @@
+<nav id="sidebarMenu" class="col-md-3 col-lg-2 d-md-block bg-light sidebar collapse pt-3">
+ <div class="sticky-top">
+  <ul class="nav flex-column">
+   <li class="nav-item">
+    <a class="nav-link {% if request.resolver_match.view_name == 'index' %}active{% endif %}" href="/">
+     <span data-feather="home"></span>
+     Home
+    </a>
+   </li>
+   <li class="nav-item">
+    <a class="nav-link {% if request.resolver_match.view_name == 'jobs' %}active{% endif %}" href="/jobs">
+     <span data-feather="square"></span>
+     Jobs
+    </a>
+   </li>
+   <li class="nav-item">
+    <a class="nav-link {% if request.resolver_match.view_name == 'workflows' %}active{% endif %}" href="/workflows">
+     <span data-feather="grid"></span>
+     Workflows
+    </a>
+   </li>
+   <li class="nav-item">
+    <a class="nav-link" href="/clouds">
+     <span data-feather="cloud"></span>
+     Clouds
+    </a>
+   </li>   
+   <li class="nav-item">
+    <a class="nav-link {% if request.resolver_match.view_name == 'storage' %}active{% endif %}" href="/storage">
+     <span data-feather="database"></span>
+     Storage
+    </a>
+   </li>
+   <li class="nav-item">
+    <a class="nav-link" href="/accounting">
+     <span data-feather="bar-chart"></span>
+     Accounting
+    </a>
+   </li>
+   <li class="nav-item">
+    <a class="nav-link" href="https://prominence.readthedocs.io/en/latest/" target="_blank">
+     <span data-feather="book-open"></span>
+     Documentation
+    </a>
+   </li>
+  </ul>
+ </div>
+</nav>

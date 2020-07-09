@@ -1,0 +1,108 @@
+{% extends 'base.html' %}
+
+{% block title %}
+  Submit Globally, Run Globally
+{% endblock %}
+  
+{% block content %}
+<br/><br/>
+      <section id="promo">
+         <div style="background:transparent !important" class="jumbotron d-flex align-items-center">
+            <div class="container">
+               <div class="row">
+                  <div class="col">
+                     <h1 class="display-4 text-center text-md-left text-light" style="font-weight:100">
+                        High throughput and high performance computing without servers or clusters
+                     </h1>
+                     <h4 class="text-center text-md-left text-light mb-6 mb-lg-8" style="font-weight:300">
+                        Run containerised jobs across many clouds without managing infrastructure.
+                     </h4>
+                  </div>
+               </div>
+            </div>
+         </div>
+      </section>
+      <br/>
+      <div class="container">
+         <div class="row">
+            <div class="col">
+               <i class="feather-large" data-feather="user"></i>
+               <p/>
+               <h4 class="display-6 text-center text-md-left" style="font-weight:300">
+                  Run jobs from anywhere
+               </h4>
+               <p class="text-muted">
+                  Manage jobs using a simple batch system style command line interface, or interact programmatically using a RESTful API.
+               </p>
+            </div>
+            <div class="col">
+               <i class="feather-large" data-feather="codesandbox"></i>
+               <p/>
+               <h4 class="display-6 text-center text-md-left" style="font-weight:300">
+                  Reliability & reproduceability
+               </h4>
+               <p class="text-muted">
+                  All jobs are run in containers to ensure they will can run reliably anywhere and are reproducible.
+               </p>
+            </div>
+            <div class="col">
+               <i class="feather-large" data-feather="server"></i>
+               <p/>
+               <h4 class="display-6 text-center text-md-left" style="font-weight:300">
+                  Invisible infrastructure
+               </h4>
+               <p class="text-muted">
+                  All infrastructure provisioning is handled completely automatically and is totally transparent to the user.
+               </p>
+            </div>
+         </div>
+         <br/>
+         <div class="row">
+            <div class="col">
+               <i class="feather-large" data-feather="grid"></i>
+               <p/>
+               <h4 class="display-6 text-center text-md-left" style="font-weight:300">
+                  MPI ready
+               </h4>
+               <p class="text-muted">
+                  Run multi-node Open MPI, Intel MPI or MPICH jobs in addition to single-node jobs.
+               </p>
+            </div>
+            <div class="col">
+               <i class="feather-large" data-feather="copy"></i>
+               <p/>
+               <h4 class="display-6 text-center text-md-left" style="font-weight:300">
+                  Workflows
+               </h4>
+               <p class="text-muted">
+                  Construct complex workflows by specifying the dependencies between different jobs.
+               </p>
+            </div>
+            <div class="col">
+               <i class="feather-large" data-feather="database"></i>
+               <p/>
+               <h4 class="display-6 text-center text-md-left" style="font-weight:300">
+                  Data access
+               </h4>
+               <p class="text-muted">
+                  Data can be automatically staged-in and staged-out from object storage.
+               </p>
+            </div>
+         </div>
+      </div>
+
+      <br/>
+      <br/>
+
+  <footer class="footer mt-auto py-3">
+  <div class="container-fluid">
+  <div class="row">
+  <div class="col"></div>
+  <div class="col"></div>
+  <div class="col">
+  <span class="text-muted"><a href="/terms-of-use">Terms of use</a> |
+  <a href="/privacy-policy">Privacy policy</a></span></div>
+  </div>
+  </div>
+</footer>
+{% endblock %}
