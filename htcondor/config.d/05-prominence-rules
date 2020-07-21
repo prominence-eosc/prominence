@@ -1,0 +1,42 @@
+# The rules below only apply to original jobs, not routed jobs. Jobs which are removed will be visible to users.
+# set_PeriodicRemove is used in the JobRouter to handle routed jobs.
+
+# Job in the idle but had previously been running (i.e. evicted)
+ProminenceJobEvicted = JobStatus == 1 && LastJobStatus == 2 && ProminenceInfrastructureState =?= "configured"
+
+# Infrastructure deployment failed
+ProminenceJobInfraFailed = JobStatus == 1 && ProminenceInfrastructureState =?= "failed"
+
+# Infrastructure deployment unable - fatal
+ProminenceJobInfraUnableFatal = JobStatus == 1 && ProminenceInfrastructureState =?= "unable" && ProminenceInfrastructureStateReason =?= "NoMatchingResources"
+
+# Infrastructure deployment unable - temporary
+ProminenceJobInfraUnable = JobStatus == 1 && (ProminenceInfrastructureState =?= "unable" && ProminenceInfrastructureStateReason =?= "NoMatchingResourcesAvailable" || ProminenceInfrastructureState =?= "waiting")
+
+# Infrastructure deployed but job is taking too long to start running
+ProminenceJobNotRunning = JobStatus == 1 && ProminenceInfrastructureState =?= "configured" && CurrentTime - ProminenceInfrastructureEnteredCurrentStatus > 600
+
+# Job has been queued for too long
+ProminenceQueuedTooLong = JobStatus == 1 && ProminenceMaxTimeInQueue > 0 && CurrentTime - QDate > ProminenceMaxTimeInQueue
+
+# Fatal errors
+ProminenceJobFatal = $(ProminenceJobInfraUnableFatal) || $(ProminenceQueuedTooLong)
+
+# Transient errors leading to a fatal error
+ProminenceJobTransient = ($(ProminenceJobNotRunning) || $(ProminenceJobEvicted) || \
+                          $(ProminenceJobInfraFailed) || $(ProminenceJobInfraUnable)) && \
+                         ProminenceMaxTimeInQueue == 0
+
+SYSTEM_PERIODIC_HOLD = isUndefined(RouteName) && isUndefined(DAGManJobId) && ($(ProminenceJobFatal) || $(ProminenceJobTransient))
+
+SYSTEM_PERIODIC_HOLD_REASON = ifThenElse($(ProminenceJobEvicted), "Job was evicted", \
+                              ifThenElse($(ProminenceJobInfraFailed), "Infrastructure deployment failed", \
+                              ifThenElse($(ProminenceJobInfraUnable), "NoMatchingResourcesAvailable", \
+                              ifThenElse($(ProminenceJobInfraUnableFatal), "NoMatchingResources", \
+                              ifThenElse($(ProminenceJobNotRunning), "Job took too long to start running", \
+                              ifThenElse($(ProminenceQueuedTooLong), "Job was queued for too long", \
+                                                                     "Infrastructure deployment failed"))))))
+
+SYSTEM_PERIODIC_HOLD_SUBCODE = 11
+
+SYSTEM_PERIODIC_REMOVE = JobStatus == 5 && HoldReasonSubCode == 11
