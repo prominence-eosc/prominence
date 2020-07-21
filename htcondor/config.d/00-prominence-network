@@ -1,0 +1,4 @@
+CONDOR_HOST = 
+
+# For HTCondor in a machine with a floating IP
+TCP_FORWARDING_HOST = 
