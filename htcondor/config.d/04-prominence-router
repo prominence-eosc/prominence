@@ -25,16 +25,13 @@ JOB_ROUTER_ENTRIES @=jre
   ]
   @jre
 
-# Reminder: you must restart Condor for changes to DAEMON_LIST to take effect.
-DAEMON_LIST = $(DAEMON_LIST) JOB_ROUTER
+# Enable the job router daemon
+DAEMON_LIST = $(DAEMON_LIST), JOB_ROUTER
 
-# For testing, set this to a small value to speed things up.
-# Once you are running at large scale, set it to a higher value
-# to prevent the JobRouter from using too much cpu.
+# How often to poll
 JOB_ROUTER_POLLING_PERIOD = 60
 
-# It is good to save lots of schedd queue history
-# for use with the router_history command.
+# It is good to save lots of schedd queue history for use with the router_history command.
 MAX_HISTORY_ROTATIONS = 20
 
 # Job router hooks
@@ -43,7 +40,7 @@ PROMINENCE_HOOK_TRANSLATE_JOB = /usr/local/bin/cloud_hook_translate_job.py
 PROMINENCE_HOOK_JOB_CLEANUP = /usr/local/bin/cloud_hook_cleanup_job.py
 PROMINENCE_HOOK_UPDATE_JOB_INFO = /usr/local/bin/cloud_hook_update_job_info.py
 
-# Copy custom ClassAd attributes from routed job back to original job
+# Copy ClassAd attributes from routed job back to original job
 PROMINENCE_ATTRS_TO_COPY = ProminenceInfrastructureType, \
                            ProminenceInfrastructureState, \
                            ProminenceInfrastructureStateReason, \
