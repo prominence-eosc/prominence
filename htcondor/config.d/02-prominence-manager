@@ -1,0 +1,9 @@
+# We only need these daemons for a central manager
+DAEMON_LIST = COLLECTOR, MASTER, NEGOTIATOR, SCHEDD
+
+# Disable preemption
+NEGOTIATOR_CONSIDER_PREEMPTION = False
+PREEMPTION_REQUIREMENTS = False
+
+# Name of the collector
+COLLECTOR_NAME = prominence
