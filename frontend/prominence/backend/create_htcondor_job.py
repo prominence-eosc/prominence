@@ -40,6 +40,14 @@ def _create_htcondor_job(self, username, groups, email, uid, jjob, job_path, wor
                     file.write(base64.b64decode(file_input['content']))
             except IOError:
                 return (1, {"error":"Unable to write input file to disk"}, cjob)
+
+            if 'executable' in file_input:
+                if file_input['executable']:
+                    try:
+                        os.chmod(filename_new, 0o775)
+                    except IOError:
+                        return (1, {"error":"Unable to set input file permissions to executable"}, cjob)
+
             filenames.append(file_input['filename'])
             input_files.append(filename_new)
 
