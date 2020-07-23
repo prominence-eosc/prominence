@@ -416,6 +416,10 @@ def validate_job(job):
         if not isinstance(job['inputs'], list):
             return (False, 'an array of inputs must be provided')
         for inpt in job['inputs']:
+            for item in inpt:
+                if item not in ('filename', 'content', 'executable'):
+                    return (False, 'invalid item %s in input' % item)
+
             if 'filename' not in inpt:
                 return (False, 'each input must contain a filename')
             if 'content' not in inpt:
