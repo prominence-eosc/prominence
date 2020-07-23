@@ -136,6 +136,13 @@ def download_artifacts(job, path):
                 json_artifacts.append(json_artifact)
                 return False, json_artifacts
 
+            if 'executable' in artifact:
+                if artifact['executable']:
+                    try:
+                        os.chmod(filename, 0o775)
+                    except IOError:
+                        pass
+
             # Process file
             success = False
             remove_file = True
