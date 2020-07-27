@@ -9,6 +9,7 @@ import os
 import posixpath
 import re
 import shlex
+import shutil
 import signal
 from string import Template
 import subprocess
@@ -707,11 +708,11 @@ def download_udocker(image, location, label, path):
 
     if image.startswith('/') and image.endswith('.tar'):
         # Handle image stored on attached POSIX-like storage
-        logging.info('Copying udocker image from source on attached storage')
+        logging.info('Copying udocker image from source (%s) on attached storage', image)
         try:
-            shutil.copyfile('/mnt/%s' % image, '%s/image.tar' % location)
-        except:
-            logging.error('Unable to copy container image from source location on attached storage')
+            shutil.copyfile(image, '%s/image.tar' % location)
+        except Exception as err:
+            logging.error('Unable to copy container image from source location on attached storage due to "%s"', err)
             return 1, False
 
     if re.match(r'^http', image) or (image.startswith('/') and image.endswith('.tar')):
