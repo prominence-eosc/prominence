@@ -692,8 +692,6 @@ def download_udocker(image, location, label, path):
     """
     Download an image from a URL and create a udocker container named 'image'
     """
-    logging.info('Pulling udocker image for task')
-
     udocker_location = get_udocker(path)
     if not udocker_location:
         logging.error('Unable to install udockertools')
@@ -701,11 +699,22 @@ def download_udocker(image, location, label, path):
 
     if re.match(r'^http', image):
         # Download tarball
+        logging.info('Downloading udocker image from URL')
         (success, attempts) = download_from_url_with_retries(image, '%s/image.tar' % location)
         logging.info('Number of attempts to download file %s was %d', '%s/image.tar' % location, attempts)
         if not success:
             return 1, False
 
+    if image.startswith('/') and image.endswith('.tar'):
+        # Handle image stored on attached POSIX-like storage
+        logging.info('Copying udocker image from source on attached storage')
+        try:
+            shutil.copyfile('/mnt/%s' % image, '%s/image.tar' % location)
+        except:
+            logging.error('Unable to copy container image from source location on attached storage')
+            return 1, False
+
+    if re.match(r'^http', image) or (image.startswith('/') and image.endswith('.tar')):
         # Load image
         process = subprocess.Popen('udocker load -i %s/image.tar' % location,
                                    env=dict(os.environ,
@@ -747,6 +756,7 @@ def download_udocker(image, location, label, path):
 
         # Delete tarball
         os.unlink('%s/image.tar' % location)
+
     else:
         # Pull image
         process = subprocess.Popen('udocker pull %s' % image,
