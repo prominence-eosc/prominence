@@ -487,13 +487,25 @@ def mount_storage(job):
             storage_provider = job['storage']['onedata']['provider']
             storage_token = job['storage']['onedata']['token']
 
-            process = subprocess.Popen('/usr/bin/oneclient -t %s -H %s %s' % (storage_token,
-                                                                              storage_provider,
-                                                                              storage_mountpoint),
+            try:
+                os.mkdir('/home/user/mounts%s' % storage_mountpoint)
+            except Exception as ex:
+                logging.error('Unable to create mount directory due to: %s', ex)
+                return False
+
+            process = subprocess.Popen('/usr/bin/oneclient -o allow_other -t %s -H %s /home/user/mounts%s' % (storage_token,
+                                                                                               storage_provider,
+                                                                                               storage_mountpoint),
                                        shell=True,
                                        stdout=subprocess.PIPE,
-                                       stderr=subprocess.PIPE)
-            process.wait()
+                                       stderr=subprocess.STDOUT)
+            output = process.communicate()[0]
+            return_code = process.returncode
+            logging.info('Return code from oneclient is %d', return_code)
+            if return_code != 0:
+                logging.error(output)
+                return False
+                
     return True
 
 def unmount_storage(job):
@@ -506,11 +518,11 @@ def unmount_storage(job):
         storage_provider = None
         storage_token = None
         if storage_type == 'onedata':
-            logging.info('Mounting OneData provider at %s', storage_mountpoint)
+            logging.info('Unmounting OneData provider at %s', storage_mountpoint)
             storage_provider = job['storage']['onedata']['provider']
             storage_token = job['storage']['onedata']['token']
 
-            process = subprocess.Popen('/usr/bin/oneclient -t %s -H %s -u %s' % (storage_token,
+            process = subprocess.Popen('/usr/bin/oneclient -t %s -H %s -u /home/user/mounts%s' % (storage_token,
                                                                                  storage_provider,
                                                                                  storage_mountpoint),
                                        shell=True,
@@ -710,7 +722,7 @@ def download_udocker(image, location, label, path):
         # Handle image stored on attached POSIX-like storage
         logging.info('Copying udocker image from source (%s) on attached storage', image)
         try:
-            shutil.copyfile(image, '%s/image.tar' % location)
+            shutil.copyfile('/home/user/mounts/%s' % image, '%s/image.tar' % location)
         except Exception as err:
             logging.error('Unable to copy container image from source location on attached storage due to "%s"', err)
             return 1, False
@@ -865,7 +877,7 @@ def run_udocker(image, cmd, workdir, env, path, mpi, mpi_processes, mpi_procs_pe
     mounts = ''
     if mountpoint is not None:
         logging.info('Mount point is %s', mountpoint)
-        mounts = '-v %s ' % mountpoint
+        mounts = '-v /home/user/mounts%s:%s ' % (mountpoint, mountpoint)
 
     # Set source directory for /tmp in container
     user_tmp_dir = path + '/usertmp'
@@ -981,7 +993,7 @@ def run_singularity(image, cmd, workdir, env, path, mpi, mpi_processes, mpi_proc
     mounts = ''
     if mountpoint is not None:
         logging.info('Mount point is %s', mountpoint)
-        mounts = '--bind %s ' % mountpoint
+        mounts = '--bind /home/user/mounts%s:%s ' % (mountpoint, mountpoint)
 
     # Artifact mounts
     for artifact in artifacts:
@@ -1344,6 +1356,18 @@ if __name__ == "__main__":
                 exit(1)
     else:
         logging.info('Using existing tmp directory')
+
+    # Create the mounts directory if necessary
+    if not os.path.isdir('/home/user/mounts'):
+        logging.info('Creating user mounts directory')
+        if not os.path.isdir('/home/user/mounts'):
+            try:
+                os.mkdir('/home/user/mounts')
+            except Exception as ex:
+                logging.error('Unable to create user mounts directory due to: %s', ex)
+                exit(1)
+    else:
+        logging.info('Using existing mounts directory')
 
     # Read job description
     try:
