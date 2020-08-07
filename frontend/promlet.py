@@ -497,8 +497,8 @@ def mount_storage(job):
                 logging.info('Mounts directory already exists, no need to create it')
 
             process = subprocess.Popen('/usr/bin/oneclient -o allow_other -t %s -H %s /home/user/mounts%s' % (storage_token,
-                                                                                               storage_provider,
-                                                                                               storage_mountpoint),
+                                                                                                              storage_provider,
+                                                                                                              storage_mountpoint),
                                        shell=True,
                                        stdout=subprocess.PIPE,
                                        stderr=subprocess.STDOUT)
@@ -526,8 +526,8 @@ def unmount_storage(job):
             storage_token = job['storage']['onedata']['token']
 
             process = subprocess.Popen('/usr/bin/oneclient -t %s -H %s -u /home/user/mounts%s' % (storage_token,
-                                                                                 storage_provider,
-                                                                                 storage_mountpoint),
+                                                                                                  storage_provider,
+                                                                                                  storage_mountpoint),
                                        shell=True,
                                        stdout=subprocess.PIPE,
                                        stderr=subprocess.PIPE)
@@ -1385,28 +1385,43 @@ if __name__ == "__main__":
         replace_output_urls(job, args.outfile, args.outdir)
 
     # Mount user-specified storage if necessary
-    mount_storage(job)
+    success_mount = mount_storage(job)
+    
+    json_mounts = []
+    
+    mount = {}
+    if success_mount:
+        mount['status'] = 'success'
+    else:
+        mount['status'] = 'failed'
+    json_mounts.append(mount)
 
-    # Download any artifacts
-    logging.info('Stagein any input files if necessary')
-    (success_stagein, json_stagein) = download_artifacts(job, path)
-    if not success_stagein:
-        logging.error('Got error downloading artifact')
+    json_tasks = {}
+    json_stagein = {}
+    json_stageout = {}
 
-    # Run tasks
-    try:
-        (success_tasks, json_tasks) = run_tasks(job, path, is_batch)
-    except OSError as exc:
-        logging.critical('Got exception running tasks: %s', exc)
-        success_tasks = False
-        json_tasks = {}
+    if success_mount:
+        # Download any artifacts
+        logging.info('Stagein any input files if necessary')
+        (success_stagein, json_stagein) = download_artifacts(job, path)
+        if not success_stagein:
+            logging.error('Got error downloading artifact')
 
-    # Upload output files if necessary
-    logging.info('Stageout any output files/dirs if necessary')
-    (success_stageout, json_stageout) = stageout(job, path)
+        # Run tasks
+        try:
+            (success_tasks, json_tasks) = run_tasks(job, path, is_batch)
+        except OSError as exc:
+            logging.critical('Got exception running tasks: %s', exc)
+            success_tasks = False
+            json_tasks = {}
+
+        # Upload output files if necessary
+        logging.info('Stageout any output files/dirs if necessary')
+        (success_stageout, json_stageout) = stageout(job, path)
 
     # Write json job details
     json_output = {}
+    json_output['mounts'] = json_mounts
     json_output['tasks'] = json_tasks
     json_output['stageout'] = json_stageout
     json_output['stagein'] = json_stagein
