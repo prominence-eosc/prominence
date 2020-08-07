@@ -487,11 +487,14 @@ def mount_storage(job):
             storage_provider = job['storage']['onedata']['provider']
             storage_token = job['storage']['onedata']['token']
 
-            try:
-                os.mkdir('/home/user/mounts%s' % storage_mountpoint)
-            except Exception as ex:
-                logging.error('Unable to create mount directory due to: %s', ex)
-                return False
+            if not os.path.isdir('/home/user/mounts%s' % storage_mountpoint):
+                try:
+                    os.mkdir('/home/user/mounts%s' % storage_mountpoint)
+                except Exception as ex:
+                    logging.error('Unable to create mount directory due to: %s', ex)
+                    return False
+            else:
+                logging.info('Mounts directory already exists, no need to create it')
 
             process = subprocess.Popen('/usr/bin/oneclient -o allow_other -t %s -H %s /home/user/mounts%s' % (storage_token,
                                                                                                storage_provider,
