@@ -1,8 +1,8 @@
-from django.conf.urls import include  
-from django.urls import path, re_path
+from django.urls import path
 from . import views
 
 urlpatterns = [
+    path('v1/health', views.HealthView.as_view(), name='healt'),
     path('v1/jobs', views.JobsView.as_view(), name='jobs'),
     path('v1/jobs/<int:job_id>', views.JobsView.as_view(), name='job'),
     path('v1/jobs/<int:job_id>/stdout', views.JobStdOutView.as_view(), name='job_get_stdout'),
