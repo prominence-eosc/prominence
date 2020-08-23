@@ -20,17 +20,20 @@ BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 # See https://docs.djangoproject.com/en/3.0/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = '24uv1de4$m6#&5=$x&a5%w)zd8h^1-*ykvtx^t*(q+btwgjb94'
+with open('/etc/prominence/secret_key.txt') as f:
+    SECRET_KEY = f.read().strip()
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ['prominence.cloud', '132.145.58.74']
 
 
 # Application definition
 
 INSTALLED_APPS = [
+    'rest_framework',
+    'rest_framework.authtoken',
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -42,8 +45,12 @@ INSTALLED_APPS = [
     'allauth.account',
     'allauth.socialaccount',
     'allauth.socialaccount.providers.github',
+    'egicheckin',
     'widget_tweaks',
+    'crispy_forms',
+    'custom_user',
     'web',
+    'rest_api'
 ]
 
 MIDDLEWARE = [
@@ -136,8 +143,21 @@ AUTHENTICATION_BACKENDS = (
 
 SITE_ID = 1
 
+ACCOUNT_EMAIL_SUBJECT_PREFIX = '[prominence]'
+
+ACCOUNT_UNIQUE_EMAIL = False
+
 # We don't need email verification upon signup as we're using GitHub
 ACCOUNT_EMAIL_VERIFICATION = 'none'
+
+# We want email addresses
+ACCOUNT_EMAIL_REQUIRED = True
+
+# Automatically signup
+SOCIALACCOUNT_AUTO_SIGNUP = True
+
+# Ensure users have to log back in (doesn't seem to work)
+#ACCOUNT_SESSION_REMEMBER = False
 
 # Redirect authenticated users to this URL
 LOGIN_REDIRECT_URL = 'index'
@@ -154,3 +174,25 @@ SOCIALACCOUNT_PROVIDERS = {
 
 # Redirect
 LOGIN_URL = '/'
+
+AUTH_USER_MODEL = 'custom_user.User'
+
+CRISPY_TEMPLATE_PACK = 'bootstrap4'
+
+SESSION_COOKIE_SECURE = True
+SECURE_SSL_REDIRECT = True
+CSRF_COOKIE_SECURE = True
+SECURE_HSTS_SECONDS = 30
+SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+SECURE_HSTS_PRELOAD = True
+
+# Prominence settings
+PROMINENCE_SANDBOX_PATH = '/var/spool/prominence/sandboxes'
+PROMINENCE_DEFAULT_MAX_RUNTIME = 43200
+PROMINENCE_DEFAULT_DISK_GB = 10
+PROMINENCE_WORKFLOW_MAX_IDLE = 20
+PROMINENCE_EXEC_TIMEOUT = 10
+PROMINENCE_ENABLE_EXEC = 'False'
+PROMINENCE_ENABLE_SNAPSHOTS = 'False'
+PROMINENCE_ENABLE_DATA = 'False'
+
