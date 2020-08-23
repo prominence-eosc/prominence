@@ -153,3 +153,99 @@ class JobsView(views.APIView):
             return Response(data, status=status.HTTP_400_BAD_REQUEST)
 
         return Response(data, status=status.HTTP_200_OK)
+
+class JobStdOutView(views.APIView):
+    """
+    API view for getting job standard output stream
+    """
+    authentication_classes = [TokenAuthentication]
+    permission_classes = [permissions.IsAuthenticated]
+
+    def __init__(self, *args, **kwargs):
+        self._backend = ProminenceBackend(server.settings.CONFIG)
+        super().__init__(*args, **kwargs)
+
+    def get(self, request, job_id=None):
+        """
+        Get standard output
+        """
+        (uid, identity, iwd, out, err, name, _) = self._backend.get_job_unique_id(job_id)
+
+        if not identity:
+            return Response({'error': 'Job does not exist'},
+                            status=status.HTTP_400_BAD_REQUEST)
+
+        if request.user.username != identity:
+            return Response({'error': 'Not authorized to access this job'},
+                            status=status.HTTP_403_FORBIDDEN)
+
+        stdout = self._backend.get_stdout(uid, iwd, out, err, job_id, name)
+        if stdout is None:
+            return Response({'error': 'Standard output does not exist'},
+                            status=status.HTTP_400_BAD_REQUEST)
+
+        return stdout
+
+class JobStdErrView(views.APIView):
+    """
+    API view for getting job standard error stream
+    """
+    authentication_classes = [TokenAuthentication]
+    permission_classes = [permissions.IsAuthenticated]
+
+    def __init__(self, *args, **kwargs):
+        self._backend = ProminenceBackend(server.settings.CONFIG)
+        super().__init__(*args, **kwargs)
+
+    def get(self, request, job_id=None):
+        """
+        Get standard error
+        """
+        (uid, identity, iwd, out, err, name, _) = self._backend.get_job_unique_id(job_id)
+
+        if not identity:
+            return Response({'error': 'Job does not exist'},
+                            status=status.HTTP_400_BAD_REQUEST)
+
+        if request.user.username != identity:
+            return Response({'error': 'Not authorized to access this job'},
+                            status=status.HTTP_403_FORBIDDEN)
+
+        stderr = self._backend.get_stderr(uid, iwd, out, err, job_id, name)
+        if stderr is None:
+            return Response({'error': 'Standard output does not exist'},
+                            status=status.HTTP_400_BAD_REQUEST)
+
+        return stderr
+
+
+class JobRemoveFromQueue(views.APIView):
+    """
+    API view for removing a job from the queue
+    """
+    authentication_classes = [TokenAuthentication]
+    permission_classes = [permissions.IsAuthenticated]
+
+    def __init__(self, *args, **kwargs):
+        self._backend = ProminenceBackend(server.settings.CONFIG)
+        super().__init__(*args, **kwargs)
+
+    def put(self, request, job_id=None):
+        """
+        Remove job from the queue
+        """
+        (_, identity, _, _, _, _, _) = self._backend.get_job_unique_id(job_id)
+
+        if not identity:
+            return Response({'error': 'Job does not exist'},
+                            status=status.HTTP_400_BAD_REQUEST)
+
+        if request.user.username != identity:
+            return Response({'error': 'Not authorized to access this job'},
+                            status=status.HTTP_403_FORBIDDEN)
+
+        if not self._backend.remove_job(job_id):
+            return Response({'error': 'Job is no longer in the queue'},
+                            status=status.HTTP_400_BAD_REQUEST)
+
+        return Response({}, status=status.HTTP_200_OK)
