@@ -1,3 +1,7 @@
 Django
 django-widget-tweaks
 django-allauth
+djangorestframework
+django-crispy-forms
+gunicorn
+boto3
