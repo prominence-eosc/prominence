@@ -1,10 +1,14 @@
-from django.shortcuts import render, get_object_or_404
+from django.shortcuts import render, get_object_or_404, HttpResponse
 from django.http import JsonResponse, HttpResponseRedirect
 from django.template.loader import render_to_string
 from django.contrib.auth.decorators import login_required
+from django.contrib.auth import get_user_model
+from rest_framework.authtoken.models import Token
 
-from .forms import StorageForm
+from .forms import StorageForm, JobForm
 from .models import Storage
+from server.backend import ProminenceBackend
+import server.settings
 
 def index(request):
     if request.user.is_authenticated:
@@ -76,8 +80,94 @@ def storage_delete(request, pk):
 
 @login_required
 def jobs(request):
-    return render(request, 'jobs.html')
+    user_name = request.user.username
+    backend = ProminenceBackend(server.settings.CONFIG)
+    jobs_list = backend.list_jobs([], user_name, True, False, None, -1, False, [], None, True)
+    return render(request, 'jobs.html', {'job_list': jobs_list})
 
 @login_required
 def workflows(request):
     return render(request, 'workflows.html')
+
+@login_required
+def create_token(request):
+    """
+    Generate a new API access token for the User.
+    """
+    user_model = get_user_model()
+    user_name = request.user.username
+    user = user_model.objects.get_by_natural_key(user_name)
+    Token.objects.filter(user=user).delete()
+    token = Token.objects.get_or_create(user=user)
+    context = {
+        'token': token[0]
+    }
+    return HttpResponse('Your token is: %s' % token[0])
+
+@login_required
+def revoke_token(request):
+    """
+    Revoke an existing API access token for the User.
+    """
+    user_model = get_user_model()
+    user_name = request.user.username
+    user = user_model.objects.get_by_natural_key(user_name)
+    Token.objects.filter(user=user).delete()
+    return HttpResponse('Your token has been revoked')
+
+@login_required
+def clouds(request):
+    return render(request, 'clouds.html')
+
+@login_required
+def job_add(request):
+    if request.method == 'POST':
+        form = JobForm(request.POST)
+    else:
+        form = JobForm()
+    return save_job_form(request, form, 'job_add.html')
+
+def save_job_form(request, form, template_name):
+    data = dict()
+    if request.method == 'POST':
+        if form.is_valid():
+            data['form_is_valid'] = True
+            user_name = request.user.username
+            backend = ProminenceBackend(server.settings.CONFIG)
+            jobs_list = backend.list_jobs([], user_name, True, False, None, -1, False, [], None, True)
+            data['html_jobs_list'] = render_to_string('jobs_list.html', {
+                'jobs': jobs_list
+            })
+        else:
+            data['form_is_valid'] = False
+    context = {'form': form}
+    data['html_form'] = render_to_string(template_name, context, request=request)
+    return JsonResponse(data)
+
+@login_required
+def job_delete(request, pk):
+    data = dict()
+    if request.method == 'POST':
+        data['form_is_valid'] = True # TODO: should this depend on deletion being successful or not?
+        user_name = request.user.username
+        backend = ProminenceBackend(server.settings.CONFIG)
+        (return_code, data) = backend.delete_job(request.user.username, [pk])
+        jobs_list = backend.list_jobs([], user_name, True, False, None, -1, False, [], None, True)
+        data['html_jobs_list'] = render_to_string('jobs_list.html', {
+            'jobs': jobs_list
+        })
+    else:
+        job = {}
+        job['id'] = pk
+        context = {'job': job}
+        data['html_form'] = render_to_string('job_delete.html', context, request=request)
+    return JsonResponse(data)
+
+@login_required
+def job_describe(request, pk):
+    user_name = request.user.username
+    backend = ProminenceBackend(server.settings.CONFIG)
+    jobs_list = backend.list_jobs(pk, user_name, True, False, None, -1, True, [], None, True)
+    if len(jobs_list) == 1:
+        return JsonResponse(jobs_list[0])
+    return JsonResponse({})
