@@ -1,8 +1,5 @@
-# Note that:
-# - if we remove the original job, this will be visible to the user (their job will disappear)
-# - if we remove the routed job, the JobRouter will create a new one and this will not be visible to the user
-# The rules below only apply to original jobs. Currently set_PeriodicRemove is used in the JobRouter to 
-# handle routed jobs.
+# The rules below only apply to original jobs, not routed jobs. Jobs which are removed will be visible to users.
+# set_PeriodicRemove is used in the JobRouter to handle routed jobs.
 
 # Job in the idle but had previously been running (i.e. evicted)
 ProminenceJobEvicted = JobStatus == 1 && LastJobStatus == 2 && ProminenceInfrastructureState =?= "configured"
@@ -19,14 +16,16 @@ ProminenceJobInfraUnable = JobStatus == 1 && (ProminenceInfrastructureState =?= 
 # Infrastructure deployed but job is taking too long to start running
 ProminenceJobNotRunning = JobStatus == 1 && ProminenceInfrastructureState =?= "configured" && CurrentTime - ProminenceInfrastructureEnteredCurrentStatus > 600
 
-# Fatal errors
-ProminenceJobFatal = $(ProminenceJobInfraUnableFatal)
+# Job has been queued for too long
+ProminenceQueuedTooLong = JobStatus == 1 && ProminenceMaxTimeInQueue > 0 && CurrentTime - QDate > ProminenceMaxTimeInQueue
 
-# Transient errors
+# Fatal errors
+ProminenceJobFatal = $(ProminenceJobInfraUnableFatal) || $(ProminenceQueuedTooLong)
+
+# Transient errors leading to a fatal error
 ProminenceJobTransient = ($(ProminenceJobNotRunning) || $(ProminenceJobEvicted) || \
                           $(ProminenceJobInfraFailed) || $(ProminenceJobInfraUnable)) && \
-                         (ProminenceMaxTimeInQueue == -1 || \
-                          ProminenceMaxTimeInQueue > 0 && CurrentTime - QDate > ProminenceMaxTimeInQueue)
+                         ProminenceMaxTimeInQueue == 0
 
 SYSTEM_PERIODIC_HOLD = isUndefined(RouteName) && isUndefined(DAGManJobId) && ($(ProminenceJobFatal) || $(ProminenceJobTransient))
 
@@ -34,8 +33,9 @@ SYSTEM_PERIODIC_HOLD_REASON = ifThenElse($(ProminenceJobEvicted), "Job was evict
                               ifThenElse($(ProminenceJobInfraFailed), "Infrastructure deployment failed", \
                               ifThenElse($(ProminenceJobInfraUnable), "NoMatchingResourcesAvailable", \
                               ifThenElse($(ProminenceJobInfraUnableFatal), "NoMatchingResources", \
-                              ifThenElse($(ProminenceJobNotRunning), "Infrastructure deployment failed", \
-                                                                     "Infrastructure deployment failed")))))
+                              ifThenElse($(ProminenceJobNotRunning), "Job took too long to start running", \
+                              ifThenElse($(ProminenceQueuedTooLong), "Job was queued for too long", \
+                                                                     "Infrastructure deployment failed"))))))
 
 SYSTEM_PERIODIC_HOLD_SUBCODE = 11
 

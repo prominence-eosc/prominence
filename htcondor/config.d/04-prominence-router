@@ -1,10 +1,11 @@
 # Routes
-JOB_ROUTER_DEFAULTS = \
-  [ \
-    MaxIdleJobs = 60; \
-    MaxJobs = 200; \
-    Delete_ProminenceWantJobRouter = true; \
+JOB_ROUTER_DEFAULTS @=jrd
+  [
+    MaxIdleJobs = 60;
+    MaxJobs = 200;
+    delete_ProminenceWantJobRouter = true;
   ]
+  @jrd
 
 JOB_ROUTER_ENTRIES @=jre
   [
@@ -13,23 +14,24 @@ JOB_ROUTER_ENTRIES @=jre
     requirements = target.ProminenceWantJobRouter is True;
     set_ProminenceInfrastructureType = "cloud";
     set_PeriodicRemove = JobStatus == 5 && PeriodicHoldSubCode == 10;
-    set_PeriodicHold = (JobStatus == 1 && ProminenceInfrastructureState =?= "failed") || (JobStatus == 1 && ProminenceInfrastructureState =?= "unable") || (JobStatus == 1 && ProminenceInfrastructureState =?= "configured" && time() - ProminenceInfrastructureEnteredCurrentStatus > 900);
-    set_PeriodicHoldReason = ifThenElse(ifThenElse(JobStatus == 1 && ProminenceInfrastructureState =?= "failed", "Infrastructure status is failed", ifThenElse(JobStatus == 1 && ProminenceInfrastructureState =?= "unable", "Infrastructure status is unable", ifThenElse(JobStatus == 1 && ProminenceInfrastructureState =?= "configured" && time() - ProminenceInfrastructureEnteredCurrentStatus > 900, "Job took too long to start running", "Unknown"))));
+    set_PeriodicHold = (JobStatus == 1 && ProminenceInfrastructureState =?= "failed") || 
+                       (JobStatus == 1 && ProminenceInfrastructureState =?= "configured" && time() - ProminenceInfrastructureEnteredCurrentStatus > 900) ||
+                       (JobStatus == 1 && LastJobStatus == 2 && ProminenceInfrastructureState =?= "configured");
+    set_PeriodicHoldReason = ifThenElse(JobStatus == 1 && ProminenceInfrastructureState =?= "failed", "Infrastructure status is failed",
+                             ifThenElse(JobStatus == 1 && ProminenceInfrastructureState =?= "configured" && time() - ProminenceInfrastructureEnteredCurrentStatus > 900, "Job took too long to start running", 
+                             ifThenElse(JobStatus == 1 && LastJobStatus == 2 && ProminenceInfrastructureState =?= "configured", "Job was evicted", "Unknown")));
     set_PeriodicHoldSubCode = 10;
     FailureRateThreshold = 10000;
   ]
   @jre
 
-# Reminder: you must restart Condor for changes to DAEMON_LIST to take effect.
-DAEMON_LIST = $(DAEMON_LIST) JOB_ROUTER
+# Enable the job router daemon
+DAEMON_LIST = $(DAEMON_LIST), JOB_ROUTER
 
-# For testing, set this to a small value to speed things up.
-# Once you are running at large scale, set it to a higher value
-# to prevent the JobRouter from using too much cpu.
+# How often to poll
 JOB_ROUTER_POLLING_PERIOD = 60
 
-# It is good to save lots of schedd queue history
-# for use with the router_history command.
+# It is good to save lots of schedd queue history for use with the router_history command.
 MAX_HISTORY_ROTATIONS = 20
 
 # Job router hooks
@@ -38,7 +40,7 @@ PROMINENCE_HOOK_TRANSLATE_JOB = /usr/local/bin/cloud_hook_translate_job.py
 PROMINENCE_HOOK_JOB_CLEANUP = /usr/local/bin/cloud_hook_cleanup_job.py
 PROMINENCE_HOOK_UPDATE_JOB_INFO = /usr/local/bin/cloud_hook_update_job_info.py
 
-# Copy custom ClassAd attributes from routed job back to original job
+# Copy ClassAd attributes from routed job back to original job
 PROMINENCE_ATTRS_TO_COPY = ProminenceInfrastructureType, \
                            ProminenceInfrastructureState, \
                            ProminenceInfrastructureStateReason, \
