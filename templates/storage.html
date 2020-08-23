@@ -1,4 +1,4 @@
-{% extends 'home.html' %}
+{% extends 'user_base.html' %}
 
 {% load static %}
 
@@ -11,8 +11,10 @@
 {% endblock %}
 
 {% block contentuser %}
+
   <h2>Storage systems</h2>
 
+  <p/>
   <p>
     <button type="button" class="btn btn-primary js-add-storage" data-url="{% url 'storage_add' %}">
       <span class="fa fa-plus"></span>

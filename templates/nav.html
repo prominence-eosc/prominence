@@ -13,17 +13,19 @@
         <a class="nav-link dropdown-toggle" id="navbarDropdownMenuLink-333" data-toggle="dropdown"
           aria-haspopup="true" aria-expanded="false">
           <i data-feather="user"></i>
+          {{ user.first_name }} {{ user.last_name }}
         </a>
         <div class="dropdown-menu dropdown-menu-right dropdown-default"
           aria-labelledby="navbarDropdownMenuLink-333">
-          <a class="dropdown-item" href="#" data-toggle="modal" data-target="#settings">Settings</a>
+          <a class="dropdown-item" data-toggle="modal" data-target="#create-token" href="{% url 'create-token' %}">Create API token</a>
+          <a class="dropdown-item" data-toggle="modal" data-target="#revoke-token" href="{% url 'revoke-token' %}">Revoke API token</a>
           <div class="dropdown-divider"></div>
-          <a class="dropdown-item" href="/logout">Logout</a>
+          <a class="dropdown-item" href="#" data-toggle="modal" data-target="#logout">Sign out</a>
         </div>
       </li>
     {% else %}
       <li class="nav-item text-nowrap">
-        <a class="nav-link" href="{% provider_login_url 'github' %}">Login</a>
+        <a class="nav-link" href="{% provider_login_url 'egicheckin' %}">Login</a>
       </li>
     {% endif %}
     </ul>

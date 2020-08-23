@@ -1,4 +1,4 @@
-{% extends 'home.html' %}
+{% extends 'user_base.html' %}
 
 {% load static %}
 
@@ -11,5 +11,42 @@
 
 {% block contentuser %}
   <h2>Workflows</h2>
+
+  <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3">
+    <button type="button" class="btn btn-primary js-create_workflow">
+      <span class="fa fa-plus"></span>
+      Create workflow
+    </button>
+
+    <form class="form-inline my-2 my-lg-0">
+      <input class="form-control mr-sm-2" type="search" placeholder="Search/filter" aria-label="Search">
+      <button class="btn btn-outline-dark my-2 my-sm-0" type="submit"><span data-feather="search"></span></button>
+    </form>
+
+  </div>
+
+  <table class="table" id="workflow-table">
+    <thead>
+      <tr>
+        <th>Id</th>
+        <th>Name</th>
+        <th>Status</th>
+        <th>Created</th>
+        <th>Elapsed</th>
+        <th>Progress</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% include 'workflow_list.html' %}
+    </tbody>
+  </table>
+
+  <div class="modal fade" id="modal-workflows">
+    <div class="modal-dialog">
+      <div class="modal-content">
+      </div>
+    </div>
+  </div>
 
 {% endblock %}

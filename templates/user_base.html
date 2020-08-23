@@ -1,0 +1,14 @@
+{% extends 'base.html' %}
+  
+{% block content %}
+  <div class="row">
+    {% include "sidenav.html" %}
+    <main role="main" class="col-md-9 ml-sm-auto col-lg-10 px-md-4 pt-3">
+    {% block contentuser %}
+    {% endblock %}
+    </main>
+  </div>
+  {% include "logout.html" %}
+  {% include "create-token.html" %}
+  {% include "revoke-token.html" %}
+{% endblock %}

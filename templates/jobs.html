@@ -1,4 +1,4 @@
-{% extends 'home.html' %}
+{% extends 'user_base.html' %}
 
 {% load static %}
 
@@ -7,13 +7,14 @@
 {% endblock %}
 
 {% block javascript %}
+  <script src="{% static 'js/jobs.js' %}"></script>
 {% endblock %}
 
 {% block contentuser %}
   <h2>Jobs</h2>
 
   <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3">
-    <button type="button" class="btn btn-primary js-create_job">
+    <button type="button" class="btn btn-primary js-create-job" data-url="{% url 'job_add' %}">
       <span class="fa fa-plus"></span>
       Create job
     </button>
@@ -42,5 +43,12 @@
       {% include 'jobs_list.html' %}
     </tbody>
   </table>
+  
+  <div class="modal fade" id="modal-jobs">
+    <div class="modal-dialog">
+      <div class="modal-content">
+      </div>
+    </div>
+  </div>
 
 {% endblock %}
