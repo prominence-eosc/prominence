@@ -1,3 +1,5 @@
+import uuid
+
 from django.shortcuts import render, get_object_or_404, HttpResponse
 from django.http import JsonResponse, HttpResponseRedirect
 from django.template.loader import render_to_string
@@ -9,6 +11,7 @@ from .forms import StorageForm, JobForm
 from .models import Storage
 from server.backend import ProminenceBackend
 import server.settings
+from .utilities import create_job
 
 def index(request):
     if request.user.is_authenticated:
@@ -131,12 +134,17 @@ def save_job_form(request, form, template_name):
     data = dict()
     if request.method == 'POST':
         if form.is_valid():
+            job_desc = create_job(form.cleaned_data)
             data['form_is_valid'] = True
             user_name = request.user.username
             backend = ProminenceBackend(server.settings.CONFIG)
+            # TODO: validate job, return message to user if invalid
+            #(status, msg) = validate.validate_job(request.get_json())
+            (return_code, msg) = backend.create_job(user_name, 'group', 'email', str(uuid.uuid4()), job_desc)
+            # TODO: if return code not zero, return message to user
             jobs_list = backend.list_jobs([], user_name, True, False, None, -1, False, [], None, True)
             data['html_jobs_list'] = render_to_string('jobs_list.html', {
-                'jobs': jobs_list
+                'job_list': jobs_list
             })
         else:
             data['form_is_valid'] = False
@@ -151,10 +159,10 @@ def job_delete(request, pk):
         data['form_is_valid'] = True # TODO: should this depend on deletion being successful or not?
         user_name = request.user.username
         backend = ProminenceBackend(server.settings.CONFIG)
-        (return_code, data) = backend.delete_job(request.user.username, [pk])
+        (return_code, msg) = backend.delete_job(request.user.username, [pk])
         jobs_list = backend.list_jobs([], user_name, True, False, None, -1, False, [], None, True)
         data['html_jobs_list'] = render_to_string('jobs_list.html', {
-            'jobs': jobs_list
+            'job_list': jobs_list
         })
     else:
         job = {}
