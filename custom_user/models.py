@@ -7,7 +7,7 @@ class User(AbstractUser):
     entitlements = models.TextField(max_length=2000, blank=True)
 
 @receiver(user_logged_in)
-def set_gender(sender, **kwargs):
+def set_entitlements(sender, **kwargs):
     user = kwargs.pop('user')
     extra_data = user.socialaccount_set.filter(provider='egicheckin')[0].extra_data
     entitlements = extra_data['edu_person_entitlements']
