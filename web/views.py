@@ -10,6 +10,7 @@ from rest_framework.authtoken.models import Token
 from .forms import StorageForm, JobForm
 from .models import Storage
 from server.backend import ProminenceBackend
+from server.validate import validate_job
 import server.settings
 from .utilities import create_job
 
@@ -39,9 +40,7 @@ def save_storage_form(request, form, template_name):
             storage.save()
             data['form_is_valid'] = True
             storage_list = request.user.storage_systems.all()
-            data['html_storage_list'] = render_to_string('storage_list.html', {
-                'storage': storage_list
-            })
+            data['html_storage_list'] = render_to_string('storage_list.html', {'storage': storage_list})
         else:
             data['form_is_valid'] = False
     context = {'form': form}
@@ -73,9 +72,7 @@ def storage_delete(request, pk):
         storage.delete()
         data['form_is_valid'] = True
         storage_list = request.user.storage_systems.all()
-        data['html_storage_list'] = render_to_string('storage_list.html', {
-            'storage': storage_list
-        })
+        data['html_storage_list'] = render_to_string('storage_list.html', {'storage': storage_list})
     else:
         context = {'storage': storage}
         data['html_form'] = render_to_string('storage_delete.html', context, request=request)
@@ -119,6 +116,13 @@ def revoke_token(request):
     return HttpResponse('Your token has been revoked')
 
 @login_required
+def register_token(request):
+    """
+    Register a refresh token to use with EGI FedCloud sites
+    """
+    return HttpResponse('')
+
+@login_required
 def clouds(request):
     return render(request, 'clouds.html')
 
@@ -134,18 +138,23 @@ def save_job_form(request, form, template_name):
     data = dict()
     if request.method == 'POST':
         if form.is_valid():
+            data['form_is_valid'] = True # TODO: do we need this?
             job_desc = create_job(form.cleaned_data)
-            data['form_is_valid'] = True
             user_name = request.user.username
             backend = ProminenceBackend(server.settings.CONFIG)
-            # TODO: validate job, return message to user if invalid
-            #(status, msg) = validate.validate_job(request.get_json())
+
+            # Validate job
+            (job_status, msg) = validate_job(job_desc)
+            #if not job_status:
+            # TODO: message that job is invalid
+
+            # Submit job
             (return_code, msg) = backend.create_job(user_name, 'group', 'email', str(uuid.uuid4()), job_desc)
             # TODO: if return code not zero, return message to user
+
+            # Update jobs list
             jobs_list = backend.list_jobs([], user_name, True, False, None, -1, False, [], None, True)
-            data['html_jobs_list'] = render_to_string('jobs_list.html', {
-                'job_list': jobs_list
-            })
+            data['html_jobs_list'] = render_to_string('jobs_list.html', {'job_list': jobs_list})
         else:
             data['form_is_valid'] = False
     context = {'form': form}
@@ -156,14 +165,13 @@ def save_job_form(request, form, template_name):
 def job_delete(request, pk):
     data = dict()
     if request.method == 'POST':
-        data['form_is_valid'] = True # TODO: should this depend on deletion being successful or not?
+        data['form_is_valid'] = True
         user_name = request.user.username
         backend = ProminenceBackend(server.settings.CONFIG)
         (return_code, msg) = backend.delete_job(request.user.username, [pk])
+        # TODO: message if unsuccessful deletion?
         jobs_list = backend.list_jobs([], user_name, True, False, None, -1, False, [], None, True)
-        data['html_jobs_list'] = render_to_string('jobs_list.html', {
-            'job_list': jobs_list
-        })
+        data['html_jobs_list'] = render_to_string('jobs_list.html', {'job_list': jobs_list})
     else:
         job = {}
         job['id'] = pk
