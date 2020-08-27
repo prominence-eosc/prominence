@@ -17,6 +17,8 @@
         </a>
         <div class="dropdown-menu dropdown-menu-right dropdown-default"
           aria-labelledby="navbarDropdownMenuLink-333">
+          <a class="dropdown-item" data-toggle="modal" data-target="#register-token" href="{% url 'register-token' %}">Register refresh token</a>
+          <div class="dropdown-divider"></div>
           <a class="dropdown-item" data-toggle="modal" data-target="#create-token" href="{% url 'create-token' %}">Create API token</a>
           <a class="dropdown-item" data-toggle="modal" data-target="#revoke-token" href="{% url 'revoke-token' %}">Revoke API token</a>
           <div class="dropdown-divider"></div>

@@ -1,0 +1,27 @@
+<form method="post" action="{% url 'register-token' %}" class="js-register-token-form">
+  {% csrf_token %}
+  <div class="modal fade" id="register-token" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel" aria-hidden="true">
+    <div class="modal-dialog" role="document">
+      <div class="modal-content">
+  <div class="modal-header">
+    <h5 class="modal-title">Register refresh token</h5>
+    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+      <span aria-hidden="true">&times;</span>
+    </button>
+  </div>
+  <div class="modal-body">
+    This service requires the following permissions for your EGI Check-in account:
+    <ul>
+      <li>log in using your identity</li>
+      <li>access your info while not being logged in</li>
+      <li>read your email address</li>
+      <li>read your basic profile info</li>
+    </ul>
+  </div>
+  <div class="modal-footer">
+    <button type="button" class="btn btn-outline-dark" data-dismiss="modal">Close</button>
+    <button type="submit" class="btn btn-primary">Authorise</button>
+  </div>
+      </div>
+    </div>
+</form>
