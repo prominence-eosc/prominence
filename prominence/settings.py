@@ -44,7 +44,6 @@ INSTALLED_APPS = [
     'allauth',
     'allauth.account',
     'allauth.socialaccount',
-    'allauth.socialaccount.providers.github',
     'egicheckin',
     'widget_tweaks',
     'crispy_forms',
@@ -164,10 +163,12 @@ LOGIN_REDIRECT_URL = 'index'
 
 # Specify required scopes
 SOCIALACCOUNT_PROVIDERS = {
-    'github': {
+    'egicheckin': {
         'SCOPE': [
-            'read:user',
-            'user:email',
+            'profile',
+            'email',
+            'openid',
+            'eduperson_entitlement'
         ],
     }
 }
