@@ -10,7 +10,7 @@ class User(AbstractUser):
 def set_entitlements(sender, **kwargs):
     user = kwargs.pop('user')
     extra_data = user.socialaccount_set.filter(provider='egicheckin')[0].extra_data
-    entitlements = extra_data['edu_person_entitlements']
+    entitlements = extra_data['eduperson_entitlement']
 
     if entitlements:
         user.entitlements = ",".join(entitlements)
