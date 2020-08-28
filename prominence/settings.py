@@ -26,7 +26,7 @@ with open('/etc/prominence/secret_key.txt') as f:
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ['prominence.cloud', '132.145.58.74']
+ALLOWED_HOSTS = []
 
 
 # Application definition
