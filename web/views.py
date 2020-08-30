@@ -120,6 +120,11 @@ def register_token(request):
     """
     Register a refresh token to use with EGI FedCloud sites
     """
+    user = request.user
+    account = user.socialaccount_set.get(provider="egicheckin")
+    refresh_token = account.socialtoken_set.first().token_secret
+    with open('/tmp/refresh.token', 'w') as filewrite:
+        filewrite.write(refresh_token)
     return HttpResponse('')
 
 @login_required
