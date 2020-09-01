@@ -40,7 +40,7 @@ def save_storage_form(request, form, template_name):
             storage.save()
             data['form_is_valid'] = True
             storage_list = request.user.storage_systems.all()
-            data['html_storage_list'] = render_to_string('storage_list.html', {'storage': storage_list})
+            data['html_storage_list'] = render_to_string('storage-list.html', {'storage': storage_list})
         else:
             data['form_is_valid'] = False
     context = {'form': form}
@@ -53,7 +53,7 @@ def storage_add(request):
         form = StorageForm(request.POST)
     else:
         form = StorageForm()
-    return save_storage_form(request, form, 'storage_add.html')
+    return save_storage_form(request, form, 'storage-add.html')
 
 @login_required
 def storage_update(request, pk):
@@ -62,7 +62,7 @@ def storage_update(request, pk):
         form = StorageForm(request.POST, instance=storage)
     else:
         form = StorageForm(instance=storage)
-    return save_storage_form(request, form, 'storage_update.html')
+    return save_storage_form(request, form, 'storage-update.html')
 
 @login_required
 def storage_delete(request, pk):
@@ -72,10 +72,10 @@ def storage_delete(request, pk):
         storage.delete()
         data['form_is_valid'] = True
         storage_list = request.user.storage_systems.all()
-        data['html_storage_list'] = render_to_string('storage_list.html', {'storage': storage_list})
+        data['html_storage_list'] = render_to_string('storage-list.html', {'storage': storage_list})
     else:
         context = {'storage': storage}
-        data['html_form'] = render_to_string('storage_delete.html', context, request=request)
+        data['html_form'] = render_to_string('storage-delete.html', context, request=request)
     return JsonResponse(data)
 
 @login_required
@@ -83,7 +83,7 @@ def jobs(request):
     user_name = request.user.username
     backend = ProminenceBackend(server.settings.CONFIG)
     jobs_list = backend.list_jobs([], user_name, True, False, None, -1, False, [], None, True)
-    return render(request, 'jobs.html', {'job_list': jobs_list})
+    return render(request, 'jobs.html', {'job-list': jobs_list})
 
 @login_required
 def workflows(request):
@@ -137,7 +137,7 @@ def job_add(request):
         form = JobForm(request.POST)
     else:
         form = JobForm()
-    return save_job_form(request, form, 'job_add.html')
+    return save_job_form(request, form, 'job-add.html')
 
 def save_job_form(request, form, template_name):
     data = dict()
@@ -159,7 +159,7 @@ def save_job_form(request, form, template_name):
 
             # Update jobs list
             jobs_list = backend.list_jobs([], user_name, True, False, None, -1, False, [], None, True)
-            data['html_jobs_list'] = render_to_string('jobs_list.html', {'job_list': jobs_list})
+            data['html_jobs_list'] = render_to_string('jobs-list.html', {'job_list': jobs_list})
         else:
             data['form_is_valid'] = False
     context = {'form': form}
@@ -176,12 +176,12 @@ def job_delete(request, pk):
         (return_code, msg) = backend.delete_job(request.user.username, [pk])
         # TODO: message if unsuccessful deletion?
         jobs_list = backend.list_jobs([], user_name, True, False, None, -1, False, [], None, True)
-        data['html_jobs_list'] = render_to_string('jobs_list.html', {'job_list': jobs_list})
+        data['html_jobs_list'] = render_to_string('jobs-list.html', {'job_list': jobs_list})
     else:
         job = {}
         job['id'] = pk
         context = {'job': job}
-        data['html_form'] = render_to_string('job_delete.html', context, request=request)
+        data['html_form'] = render_to_string('job-delete.html', context, request=request)
     return JsonResponse(data)
 
 @login_required
