@@ -11,7 +11,8 @@ def create_job(data):
     if 'container_image' in data:
         task['runtime'] = data['container_image']
     if 'command' in data:
-        task['cmd'] = data['command']
+        if data['command'] != "":
+            task['cmd'] = data['command']
     if 'container_image' in data:
         task['image'] = data['container_image']
 
