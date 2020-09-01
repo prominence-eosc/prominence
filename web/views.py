@@ -192,3 +192,9 @@ def job_describe(request, pk):
     if len(jobs_list) == 1:
         return JsonResponse(jobs_list[0])
     return JsonResponse({})
+
+@login_required
+def job_std_streams(request, pk):
+    user_name = request.user.username
+    backend = ProminenceBackend(server.settings.CONFIG)
+    return JsonResponse({})

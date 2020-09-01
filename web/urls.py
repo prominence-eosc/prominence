@@ -15,6 +15,7 @@ urlpatterns = [
     re_path(r'^jobs/add/$', views.job_add, name='job_add'),
     re_path(r'^jobs/(?P<pk>\d+)/delete/$', views.job_delete, name='job_delete'),
     re_path(r'^jobs/(?P<pk>\d+)/describe/$', views.job_describe, name='job_describe'),
+    re_path(r'^jobs/(?P<pk>\d+)/streams/$', views.job_std_streams, name='job_std_streams'),
     re_path(r'^workflows/$', views.workflows, name='workflows'),
     re_path(r'^create-token/$', views.create_token, name='create-token'),
     re_path(r'^revoke-token/$', views.revoke_token, name='revoke-token'),
