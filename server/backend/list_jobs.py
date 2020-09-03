@@ -349,6 +349,9 @@ def list_jobs(self, job_ids, identity, active, completed, workflow, num, detail,
             jobj['elapsedTime'] = elapsed(events)
             if 'startTime' in events:
                 events['startTime'] = datetime_format(events['startTime'])
+            if 'endTime' in events:
+                events['endTime'] = datetime_format(events['endTime'])
+
 
         if detail > 0:
             jobj['resources'] = job_json_file['resources']
