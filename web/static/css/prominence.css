@@ -8,6 +8,12 @@ body {
   vertical-align: text-bottom;
 }
 
+.feather-32{
+  width: 32px;
+  height: 32px;
+  vertical-align: middle;
+}
+
 /*
  * Footer
  */
