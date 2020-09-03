@@ -188,9 +188,9 @@ def job_delete(request, pk):
 def job_describe(request, pk):
     user_name = request.user.username
     backend = ProminenceBackend(server.settings.CONFIG)
-    jobs_list = backend.list_jobs(pk, user_name, True, False, None, -1, True, [], None, True)
+    jobs_list = backend.list_jobs([pk], user_name, True, False, None, -1, True, [], None, True)
     if len(jobs_list) == 1:
-        return JsonResponse(jobs_list[0])
+        return render(request, 'job-info.html', {'job': jobs_list[0]})
     return JsonResponse({})
 
 @login_required
