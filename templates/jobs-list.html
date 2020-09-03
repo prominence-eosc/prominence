@@ -1,8 +1,8 @@
 {% for job in job_list %}
   <tr>
-    <td>{{ job.id }}</td>
-    <td>{{ job.name }}</td>
-    <td>
+    <td class="align-middle">{{ job.id }}</td>
+    <td class="align-middle">{{ job.name }}</td>
+    <td class="align-middle">
       {% if job.status == "running" %}
         <span class="badge badge-success">Running</span>
       {% elif job.status == "failed" %}
@@ -15,17 +15,17 @@
         <span class="badge badge-dark">Completed</span>
       {% endif %}
     </td>
-    <td>{{ job.events.createTime }}</td>
-    <td>
+    <td class="align-middle">{{ job.events.createTime }}</td>
+    <td class="align-middle">
     {% if job.status != "pending" %}
       {{ job.elapsedTime }}
     {% endif %}
     </td>
     {% for task in job.tasks %}
-    <td>{{ task.image }}</td>
-    <td>{{ task.cmd }}</td>
+    <td class="align-middle">{{ task.image }}</td>
+    <td class="align-middle">{{ task.cmd }}</td>
     {% endfor %}
-    <td>
+    <td class="align-middle">
       <div class="dropdown">
         <button class="btn btn-outline-secondary" type="button" id="dropdownMenuButtonJob" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false" style="border:none;">
 	  <span data-feather="more-vertical"></span>
