@@ -8,8 +8,8 @@ def create_job(data):
         job['name'] = data['name']
     
     task = {}
-    if 'container_image' in data:
-        task['runtime'] = data['container_image']
+    if 'container_runtime' in data:
+        task['runtime'] = data['container_runtime']
     if 'command' in data:
         if data['command'] != "":
             task['cmd'] = data['command']
