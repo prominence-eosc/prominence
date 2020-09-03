@@ -1,0 +1,87 @@
+{% extends 'user-base.html' %}
+  
+{% load static %}
+
+{% block title %}
+Job {{ job.id }} details
+{% endblock %}
+
+{% block javascript %}
+{% endblock %}
+
+{% block contentuser %}
+<h2><a href="https://prominence.cloud/jobs"><span data-feather="arrow-left"></span></a>Job {{ job.id }} details</h2>
+
+{% if job.status == "running" %}
+<span class="badge badge-success">Running</span>
+{% elif job.status == "failed" %}
+<span class="badge badge-danger">Failed</span>
+{% elif job.status == "deleted" %}
+<span class="badge badge-warning">Deleted</span>
+{% elif job.status == "pending" %}
+<span class="badge badge-info">Pending</span>
+{% elif job.status == "completed" %}
+<span class="badge badge-dark">Completed</span>
+{% endif %}
+
+<br/>
+<br/>
+<b>Name</b>
+<br/>
+{{ job.name }}
+
+<br/>
+<br/>
+<b>Labels</b>
+<br/>
+{% for label in job.labels %}
+{{ label }}: {{ job.labels.label }}
+{% empty %}
+-
+{% endfor %}
+
+<br/>
+<br/>
+<b>Resources</b>
+<br/>
+{{ job.resources.cpus }} CPUs,
+{{ job.resources.memory }} GB memory,
+{{ job.resources.disk }} GB disk
+
+<br/>
+<br/>
+<b>Tasks</b>
+<br/>
+{% for task in job.tasks %}
+Container image: {{ task.image }}<br/>
+Container runtime: {{ task.runtime }}<br/>
+Command: {{ task.cmd }}
+{% endfor %}
+
+<br/>
+<br/>
+<b>Events</b>
+<br/>
+Created: {{ job.events.createTime }}
+<br/>
+Start time: {{ job.events.startTime }}
+<br/>
+End time: {{ job.events.endTime }}
+
+<br/>
+<br/>
+<b>Site</b>
+<br/>
+{{ job.execution.site }}
+
+<br/>
+<br/>
+<b>Artifacts</b>
+<br/>
+{% for artifact in job.artifacts %}
+{{ artifact }} <br/>
+{% empty %}
+-
+{% endfor %}
+
+{% endblock %}
