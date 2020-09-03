@@ -31,7 +31,7 @@
 	  <span data-feather="more-vertical"></span>
         </button>
         <div class="dropdown-menu" aria-labelledby="dropdownMenuButtonJob">
-          <a class="dropdown-item js-describe-job" data-url="{% url 'job_describe' job.id %}">Info</a>
+          <a class="dropdown-item" href="{% url 'job_describe' job.id %}">Info</a>
           <a class="dropdown-item js-delete-job" data-url="{% url 'job_delete' job.id %}">Delete</a>
           <a class="dropdown-item js-job-std-streams" data-url="{% url 'job_std_streams' job.id %}">Std streams</a>
         </div>
