@@ -1,4 +1,6 @@
 import uuid
+import requests
+from requests.auth import HTTPBasicAuth
 
 from django.shortcuts import render, get_object_or_404, HttpResponse
 from django.http import JsonResponse, HttpResponseRedirect
@@ -123,8 +125,23 @@ def register_token(request):
     user = request.user
     account = user.socialaccount_set.get(provider="egicheckin")
     refresh_token = account.socialtoken_set.first().token_secret
-    with open('/tmp/refresh.token', 'w') as filewrite:
-        filewrite.write(refresh_token)
+
+    data = {}
+    data['username'] = request.user.username
+    data['refresh_token'] = refresh_token
+
+    try:
+        response = requests.post(server.settings.CONFIG['IMC_URL'],
+                                 timeout=5,
+                                 json=data,
+                                 auth=HTTPBasicAuth(server.settings.CONFIG['IMC_USERNAME'], 
+                                 server.settings.CONFIG['IMC_PASSWORD']),
+                                 cert=(server.settings.CONFIG['IMC_SSL_CERT'],
+                                       server.settings.CONFIG['IMC_SSL_KEY']),
+                                 verify=server.settings.CONFIG['IMC_SSL_CERT'])
+    except (requests.exceptions.Timeout, requests.exceptions.RequestException) as err:
+        return HttpResponse('Error: %s', err)
+
     return HttpResponse('')
 
 @login_required
