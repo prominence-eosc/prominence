@@ -32,6 +32,34 @@ DOWNLOAD_CONN_TIMEOUT = 10
 DOWNLOAD_MAX_RETRIES = 2
 DOWNLOAD_BACKOFF = 1
 
+def create_sif_from_archive(image_out, image_in):
+    """
+    Create a Singularity image from a Docker archive
+    """
+    cmd = 'singularity build %s docker-archive://%s' % (image_out, image_in)
+
+    try:
+        process = subprocess.Popen(cmd,
+                                   cwd=os.path.dirname(image_out),
+                                   shell=True,
+                                   env=dict(os.environ,
+                                            PATH='/usr/local/bin:/usr/bin:/usr/local/sbin:/usr/sbin'),
+                                   stdout=subprocess.PIPE,
+                                   stderr=subprocess.PIPE)
+        stdout, stderr = process.communicate()
+        return_code = process.returncode
+    except Exception as exc:
+        logging.error('Unable to build Singularity image from Docker archive due to %s', exc)
+    else:
+        if return_code == 0:
+            return True
+        else:
+            logging.error(stdout)
+            logging.error(stderr)
+            return False
+
+    return False
+
 def download_from_url_with_retries(url, filename, max_retries=DOWNLOAD_MAX_RETRIES, backoff=DOWNLOAD_BACKOFF):
     """
     Download a file from a URL with retries and backoff
@@ -557,9 +585,13 @@ def download_singularity(image, image_new, location, path):
     logging.info('Pulling Singularity image for task')
 
     if re.match(r'^http', image):
-        if image_name(image).endswith('.tar'):
+        if image_name(image).endswith('.tar') or image_name(image).endswith('.tgz'):
             # We need to download the Docker tarball then convert it to the Singularity format
-            image_new_tmp = image_new.replace('image.simg', 'image.tar')
+            if image_name(image).endswith('.tar'):
+                image_new_tmp = image_new.replace('image.simg', 'image.tar')
+            else:
+                image_new_tmp = image_new.replace('image.simg', 'image.tgz')
+
             (success, attempts) = download_from_url_with_retries(image, image_new_tmp)
             logging.info('Number of attempts to download file %s was %d', image, attempts)
 
@@ -567,26 +599,7 @@ def download_singularity(image, image_new, location, path):
                 return 1, False
 
             # Create singularity image from Docker archive
-            cmd = 'singularity build %s docker-archive://%s' % (image_new, image_new_tmp)
-
-            try:
-                process = subprocess.Popen(cmd,
-                                           cwd=os.path.dirname(image_new),
-                                           shell=True,
-                                           env=dict(os.environ,
-                                                    PATH='/usr/local/bin:/usr/bin:/usr/local/sbin:/usr/sbin'),
-                                           stdout=subprocess.PIPE,
-                                           stderr=subprocess.PIPE)
-                stdout, stderr = process.communicate()
-                return_code = process.returncode
-            except Exception as exc:
-                logging.error('Unable to build Singularity image from Docker archive due to %s', exc)
-            else:
-                if return_code == 0:
-                    success = True
-                else:
-                    logging.error(stdout)
-                    logging.error(stderr)
+            success = create_sif_from_archive(image_new, image_new_tmp)
 
             if not success:
                 return 1, False
@@ -604,6 +617,24 @@ def download_singularity(image, image_new, location, path):
                 return 1, False
 
         logging.info('Singularity image downloaded from URL and written to file %s', image_new)
+    elif image.startswith('/'):
+        # Handle image stored on attached POSIX-like storage
+
+        if image.endswith('.tar') or image.endswith('.tgz'):
+            # Create singularity image from Docker archive
+
+            logging.info('Creating sif image from Docker archive')
+            success = create_sif_from_archive(image_new, '/home/user/mounts/%s' % image)
+
+            if not success:
+                return 1, False
+        else:
+            logging.info('Copying Singularity image from source on attached storage')
+            try:
+                shutil.copyfile('/home/user/mounts/%s' % image, image_new)
+            except:
+                logging.error('Unable to copy container image from source location on attached storage')
+                return 1, False
     else:
         # Handle both Singularity Hub & Docker Hub, with Docker Hub the default
         if re.match(r'^shub:', image):
