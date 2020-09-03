@@ -10,7 +10,7 @@ Job {{ job.id }} details
 {% endblock %}
 
 {% block contentuser %}
-<h2><a href="https://prominence.cloud/jobs"><span data-feather="arrow-left"></span></a>Job {{ job.id }} details</h2>
+<h2><a href="https://prominence.cloud/jobs"><i class="feather-32" data-feather="arrow-left"></i></a>Job {{ job.id }} details</h2>
 
 {% if job.status == "running" %}
 <span class="badge badge-success">Running</span>
@@ -37,13 +37,14 @@ Job {{ job.id }} details
 {% for label in job.labels %}
 {{ label }}: {{ job.labels.label }}
 {% empty %}
--
+None
 {% endfor %}
 
 <br/>
 <br/>
 <b>Resources</b>
 <br/>
+{{ job.resources.nodes }} nodes,
 {{ job.resources.cpus }} CPUs,
 {{ job.resources.memory }} GB memory,
 {{ job.resources.disk }} GB disk
@@ -56,6 +57,16 @@ Job {{ job.id }} details
 Container image: {{ task.image }}<br/>
 Container runtime: {{ task.runtime }}<br/>
 Command: {{ task.cmd }}
+{% endfor %}
+
+<br/>
+<br/>
+<b>Artifacts</b>
+<br/>
+{% for artifact in job.artifacts %}
+{{ artifact }} <br/>
+{% empty %}
+None
 {% endfor %}
 
 <br/>
@@ -73,15 +84,5 @@ End time: {{ job.events.endTime }}
 <b>Site</b>
 <br/>
 {{ job.execution.site }}
-
-<br/>
-<br/>
-<b>Artifacts</b>
-<br/>
-{% for artifact in job.artifacts %}
-{{ artifact }} <br/>
-{% empty %}
--
-{% endfor %}
 
 {% endblock %}
