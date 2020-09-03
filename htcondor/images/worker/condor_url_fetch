@@ -1,16 +1,13 @@
 #!/bin/bash
 
-function checkstatus {
-    filesize=`du -s $1`
+function getandcheck {
+    curl -L -s "$1" > $2
+    filesize=`du -s $2 | awk '{print $1}'`
     if [[ "$filesize" -eq 8 ]]; then
-        contents=`cat $1`
+        contents=`cat $2`
         if [ "$contents" = "AccessDenied" ]; then
-            echo 1
-        else
-            echo 0
+            exit 1
         fi
-    else
-        echo 0
     fi
 }
 
@@ -22,37 +19,41 @@ if [ $# -eq 1 ]; then
     fi
 elif [ $# -eq 2 ]; then
     cd `dirname $2`
+    if [ ! -d "userhome" ]; then
+        mkdir -p userhome
+    fi
+    cd userhome
     name=`basename "$1"`
     tmpname="${name%\?*}"
     if echo "$2" | grep -q .tgz; then
-        curl -L -s "$1" > $tmpname
+        getandcheck "$1" $tmpname
         tar xzf $tmpname
         rm -f $tmpname
     elif echo "$2" | grep -q .tar.gz; then
-        curl -L -s "$1" > $tmpname
+        getandcheck "$1" $tmpname
         tar xzf $tmpname
         rm -f $tmpname
     elif echo "$2" | grep -q .tar.bz2; then
-        curl -L -s "$1" > $tmpname
+        getandcheck "$1" $tmpname
         tar xjf $tmpname > /dev/null 2>&1
         rm -f $tmpname
     elif echo "$2" | grep -q .tar; then
-        curl -L -s "$1" > $tmpname
+        getandcheck "$1" $tmpname
         tar xf $tmpname > /dev/null 2>&1
         rm -f $tmpname
     elif echo "$2" | grep -q .gz; then
-        curl -L -s "$1" > $tmpname
+        getandcheck "$1" $tmpname
         gunzip $tmpname > /dev/null 2>&1
         rm -f $tmpname
     elif echo "$2" | grep -q .bz2; then
-        curl -L -s "$1" > $tmpname
+        getandcheck "$1" $tmpname
         bunzip2 $tmpname > /dev/null 2>&1
         rm -f $tmpname
     elif echo "$2" | grep -q .zip; then
-        curl -L -s "$1" > $tmpname
+        getandcheck "$1" $tmpname
         unzip $tmpname > /dev/null 2>&1
         rm -f $tmpname
     else
-        curl -L -s "$1" > $tmpname
+        getandcheck "$1" $tmpname
     fi
 fi

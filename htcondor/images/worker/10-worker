@@ -1,5 +1,6 @@
 DAEMON_LIST = MASTER, STARTD
 
+# Reduced from the default of 5 mins
 CCB_HEARTBEAT_INTERVAL = 120
 
 # Run all jobs as user user
@@ -56,4 +57,3 @@ MOUNT_UNDER_SCRATCH = ""
 # How often the collector should be updated
 UPDATE_OFFSET = $RANDOM_INTEGER(0, 20)
 UPDATE_INTERVAL = 200
-

@@ -1,11 +1,23 @@
-FROM eoscprominence/htcondor:8.9.5
+FROM centos:7
+
+# Install HTCondor
+RUN yum -y update && \
+    yum -y install wget \
+                   epel-release
+
+RUN cd /etc/yum.repos.d && \
+    wget http://research.cs.wisc.edu/htcondor/yum/repo.d/htcondor-development-rhel7.repo
+
+RUN wget http://research.cs.wisc.edu/htcondor/yum/RPM-GPG-KEY-HTCondor && \
+    rpm --import RPM-GPG-KEY-HTCondor && \
+    rm RPM-GPG-KEY-HTCondor
+
+RUN yum -y install condor
 
 # Dependencies
-RUN yum -y update && \
-    yum -y install epel-release && \
-    yum -y install singularity \
-                   wget \
+RUN yum -y install singularity \
                    unzip \
+                   bzip2 \
                    python-pip \
                    python-devel \
                    gcc \
@@ -13,11 +25,11 @@ RUN yum -y update && \
                    openssl \
                    openssh-server
 
+# Jobs will be run as this user
+RUN useradd user
+
 # Python requests
 RUN pip install requests
-
-# Jobs will be done as this user
-RUN useradd user
  
 # Install udocker
 RUN pip install git+https://github.com/indigo-dc/udocker && \
@@ -37,10 +49,9 @@ COPY 22-security /etc/condor/config.d/
 COPY condor_url_fetch /usr/local/libexec/
 COPY job-prepare-hook /usr/local/bin/
 COPY get-location /usr/local/bin/
-COPY write-resources.py /usr/local/bin/
 COPY healthcheck.py  /usr/local/bin/
+COPY write-resources.py /usr/local/bin/
 
 # Entrypoint
 COPY docker-entrypoint.sh /
-RUN chmod a+xr /docker-entrypoint.sh
 ENTRYPOINT ["/docker-entrypoint.sh"]
