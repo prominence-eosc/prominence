@@ -83,7 +83,7 @@ def jobs(request):
     user_name = request.user.username
     backend = ProminenceBackend(server.settings.CONFIG)
     jobs_list = backend.list_jobs([], user_name, True, False, None, -1, False, [], None, True)
-    return render(request, 'jobs.html', {'job-list': jobs_list})
+    return render(request, 'jobs.html', {'job_list': jobs_list})
 
 @login_required
 def workflows(request):
