@@ -3,7 +3,7 @@ JOB_SUBMIT = \
 """
 universe = vanilla
 executable = promlet.py
-arguments = --job .job.mapped.json --id $(prominencecount) %(extra_args)s
+arguments = --job job.mapped.json --id $(prominencecount) %(extra_args)s
 output = job.$(prominencecount).out
 error = job.$(prominencecount).err
 log = job.$(prominencecount).log
