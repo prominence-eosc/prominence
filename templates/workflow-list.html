@@ -1,3 +1,44 @@
+{% for workflow in workflow_list %}
+  <tr>
+    <td class="align-middle">{{ workflow.id }}</td>
+    <td class="align-middle">{{ workflow.name }}</td>
+    <td class="align-middle">
+      {% if workflow.status == "running" %}
+        <span class="badge badge-success">Running</span>
+      {% elif workflow.status == "failed" %}
+        <span class="badge badge-danger">Failed</span>
+      {% elif workflow.status == "deleted" %}
+        <span class="badge badge-warning">Deleted</span>
+      {% elif workflow.status == "pending" %}
+        <span class="badge badge-info">Pending</span>
+      {% elif workflow.status == "completed" %}
+        <span class="badge badge-dark">Completed</span>
+      {% endif %}
+    </td>
+    <td class="align-middle">{{ workflow.events.createTime }}</td>
+    <td class="align-middle">
+    {% if workflow.status != "pending" %}
+      {{ workflow.elapsedTime }}
+    {% endif %}
+    </td>
+    <td class="align-middle">
+	    {{ workflow.progress.done }}/{{ workflow.progress.total }}
+    </td>
+    <td class="align-middle">
+      <div class="dropdown">
+	  <button class="btn btn-outline-secondary" type="button" id="dropdownMenuButtonJob{{ workflow.id }}" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false" style="border:none;">
+	    <span data-feather="more-vertical"></span>
+        </button>
+	<div class="dropdown-menu" aria-labelledby="dropdownMenuButtonJob{{ workflow.id }}">
+          <a class="dropdown-item" href="{% url 'job_describe' workflow.id %}">Info</a>
+          <a class="dropdown-item js-delete-job" data-url="{% url 'job_delete' workflow.id %}">Delete</a>
+          <a class="dropdown-item" href="{% url 'job_std_streams' workflow.id %}">Std streams</a>
+        </div>
+      </div>
+    </td>
+  </tr>
+{% empty %}
   <tr>
     <td colspan="7" class="text-center">No workflows</td>
   </tr>
+{% endfor %}
