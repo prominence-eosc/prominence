@@ -4,9 +4,9 @@ import os
 import classad
 import htcondor
 
-from .utilities import redact_storage_creds
+from .utilities import redact_storage_creds, datetime_format, elapsed
 
-def list_workflows(self, workflow_ids, identity, active, completed, num, detail, constraint, name_constraint):
+def list_workflows(self, workflow_ids, identity, active, completed, num, detail, constraint, name_constraint, display=False):
     """
     List workflows or describe a specified workflow
     """
@@ -104,6 +104,16 @@ def list_workflows(self, workflow_ids, identity, active, completed, num, detail,
             if 'startTime' in events:
                 if events['endTime'] < events['startTime']:
                     del events['endTime']
+
+        # If necessary convert unix epoch timestamps into nicely formatted date/times
+        if display:
+            if 'createTime' in events:
+                events['createTime'] = datetime_format(events['createTime'])
+            wfj['elapsedTime'] = elapsed(events)
+            if 'startTime' in events:
+                events['startTime'] = datetime_format(events['startTime'])
+            if 'endTime' in events:
+                events['endTime'] = datetime_format(events['endTime'])
 
         wfj['events'] = events
 
