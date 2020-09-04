@@ -32,8 +32,11 @@ def list_workflows(self, workflow_ids, identity, active, completed, num, detail,
     wfs = []
     wfs_condor = []
 
-    if constraint[0] is not None and constraint[1] is not None:
-        restrict = str('ProminenceUserMetadata_%s =?= "%s"' % (constraint[0], constraint[1]))
+    if len(constraint) > 1:
+        if constraint[0] is not None and constraint[1] is not None:
+            restrict = str('ProminenceUserMetadata_%s =?= "%s"' % (constraint[0], constraint[1]))
+        else:
+            restrict = 'True'
     else:
         restrict = 'True'
     constraintc = 'ProminenceIdentity =?= "%s" && %s' % (identity, restrict)
