@@ -3,14 +3,14 @@
 {% load static %}
 
 {% block title %}
-Job {{ job.id }} details
+Job {{ job.id }}: details
 {% endblock %}
 
 {% block javascript %}
 {% endblock %}
 
 {% block contentuser %}
-<h2><a href="https://prominence.cloud/jobs"><i class="feather-32" data-feather="arrow-left"></i></a>Job {{ job.id }} details</h2>
+<h2><a href="https://prominence.cloud/jobs"><i class="feather-32" data-feather="arrow-left"></i></a>Job {{ job.id }}: details</h2>
 
 {% if job.status == "running" %}
 <span class="badge badge-success">Running</span>
