@@ -1,0 +1,56 @@
+{% extends 'user-base.html' %}
+  
+{% load static %}
+
+{% block title %}
+Workflow {{ workflow.id }}: details
+{% endblock %}
+
+{% block javascript %}
+{% endblock %}
+
+{% block contentuser %}
+<h2><a href="https://prominence.cloud/workflows"><i class="feather-32" data-feather="arrow-left"></i></a>Workflow {{ workflow.id }}: details</h2>
+
+<b>Status</b>
+<br/>
+{{ workflow.status }}
+
+{% if workflow.statusReason %}
+<br/>
+<br/>
+<b>Status reason</b>
+<br/>
+{{ workflow.statusReason }}
+{% endif %}
+
+<br/>
+<br/>
+<b>Name</b>
+<br/>
+{{ workflow.name }}
+
+<br/>
+<br/>
+<b>Labels</b>
+<br/>
+{% for label in workflow.labels %}
+{{ label }}: {{ workflow.labels.label }}
+{% empty %}
+None
+{% endfor %}
+
+<br/>
+<br/>
+<b>Events</b>
+<br/>
+<table>
+  <tr><td>Created:</td><td>{{ workflow.events.createTime }}</td></tr>
+  <tr><td>Start time:</td><td>{{ workflow.events.startTime }}</td></tr>
+  <tr><td>End time:</td><td>{{ workflow.events.endTime }}</td></tr>
+</table>
+
+<br/>
+<br/>
+
+{% endblock %}
