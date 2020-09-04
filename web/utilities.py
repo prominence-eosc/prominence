@@ -1,4 +1,4 @@
-def create_job(data):
+def create_job(data, storage_list):
     """
     Create JSON description of job from form
     """
@@ -25,4 +25,21 @@ def create_job(data):
         resources['disk'] = data['disk']
     job['resources'] = resources
 
+    if 'storage_name' in data:
+        for storage in storage_list:
+            if data['storage_name'] == storage.name:
+                job_storage = {}
+                job_storage['mountpoint'] = data['storage_mountpoint']
+                if storage.storage_type == 1:
+                    job_storage['type'] = 'webdav'
+                    job_storage['webdav'] = {}
+                    job_storage['webdav']['url'] = storage.hostname
+                    job_storage['webdav']['username'] = storage.username
+                    job_storage['webdav']['password'] = storage.password
+                else:
+                    job_storage['type'] = 'onedata'
+                    job_storage['onedata'] = {}
+                    job_storage['onedata']['provider'] = storage.hostname
+                    job_storage['onedata']['token'] = storage.password
+                job['storage'] = job_storage
     return job
