@@ -32,6 +32,9 @@ class JobForm(forms.Form):
     memory = forms.IntegerField(label='Memory (GB)', initial=1, min_value=1, max_value=128)
     disk = forms.IntegerField(label='Disk (GB)', initial=10, min_value=10, max_value=512)
 
+    storage_name = forms.CharField(label='Name', required=False)
+    storage_mountpoint = forms.CharField(label='Mount point', required=False)
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.helper = FormHelper()
@@ -48,6 +51,10 @@ class JobForm(forms.Form):
                     'cpus',
                     'memory',
                     'disk'
-                )
+                ),
+                Tab('Storage',
+                    'storage_name',
+                    'storage_mountpoint'
+                ),
             )
         )
