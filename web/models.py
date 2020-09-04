@@ -13,7 +13,7 @@ class Storage(models.Model):
     name = models.CharField(max_length=120)
     hostname = models.CharField(max_length=120)
     username = models.CharField(max_length=120, blank=True)
-    password = models.CharField(max_length=120)
+    password = models.CharField(max_length=250)
     storage_type = models.PositiveSmallIntegerField(choices=STORAGE_TYPES)
 
     def __str__(self):
