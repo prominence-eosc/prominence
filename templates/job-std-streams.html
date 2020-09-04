@@ -1,0 +1,47 @@
+{% extends 'user-base.html' %}
+  
+{% load static %}
+
+{% block title %}
+Job {{ job.id }} standard streams
+{% endblock %}
+
+{% block javascript %}
+{% endblock %}
+
+{% block contentuser %}
+<h2><a href="https://prominence.cloud/jobs"><i class="feather-32" data-feather="arrow-left"></i></a>Job {{ job.id }} standard streams</h2>
+
+<div class="container">
+<ul class="nav nav-tabs">
+  <li class="nav-item"><a class="nav-link active" data-toggle="tab" href="#stdoutput">Output</a></li>
+  <li class="nav-item"><a class="nav-link" data-toggle="tab" href="#stderror">Error</a></li>
+</ul>
+
+<div class="tab-content">
+  <div id="stdoutput" class="tab-pane fade show active">
+  <br/>
+  <h4>Standard output</h4>
+  <div class="card">
+  <div class="card-body">
+  <pre>
+  {{ stdout }}
+  </pre>
+  </div>
+  </div>
+  </div>
+  <div id="stderror" class="tab-pane fade">
+  <br/>
+  <h4>Standard error</h4>
+  <div class="card">
+  <div class="card-body">
+  <pre>
+  {{ stderr }}
+  </pre>
+  </div>
+  </div>
+  </div>
+</div>
+</div>
+
+{% endblock %}
