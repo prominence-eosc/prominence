@@ -24,7 +24,7 @@ def get_workflow_ids(workflow_id, request):
     if 'id' in request.query_params:
         workflow_ids.extend(request.query_params.get('id').split(','))
 
-    return job_ids
+    return workflow_ids
 
 class WorkflowsView(views.APIView):
     """
@@ -46,8 +46,8 @@ class WorkflowsView(views.APIView):
         uid = str(uuid.uuid4())
 
         # Validate the input JSON
-        (job_status, msg) = validate_job(request.data)
-        if not job_status:
+        (workflow_status, msg) = validate_workflow(request.data)
+        if not workflow_status:
             return Response({'error': msg}, status=status.HTTP_400_BAD_REQUEST)
 
         # Set groups TODO: this is not quite right yet
@@ -56,12 +56,12 @@ class WorkflowsView(views.APIView):
             if 'member' in entitlement:
                 groups.append(entitlement)
 
-        # Create job
-        (return_code, data) = self._backend.create_job(request.user.username,
-                                                       ','.join(groups),
-                                                       request.user.email,
-                                                       uid,
-                                                       request.data)
+        # Create workflow
+        (return_code, data) = self._backend.create_workflow(request.user.username,
+                                                            ','.join(groups),
+                                                            request.user.email,
+                                                            uid,
+                                                            request.data)
 
         # Return status as appropriate; TODO: handle server error differently to user error?
         http_status = status.HTTP_201_CREATED
@@ -70,9 +70,9 @@ class WorkflowsView(views.APIView):
 
         return Response(data, status=http_status)
 
-    def get(self, request, job_id=None):
+    def get(self, request, workflow_id=None):
         """
-        List jobs
+        List workflows
         """
         # Constraints
         constraint = (None, None)
@@ -93,7 +93,7 @@ class WorkflowsView(views.APIView):
         if 'name' in request.query_params:
             name_constraint = request.query_params.get('name')
 
-        # Active and/or completed jobs
+        # Active and/or completed workflows
         active = True
         completed = False
         num = 1
@@ -110,142 +110,38 @@ class WorkflowsView(views.APIView):
             active = True
             num = -1
 
-        # Select jobs from a workflow if necessary
-        workflow = False
-        if 'workflow' in request.query_params:
-            if request.query_params.get('workflow') == 'true':
-                workflow = True
-                num = -1
+        # Get workflow ids
+        workflow_ids = get_workflow_ids(workflow_id, request)
 
-        # Get job ids
-        job_ids = get_job_ids(job_id, request)
-
-        # Provide detailed information about each job if necessary
+        # Provide detailed information about each workflow if necessary
         detail = False
         if 'detail' in request.query_params:
             detail = True
 
-        data = self._backend.list_jobs(job_ids,
-                                       request.user.username,
-                                       active,
-                                       completed,
-                                       workflow,
-                                       num,
-                                       detail,
-                                       constraint,
-                                       name_constraint)
+        data = self._backend.list_workflows(workflow_ids,
+                                            request.user.username,
+                                            active,
+                                            completed,
+                                            num,
+                                            detail,
+                                            constraint,
+                                            name_constraint)
 
         return Response(data)
 
-    def delete(self, request, job_id=None):
+    def delete(self, request, workflow_id=None):
         """
-        Delete a job
+        Delete a workflow
         """
-        job_ids = get_job_ids(job_id, request)
+        workflow_ids = get_workflow_ids(workflow_id, request)
 
-        if not job_ids:
-            return Response({'error': 'a job id or list of job ids must be provided'},
+        if not workflow_ids:
+            return Response({'error': 'a workflow id or list of workflow ids must be provided'},
                             status=status.HTTP_400_BAD_REQUEST)
 
-        (return_code, data) = self._backend.delete_job(request.user.username, job_ids)
+        (return_code, data) = self._backend.delete_workflow(request.user.username, workflow_ids)
 
         if return_code != 0:
             return Response(data, status=status.HTTP_400_BAD_REQUEST)
 
         return Response(data, status=status.HTTP_200_OK)
-
-class JobStdOutView(views.APIView):
-    """
-    API view for getting job standard output stream
-    """
-    authentication_classes = [TokenAuthentication]
-    permission_classes = [permissions.IsAuthenticated]
-
-    def __init__(self, *args, **kwargs):
-        self._backend = ProminenceBackend(server.settings.CONFIG)
-        super().__init__(*args, **kwargs)
-
-    def get(self, request, job_id=None):
-        """
-        Get standard output
-        """
-        (uid, identity, iwd, out, err, name, _) = self._backend.get_job_unique_id(job_id)
-
-        if not identity:
-            return Response({'error': 'Job does not exist'},
-                            status=status.HTTP_400_BAD_REQUEST)
-
-        if request.user.username != identity:
-            return Response({'error': 'Not authorized to access this job'},
-                            status=status.HTTP_403_FORBIDDEN)
-
-        stdout = self._backend.get_stdout(uid, iwd, out, err, job_id, name)
-        if stdout is None:
-            return Response({'error': 'Standard output does not exist'},
-                            status=status.HTTP_400_BAD_REQUEST)
-
-        return stdout
-
-class JobStdErrView(views.APIView):
-    """
-    API view for getting job standard error stream
-    """
-    authentication_classes = [TokenAuthentication]
-    permission_classes = [permissions.IsAuthenticated]
-
-    def __init__(self, *args, **kwargs):
-        self._backend = ProminenceBackend(server.settings.CONFIG)
-        super().__init__(*args, **kwargs)
-
-    def get(self, request, job_id=None):
-        """
-        Get standard error
-        """
-        (uid, identity, iwd, out, err, name, _) = self._backend.get_job_unique_id(job_id)
-
-        if not identity:
-            return Response({'error': 'Job does not exist'},
-                            status=status.HTTP_400_BAD_REQUEST)
-
-        if request.user.username != identity:
-            return Response({'error': 'Not authorized to access this job'},
-                            status=status.HTTP_403_FORBIDDEN)
-
-        stderr = self._backend.get_stderr(uid, iwd, out, err, job_id, name)
-        if stderr is None:
-            return Response({'error': 'Standard output does not exist'},
-                            status=status.HTTP_400_BAD_REQUEST)
-
-        return stderr
-
-
-class JobRemoveFromQueue(views.APIView):
-    """
-    API view for removing a job from the queue
-    """
-    authentication_classes = [TokenAuthentication]
-    permission_classes = [permissions.IsAuthenticated]
-
-    def __init__(self, *args, **kwargs):
-        self._backend = ProminenceBackend(server.settings.CONFIG)
-        super().__init__(*args, **kwargs)
-
-    def put(self, request, job_id=None):
-        """
-        Remove job from the queue
-        """
-        (_, identity, _, _, _, _, _) = self._backend.get_job_unique_id(job_id)
-
-        if not identity:
-            return Response({'error': 'Job does not exist'},
-                            status=status.HTTP_400_BAD_REQUEST)
-
-        if request.user.username != identity:
-            return Response({'error': 'Not authorized to access this job'},
-                            status=status.HTTP_403_FORBIDDEN)
-
-        if not self._backend.remove_job(job_id):
-            return Response({'error': 'Job is no longer in the queue'},
-                            status=status.HTTP_400_BAD_REQUEST)
-
-        return Response({}, status=status.HTTP_200_OK)
