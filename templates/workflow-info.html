@@ -12,6 +12,13 @@ Workflow {{ workflow.id }}: details
 {% block contentuser %}
 <h2><a href="https://prominence.cloud/workflows"><i class="feather-32" data-feather="arrow-left"></i></a>Workflow {{ workflow.id }}: details</h2>
 
+
+<b>Name</b>
+<br/>
+{{ workflow.name }}
+
+<br/>
+<br/>
 <b>Status</b>
 <br/>
 {{ workflow.status }}
@@ -26,11 +33,25 @@ Workflow {{ workflow.id }}: details
 
 <br/>
 <br/>
-<b>Name</b>
-<br/>
-{{ workflow.name }}
+<b>Jobs progress</b>
+<table>
+	<tr>
+		<td>Total:</td><td>{{ workflow.progress.total }}</td>
+	</tr>
+	<tr>
+		<td>Done:</td><td>{{ workflow.progress.done }}</td>
+	</tr>
+	<tr>
+		<td>Failed:</td><td>{{ workflow.progress.failed }}</td>
+	</tr>
+	<tr>
+		<td>Queued:</td><td>{{ workflow.progress.queued }}</td>
+	</tr>
+	<tr>
+		<td>Waiting:</td><td>{{ workflow.progress.waiting }}</td>
+	</tr>
+</table>
 
-<br/>
 <br/>
 <b>Labels</b>
 <br/>

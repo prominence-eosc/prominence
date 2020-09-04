@@ -12,6 +12,12 @@ Job {{ job.id }}: details
 {% block contentuser %}
 <h2><a href="https://prominence.cloud/jobs"><i class="feather-32" data-feather="arrow-left"></i></a>Job {{ job.id }}: details</h2>
 
+<b>Name</b>
+<br/>
+{{ job.name }}
+
+<br/>
+<br/>
 <b>Status</b>
 <br/>
 {{ job.status }}
@@ -23,12 +29,6 @@ Job {{ job.id }}: details
 <br/>
 {{ job.statusReason }}
 {% endif %}
-
-<br/>
-<br/>
-<b>Name</b>
-<br/>
-{{ job.name }}
 
 <br/>
 <br/>
@@ -60,7 +60,6 @@ None
   <tr><td>Command:</td><td>{{ task.cmd }}</td></tr>
 </table>
 <br/>
-<br/>
 {% endfor %}
 
 <b>Artifacts</b>
@@ -83,6 +82,8 @@ Provider: {{ job.storage.onedata.provider }}
 {% else %}
 URL: {{ job.storage.webdav.url }}
 {% endif %}
+{% else %}
+None
 {% endif %}
 
 <br/>
@@ -95,7 +96,6 @@ URL: {{ job.storage.webdav.url }}
   <tr><td>End time:</td><td>{{ job.events.endTime }}</td></tr>
 </table>
 
-<br/>
 <br/>
 <b>Site</b>
 <br/>
