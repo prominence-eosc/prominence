@@ -214,4 +214,8 @@ def job_describe(request, pk):
 def job_std_streams(request, pk):
     user_name = request.user.username
     backend = ProminenceBackend(server.settings.CONFIG)
-    return JsonResponse({})
+    (uid, identity, iwd, out, err, name, _) = backend.get_job_unique_id(pk)
+    stdout = backend.get_stdout(uid, iwd, out, err, pk, name)
+    stderr = backend.get_stderr(uid, iwd, out, err, pk, name)
+
+    return render(request, 'job-std-streams.html', {'stdout': stdout, 'stderr': stderr})
