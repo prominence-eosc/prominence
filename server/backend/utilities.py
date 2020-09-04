@@ -110,11 +110,11 @@ def elapsed(events):
         if elapsed_time < 60:
             time_fmt = '%ds' % seconds
         elif elapsed_time < 60*60:
-            time_fmt = '%dm %ds' % (minutes, seconds)
+            time_fmt = '%dm' % minutes
         elif elapsed_time < 24*60*60:
-            time_fmt = '%dh %dm %ds' % (hours, minutes, seconds)
+            time_fmt = '%dh %dm' % (hours, minutes)
         else:
-            time_fmt = '%dd %dh %dm %ds' % (days, hours, minutes, seconds)
+            time_fmt = '%dd %dh %dm' % (days, hours, minutes)
 
     time_fmt = time_fmt.replace(' 0s', '')
     time_fmt = time_fmt.replace(' 0m', '')
