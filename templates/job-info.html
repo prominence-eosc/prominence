@@ -12,16 +12,16 @@ Job {{ job.id }}: details
 {% block contentuser %}
 <h2><a href="https://prominence.cloud/jobs"><i class="feather-32" data-feather="arrow-left"></i></a>Job {{ job.id }}: details</h2>
 
-{% if job.status == "running" %}
-<span class="badge badge-success">Running</span>
-{% elif job.status == "failed" %}
-<span class="badge badge-danger">Failed</span>
-{% elif job.status == "deleted" %}
-<span class="badge badge-warning">Deleted</span>
-{% elif job.status == "pending" %}
-<span class="badge badge-info">Pending</span>
-{% elif job.status == "completed" %}
-<span class="badge badge-dark">Completed</span>
+<b>Status</b>
+<br/>
+{{ job.status }}
+
+{% if job.statusReason %}
+<br/>
+<br/>
+<b>Status reason</b>
+<br/>
+{{ job.statusReason }}
 {% endif %}
 
 <br/>
@@ -71,6 +71,16 @@ None
 
 <br/>
 <br/>
+<b>Storage</b>
+<br/>
+{% if job.storage %}
+Type: {{ job.storage.type }}
+<br/>
+Provider: {{ job.storage.onedata.provider }}
+{% endif %}
+
+<br/>
+<br/>
 <b>Events</b>
 <br/>
 Created: {{ job.events.createTime }}
@@ -83,6 +93,10 @@ End time: {{ job.events.endTime }}
 <br/>
 <b>Site</b>
 <br/>
+{% if job.execution.site %}
 {{ job.execution.site }}
+{% else %}
+Not yet assigned
+{% endif %}
 
 {% endblock %}
