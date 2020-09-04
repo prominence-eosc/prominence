@@ -159,3 +159,72 @@ class WorkflowsView(views.APIView):
 
         return Response(data, status=status.HTTP_200_OK)
 
+class WorkflowStdOutView(views.APIView):
+    """
+    API view for getting job standard output stream from a workflow
+    """
+    authentication_classes = [TokenAuthentication]
+    permission_classes = [permissions.IsAuthenticated]
+
+    def __init__(self, *args, **kwargs):
+        self._backend = ProminenceBackend(server.settings.CONFIG)
+        super().__init__(*args, **kwargs)
+
+    def get(self, request, workflow_id=None, job_name=None):
+        """
+        Get standard output
+        """
+        (uid, identity, iwd, _, _, _, _) = self._backend.get_job_unique_id(workflow_id)
+
+        if not job_name:
+            job_name = 0
+
+        if not identity:
+            return Response({'error': 'Job does not exist'},
+                            status=status.HTTP_400_BAD_REQUEST)
+
+        if request.user.username != identity:
+            return Response({'error': 'Not authorized to access this job'},
+                            status=status.HTTP_403_FORBIDDEN)
+
+        stdout = self._backend.get_stdout(uid, iwd, None, None, -1, job_name, -1)
+        if stdout is None:
+            return Response({'error': 'Standard output does not exist'},
+                            status=status.HTTP_400_BAD_REQUEST)
+
+        return stdout
+
+class WorkflowStdErrView(views.APIView):
+    """
+    API view for getting job standard error stream from a workflow
+    """
+    authentication_classes = [TokenAuthentication]
+    permission_classes = [permissions.IsAuthenticated]
+
+    def __init__(self, *args, **kwargs):
+        self._backend = ProminenceBackend(server.settings.CONFIG)
+        super().__init__(*args, **kwargs)
+
+    def get(self, request, workflow_id=None, job_name=None):
+        """
+        Get standard error
+        """
+        (uid, identity, iwd, _, _, _, _) = self._backend.get_job_unique_id(workflow_id)
+
+        if not job_name:
+            job_name = 0
+
+        if not identity:
+            return Response({'error': 'Job does not exist'},
+                            status=status.HTTP_400_BAD_REQUEST)
+
+        if request.user.username != identity:
+            return Response({'error': 'Not authorized to access this job'},
+                            status=status.HTTP_403_FORBIDDEN)
+
+        stderr = self._backend.get_stderr(uid, iwd, None, None, -1, job_name, -1)
+        if stderr is None:
+            return Response({'error': 'Standard output does not exist'},
+                            status=status.HTTP_400_BAD_REQUEST)
+
+        return stderr
