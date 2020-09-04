@@ -26,12 +26,12 @@
     </td>
     <td class="align-middle">
       <div class="dropdown">
-	  <button class="btn btn-outline-secondary" type="button" id="dropdownMenuButtonJob{{ workflow.id }}" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false" style="border:none;">
+	  <button class="btn btn-outline-secondary" type="button" id="dropdownMenuButtonWorkflow{{ workflow.id }}" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false" style="border:none;">
 	    <span data-feather="more-vertical"></span>
         </button>
-	<div class="dropdown-menu" aria-labelledby="dropdownMenuButtonJob{{ workflow.id }}">
-          <a class="dropdown-item" href="{% url 'job_describe' workflow.id %}">Info</a>
-          <a class="dropdown-item js-delete-job" data-url="{% url 'job_delete' workflow.id %}">Delete</a>
+	<div class="dropdown-menu" aria-labelledby="dropdownMenuButtonWorkflow{{ workflow.id }}">
+          <a class="dropdown-item" href="{% url 'workflow_describe' workflow.id %}">Info</a>
+          <a class="dropdown-item js-delete-workflow" data-url="{% url 'workflow_delete' workflow.id %}">Delete</a>
         </div>
       </div>
     </td>
