@@ -224,3 +224,30 @@ def job_std_streams(request, pk):
     stderr = backend.get_stderr(uid, iwd, out, err, pk, name)
 
     return render(request, 'job-std-streams.html', {'job_id': pk, 'stdout': stdout, 'stderr': stderr})
+
+@login_required
+def workflow_describe(request, pk):
+    user_name = request.user.username
+    backend = ProminenceBackend(server.settings.CONFIG)
+    workflows_list = backend.list_workflows([pk], user_name, True, True, -1, True, [], None, True)
+    if len(workflows_list) == 1:
+        return render(request, 'workflow-info.html', {'workflow': workflows_list[0]})
+    return JsonResponse({})
+
+@login_required
+def workflows_delete(request, pk):
+    data = dict()
+    if request.method == 'POST':
+        data['form_is_valid'] = True
+        user_name = request.user.username
+        backend = ProminenceBackend(server.settings.CONFIG)
+        (return_code, msg) = backend.delete_workflow(request.user.username, [pk])
+        # TODO: message if unsuccessful deletion?
+        workflows_list = backend.list_workflows([], user_name, True, False, -1, False, [], None, True)
+        data['html_workflows_list'] = render_to_string('workflow-list.html', {'workflow_list': workflows_list})
+    else:
+        workflow = {}
+        workflow['id'] = pk
+        context = {'workflow': workflow}
+        data['html_form'] = render_to_string('workflow-delete.html', context, request=request)
+    return JsonResponse(data)
