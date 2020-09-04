@@ -7,7 +7,7 @@ import htcondor
 
 from .utilities import run
 
-def rerun_workflow(self, username, groups, email, workflow_id):
+def rerun_workflow(self, username, email, workflow_id):
     """
     Re-run any failed jobs from a completed workflow
     """
