@@ -218,4 +218,4 @@ def job_std_streams(request, pk):
     stdout = backend.get_stdout(uid, iwd, out, err, pk, name)
     stderr = backend.get_stderr(uid, iwd, out, err, pk, name)
 
-    return render(request, 'job-std-streams.html', {'stdout': stdout, 'stderr': stderr})
+    return render(request, 'job-std-streams.html', {'job_id': pk, 'stdout': stdout, 'stderr': stderr})
