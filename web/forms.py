@@ -51,4 +51,3 @@ class JobForm(forms.Form):
                 )
             )
         )
-        #self.helper.layout.append(Submit('submit', 'Submit'))
