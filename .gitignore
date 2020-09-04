@@ -3,4 +3,4 @@ migrations
 db.sqlite3
 *.pyc
 env
-static
+/static
