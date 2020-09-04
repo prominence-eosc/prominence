@@ -89,7 +89,10 @@ def jobs(request):
 
 @login_required
 def workflows(request):
-    return render(request, 'workflows.html')
+    user_name = request.user.username
+    backend = ProminenceBackend(server.settings.CONFIG)
+    workflows_list = backend.list_workflows([], user_name, True, False, -1, False, [], None)
+    return render(request, 'workflows.html', {'workflow_list': workflows_list})
 
 @login_required
 def create_token(request):
