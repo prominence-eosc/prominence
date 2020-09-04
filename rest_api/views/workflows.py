@@ -145,3 +145,17 @@ class WorkflowsView(views.APIView):
             return Response(data, status=status.HTTP_400_BAD_REQUEST)
 
         return Response(data, status=status.HTTP_200_OK)
+
+    def put(self, request, workflow_id=None):
+        """
+        Re-run any failed jobs from a workflow
+        """
+        (return_code, data) = self._backend.rerun_workflow(request.user.username,
+                                                           request.user.email,
+                                                           workflow_id)
+
+        if return_code == 1:
+            return Response(data, status=status.HTTP_400_BAD_REQUEST)
+
+        return Response(data, status=status.HTTP_200_OK)
+
