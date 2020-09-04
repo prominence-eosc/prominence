@@ -161,7 +161,9 @@ def save_job_form(request, form, template_name):
     if request.method == 'POST':
         if form.is_valid():
             data['form_is_valid'] = True # TODO: do we need this?
-            job_desc = create_job(form.cleaned_data)
+
+            storage = request.user.storage_systems.all()
+            job_desc = create_job(form.cleaned_data, storage)
             user_name = request.user.username
             backend = ProminenceBackend(server.settings.CONFIG)
 
