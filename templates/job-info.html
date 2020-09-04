@@ -54,9 +54,11 @@ None
 <b>Tasks</b>
 <br/>
 {% for task in job.tasks %}
-Container image: {{ task.image }}<br/>
-Container runtime: {{ task.runtime }}<br/>
-Command: {{ task.cmd }}
+<table>
+  <tr><td>Container image:</td><td>{{ task.image }}</td></tr>
+  <tr><td>Container runtime:</td><td>{{ task.runtime }}</td></tr>
+  <tr><td>Command:</td><td>{{ task.cmd }}</td></tr>
+</table>
 <br/>
 <br/>
 {% endfor %}
@@ -87,11 +89,11 @@ URL: {{ job.storage.webdav.url }}
 <br/>
 <b>Events</b>
 <br/>
-Created: {{ job.events.createTime }}
-<br/>
-Start time: {{ job.events.startTime }}
-<br/>
-End time: {{ job.events.endTime }}
+<table>
+  <tr><td>Created:</td><td>{{ job.events.createTime }}</td></tr>
+  <tr><td>Start time:</td><td>{{ job.events.startTime }}</td></tr>
+  <tr><td>End time:</td><td>{{ job.events.endTime }}</td></tr>
+</table>
 
 <br/>
 <br/>
