@@ -235,7 +235,7 @@ def workflow_describe(request, pk):
     return JsonResponse({})
 
 @login_required
-def workflows_delete(request, pk):
+def workflow_delete(request, pk):
     data = dict()
     if request.method == 'POST':
         data['form_is_valid'] = True
