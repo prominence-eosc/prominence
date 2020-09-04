@@ -76,7 +76,11 @@ None
 {% if job.storage %}
 Type: {{ job.storage.type }}
 <br/>
+{% if job.storage.type == "onedata" %}
 Provider: {{ job.storage.onedata.provider }}
+{% else %}
+URL: {{ job.storage.webdav.url }}
+{% endif %}
 {% endif %}
 
 <br/>
