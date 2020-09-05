@@ -59,18 +59,27 @@ None
   <tr><td>Container runtime:</td><td>{{ task.runtime }}</td></tr>
   <tr><td>Command:</td><td>{{ task.cmd }}</td></tr>
 </table>
-<br/>
 {% endfor %}
 
-<b>Artifacts</b>
 <br/>
-{% for artifact in job.artifacts %}
-{{ artifact }} <br/>
+<b>Input files</b>
+<br/>
+{% for input in job.inputs %}
+{{ input.filename }}
 {% empty %}
 None
 {% endfor %}
 
 <br/>
+<br/>
+<b>Artifacts</b>
+<br/>
+{% for artifact in job.artifacts %}
+{{ artifact.url }} <br/>
+{% empty %}
+None <br/>
+{% endfor %}
+
 <br/>
 <b>Storage</b>
 <br/>
