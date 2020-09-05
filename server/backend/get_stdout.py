@@ -14,7 +14,7 @@ def get_stdout(self, uid, iwd, out, err, job_id, job_name=None, instance_id=-1):
     elif os.path.isfile('%s/%s/job.0.out' % (iwd, job_name)):
         with open('%s/%s/job.0.out' % (iwd, job_name), 'rt') as fd:
             return fd.read()
-    elif os.path.isfile(out):
+    elif out and os.path.isfile(out):
         with open(out) as fd:
             return fd.read()
     return None

@@ -14,7 +14,7 @@ def get_stderr(self, uid, iwd, out, err, job_id, job_name=None, instance_id=-1):
     elif os.path.isfile('%s/%s/job.0.err' % (iwd, job_name)):
         with open('%s/%s/job.0.err' % (iwd, job_name), 'rt') as fd:
             return fd.read()
-    elif os.path.isfile(err):
+    elif err and os.path.isfile(err):
         with open(err) as fd:
             return fd.read()
     return None
