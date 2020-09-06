@@ -1,4 +1,4 @@
-def create_job(data, data_labels, data_artifacts, storage_list):
+def create_job(data, data_envvars, data_labels, data_artifacts, storage_list):
     """
     Create JSON description of job from form
     """
@@ -15,6 +15,14 @@ def create_job(data, data_labels, data_artifacts, storage_list):
             task['cmd'] = data['command']
     if 'container_image' in data:
         task['image'] = data['container_image']
+
+    env = {}
+    for envvar in data_envvars:
+        cenvvar = envvar.cleaned_data
+        if cenvvar.get('key') and cenvvar.get('value'):
+            env[cenvvar.get('key')] = cenvvar.get('value')
+    if env:
+        task['env'] = env
 
     job['tasks'] = [task]
 

@@ -10,13 +10,23 @@
   <script src="{% static 'js/jobs.js' %}"></script>
   <script src="{% static 'js/jquery.formset.js' %}"></script>
   <script>
+    $('.envvar-formset').formset({
+      addText: 'Add environment variable',
+      deleteText: 'remove',
+      prefix: '{{ envvars_formset.prefix }}',
+      formCssClass: 'dynamic-formset1'
+    });
     $('.label-formset').formset({
       addText: 'Add label',
-      deleteText: 'remove'
+      deleteText: 'remove',
+      prefix: '{{ labels_formset.prefix }}',
+      formCssClass: 'dynamic-formset2'
     });
     $('.artifact-formset').formset({
       addText: 'Add artifact',
-      deleteText: 'remove'
+      deleteText: 'remove',
+      prefix: '{{ artifacts_formset.prefix }}',
+      formCssClass: 'dynamic-formset3'
     });
   </script>
 {% endblock %}
@@ -54,7 +64,17 @@
   <td>{{ form.command }}</td>
 	  </tr>
   </table>
+  Environment variables <br/>
+{{ envvars_formset.management_form }}
 
+  {% for envvar_form in envvars_formset %}
+  <div class="envvar-formset">
+	  {{ envvar_form.key }}
+	  {{ envvar_form.value }}
+  </div>
+  {% endfor %}
+
+  <br/>
   <br/>
   <b>Resources</b>
   <div class="card">
@@ -62,7 +82,8 @@
   <table>
 	  <tr>
 		  <td>Nodes</td>
-		  <td>{{ form.nodes }}</td>
+		  <td>{{ form.nodes }}
+		  </td>
 	  </tr>
 	  <tr>
 		  <td>CPUs</td>
@@ -91,6 +112,8 @@
 	  {{ label_form.value }}
   </div>
   {% endfor %}
+
+  {{ artifacts_formset.management_form }}
 
   <br/>
   <br/>

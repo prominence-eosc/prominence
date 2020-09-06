@@ -9,7 +9,7 @@ from django.contrib.auth.decorators import login_required
 from django.contrib.auth import get_user_model
 from rest_framework.authtoken.models import Token
 
-from .forms import StorageForm, JobForm, LabelsFormSet, ArtifactsFormSet
+from .forms import StorageForm, JobForm, LabelsFormSet, ArtifactsFormSet, EnvVarsFormSet
 from .models import Storage
 from server.backend import ProminenceBackend
 from server.validate import validate_job
@@ -155,11 +155,13 @@ def clouds(request):
 def job_create(request):
     if request.method == 'POST':
         form = JobForm(request.POST)
-        labels_formset = LabelsFormSet(request.POST)
-        artifacts_formset = ArtifactsFormSet(request.POST)
-        if form.is_valid() and labels_formset.is_valid() and artifacts_formset.is_valid():
+        envvars_formset = EnvVarsFormSet(request.POST, prefix='fs1')
+        labels_formset = LabelsFormSet(request.POST, prefix='fs2')
+        artifacts_formset = ArtifactsFormSet(request.POST, prefix='fs3')
+
+        if form.is_valid() and labels_formset.is_valid() and artifacts_formset.is_valid() and envvars_formset.is_valid():
             storage = request.user.storage_systems.all()
-            job_desc = create_job(form.cleaned_data, labels_formset, artifacts_formset, storage)
+            job_desc = create_job(form.cleaned_data, envvars_formset, labels_formset, artifacts_formset, storage)
             user_name = request.user.username
             backend = ProminenceBackend(server.settings.CONFIG)
 
@@ -175,14 +177,14 @@ def job_create(request):
             return redirect('/jobs')
     else:
         form = JobForm()
-        labels_formset = LabelsFormSet()
-        artifacts_formset = ArtifactsFormSet()
+        labels_formset = LabelsFormSet(prefix='fs2')
+        artifacts_formset = ArtifactsFormSet(prefix='fs3')
+        envvars_formset = EnvVarsFormSet(prefix='fs1')
+
     return render(request, 'job-create.html', {'form': form,
+                                               'envvars_formset': envvars_formset,
                                                'labels_formset': labels_formset,
                                                'artifacts_formset': artifacts_formset})
-    #context = {'form': form, 'labels_formset': labels_formset, 'artifacts_formset': artifacts_formset}
-    #data['html_form'] = render_to_string('job-add.html', context, request=request)
-    #return JsonResponse(data)
 
 @login_required
 def job_delete(request, pk):

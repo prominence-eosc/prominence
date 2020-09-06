@@ -8,17 +8,6 @@
 
 {% block javascript %}
   <script src="{% static 'js/jobs.js' %}"></script>
-  <script src="{% static 'js/jquery.formset.js' %}"></script>
-  <script>
-       $('.label-formset').formset({
-            addText: 'Add label',
-	       deleteText: '<span data-feather="x"></span>'
-       });
-       $('.artifact-formset').formset({
-            addText: 'add',
-            deleteText: 'remove'
-       });
-  </script>
 {% endblock %}
 
 {% block contentuser %}
