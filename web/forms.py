@@ -24,6 +24,10 @@ class LabelForm(forms.Form):
     key = forms.CharField(widget=forms.TextInput(attrs={'placeholder': 'Key'}), required=False)
     value = forms.CharField(widget=forms.TextInput(attrs={'placeholder': 'Value'}), required=False)
 
+class EnvVarForm(forms.Form):
+    key = forms.CharField(widget=forms.TextInput(attrs={'placeholder': 'Key'}), required=False)
+    value = forms.CharField(widget=forms.TextInput(attrs={'placeholder': 'Value'}), required=False)
+
 class ArtifactForm(forms.Form):
     url = forms.CharField(label='URL', required=False)
     executable = forms.BooleanField(required=False)
@@ -44,5 +48,6 @@ class JobForm(forms.Form):
     storage_mountpoint = forms.CharField(label='Mount point', required=False)
 
 LabelsFormSet = formset_factory(LabelForm)
+EnvVarsFormSet = formset_factory(EnvVarForm)
 ArtifactsFormSet = formset_factory(ArtifactForm)
 
