@@ -34,13 +34,12 @@ Job {{ job.id }}: details
 <br/>
 <b>Labels</b>
 <br/>
-{% for label in job.labels %}
-{{ label }}: {{ job.labels.label }}
+{% for key, value in job.labels.items %}
+{{ key }}: {{ value }}<br/>
 {% empty %}
-None
+None<br/>
 {% endfor %}
 
-<br/>
 <br/>
 <b>Resources</b>
 <br/>
