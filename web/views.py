@@ -2,14 +2,14 @@ import uuid
 import requests
 from requests.auth import HTTPBasicAuth
 
-from django.shortcuts import render, get_object_or_404, HttpResponse
+from django.shortcuts import render, get_object_or_404, HttpResponse, redirect
 from django.http import JsonResponse, HttpResponseRedirect
 from django.template.loader import render_to_string
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth import get_user_model
 from rest_framework.authtoken.models import Token
 
-from .forms import StorageForm, JobForm
+from .forms import StorageForm, JobForm, LabelsFormSet, ArtifactsFormSet
 from .models import Storage
 from server.backend import ProminenceBackend
 from server.validate import validate_job
@@ -152,21 +152,14 @@ def clouds(request):
     return render(request, 'clouds.html')
 
 @login_required
-def job_add(request):
+def job_create(request):
     if request.method == 'POST':
         form = JobForm(request.POST)
-    else:
-        form = JobForm()
-    return save_job_form(request, form, 'job-add.html')
-
-def save_job_form(request, form, template_name):
-    data = dict()
-    if request.method == 'POST':
-        if form.is_valid():
-            data['form_is_valid'] = True # TODO: do we need this?
-
+        labels_formset = LabelsFormSet(request.POST)
+        artifacts_formset = ArtifactsFormSet(request.POST)
+        if form.is_valid() and labels_formset.is_valid() and artifacts_formset.is_valid():
             storage = request.user.storage_systems.all()
-            job_desc = create_job(form.cleaned_data, storage)
+            job_desc = create_job(form.cleaned_data, labels_formset, artifacts_formset, storage)
             user_name = request.user.username
             backend = ProminenceBackend(server.settings.CONFIG)
 
@@ -179,14 +172,17 @@ def save_job_form(request, form, template_name):
             (return_code, msg) = backend.create_job(user_name, 'group', 'email', str(uuid.uuid4()), job_desc)
             # TODO: if return code not zero, return message to user
 
-            # Update jobs list
-            jobs_list = backend.list_jobs([], user_name, True, False, None, -1, False, [], None, True)
-            data['html_jobs_list'] = render_to_string('jobs-list.html', {'job_list': jobs_list})
-        else:
-            data['form_is_valid'] = False
-    context = {'form': form}
-    data['html_form'] = render_to_string(template_name, context, request=request)
-    return JsonResponse(data)
+            return redirect('/jobs')
+    else:
+        form = JobForm()
+        labels_formset = LabelsFormSet()
+        artifacts_formset = ArtifactsFormSet()
+    return render(request, 'job-create.html', {'form': form,
+                                               'labels_formset': labels_formset,
+                                               'artifacts_formset': artifacts_formset})
+    #context = {'form': form, 'labels_formset': labels_formset, 'artifacts_formset': artifacts_formset}
+    #data['html_form'] = render_to_string('job-add.html', context, request=request)
+    #return JsonResponse(data)
 
 @login_required
 def job_delete(request, pk):
@@ -220,8 +216,20 @@ def job_std_streams(request, pk):
     user_name = request.user.username
     backend = ProminenceBackend(server.settings.CONFIG)
     (uid, identity, iwd, out, err, name, _) = backend.get_job_unique_id(pk)
+
+    if not identity:
+        return HttpResponse('No such job')
+
+    if user_name != identity:
+        return HttpResponse('Not authorised for this job')
+
     stdout = backend.get_stdout(uid, iwd, out, err, pk, name)
     stderr = backend.get_stderr(uid, iwd, out, err, pk, name)
+
+    if not stdout:
+        stdout = ''
+    if not stderr:
+        stderr = ''
 
     return render(request, 'job-std-streams.html', {'job_id': pk, 'stdout': stdout, 'stderr': stderr})
 

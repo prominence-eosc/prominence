@@ -8,16 +8,27 @@
 
 {% block javascript %}
   <script src="{% static 'js/jobs.js' %}"></script>
+  <script src="{% static 'js/jquery.formset.js' %}"></script>
+  <script>
+       $('.label-formset').formset({
+            addText: 'Add label',
+	       deleteText: '<span data-feather="x"></span>'
+       });
+       $('.artifact-formset').formset({
+            addText: 'add',
+            deleteText: 'remove'
+       });
+  </script>
 {% endblock %}
 
 {% block contentuser %}
   <h2>Jobs</h2>
 
   <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3">
-    <button type="button" class="btn btn-primary js-create-job" data-url="{% url 'job_add' %}">
+		  <a href="{% url 'job_create' %}" class="btn btn-primary">
       <span class="fa fa-plus"></span>
       Create job
-    </button>
+		  </a>
 
     <form class="form-inline my-2 my-lg-0">
       <input class="form-control mr-sm-2" type="search" placeholder="Search/filter" aria-label="Search">

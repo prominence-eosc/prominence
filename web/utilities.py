@@ -1,4 +1,4 @@
-def create_job(data, storage_list):
+def create_job(data, data_labels, data_artifacts, storage_list):
     """
     Create JSON description of job from form
     """
@@ -42,4 +42,24 @@ def create_job(data, storage_list):
                     job_storage['onedata']['provider'] = storage.hostname
                     job_storage['onedata']['token'] = storage.password
                 job['storage'] = job_storage
+
+    labels = {}
+    for label in data_labels:
+        clabel = label.cleaned_data
+        if clabel.get('key') and clabel.get('value'):
+            labels[clabel.get('key')] = clabel.get('value')
+    if labels:
+        job['labels'] = labels
+
+    artifacts = []
+    for artifact in data_artifacts:
+        cartifact = artifact.cleaned_data
+        if cartifact.get('url'):
+            new_artifact = {}
+            new_artifact['url'] = cartifact.get('url')
+            new_artifact['executable'] = cartifact.get('executable')
+            artifacts.append(new_artifact)
+    if artifacts:
+        job['artifacts'] = artifacts
+
     return job
