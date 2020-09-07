@@ -16,7 +16,16 @@ def create_job(data, data_envvars, data_labels, data_artifacts, storage_list):
     if 'container_image' in data:
         task['image'] = data['container_image']
     if 'workdir' in data:
-        task['workdir'] = data['workdir']
+        if data['workdir'] != "":
+            task['workdir'] = data['workdir']
+
+    policies = {}
+    if 'policy_task_maxretries' in data:
+        if data['policy_task_maxretries'] > 0:
+            policies['maximumRetries'] = data['policy_task_maxretries']
+
+    if policies:
+        job['policies'] = policies
 
     env = {}
     for envvar in data_envvars:
