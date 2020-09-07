@@ -32,31 +32,33 @@
 {% endblock %}
 
 {% block contentuser %}
-  <h2>Create job</h2>
+<h2><a href="https://prominence.cloud/jobs"><i class="feather-32" data-feather="arrow-left"></i></a> Create job</h2>
+  <br/>
 
-  <div class="col-md-8">
 <form method="post" action="{% url 'job_create' %}" class="js-job-add-form">
   {% csrf_token %}
-
-<div class="container">
-<ul class="nav nav-tabs">
-  <li class="nav-item"><a class="nav-link active" data-toggle="tab" href="#metadata">Metadata</a></li>
-  <li class="nav-item"><a class="nav-link" data-toggle="tab" href="#task">Task</a></li>
-  <li class="nav-item"><a class="nav-link" data-toggle="tab" href="#resources">Resources</a></li>
-  <li class="nav-item"><a class="nav-link" data-toggle="tab" href="#inputs">Input files</a></li>
-  <li class="nav-item"><a class="nav-link" data-toggle="tab" href="#artifacts">Artifacts</a></li>
-  <li class="nav-item"><a class="nav-link" data-toggle="tab" href="#storage">Storage</a></li>
-  <li class="nav-item"><a class="nav-link" data-toggle="tab" href="#policies">Policies</a></li>
-</ul>
+  <div class="project-tab">
+	  <div class="container">
+	  <div class="row">
+		  <div class="col-md-12">
+<div class="nav nav-tabs">
+  <a class="nav-item"><a class="nav-link active" data-toggle="tab" href="#metadata">Metadata</a></li>
+  <a class="nav-item"><a class="nav-link" data-toggle="tab" href="#task">Task</a></li>
+  <a class="nav-item"><a class="nav-link" data-toggle="tab" href="#resources">Resources</a></li>
+  <a class="nav-item"><a class="nav-link" data-toggle="tab" href="#inputs">Input files</a></li>
+  <a class="nav-item"><a class="nav-link" data-toggle="tab" href="#artifacts">Artifacts</a></li>
+  <a class="nav-item"><a class="nav-link" data-toggle="tab" href="#storage">Storage</a></li>
+  <a class="nav-item"><a class="nav-link" data-toggle="tab" href="#policies">Policies</a></li>
+</div>
   
 <div class="tab-content">
   <div id="metadata" class="tab-pane fade show active">
   <br/>
-  Assign a name and optionally arbitrary labels as key-value pairs.
+  Assign a name and any arbitrary labels as key-value pairs.
 
   <br/>
   <br/>
-  <b>Name</b><br/>
+  <b>Name</b> (Optional)<br/>
   {{ form.name }}
 
 
@@ -64,7 +66,7 @@
 
   <br/>
   <br/>
-  <b>Labels</b><br/>
+  <b>Labels</b> (Optional)<br/>
   {% for label_form in labels_formset %}
   <div class="label-formset">
 	  {{ label_form.key }}
@@ -202,6 +204,8 @@ Policies can influence the way failures are handled and how resources are placed
   </div>
 </div>
 </div>
+</div>
+	  </div>
 
   <br/>
   <br/>
@@ -209,7 +213,6 @@ Policies can influence the way failures are handled and how resources are placed
 
     <button type="submit" class="btn btn-primary">Create</button>
 </form>
-  </div>
 
   <br/>
 
