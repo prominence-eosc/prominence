@@ -143,8 +143,10 @@
             }
             if (hasChildElements(row)) {
                 row.addClass(options.formCssClass);
+                // This insertDeleteLink was moved from inside the if to here due to problems caused by tabs;
+		// see https://github.com/elo80ka/django-dynamic-formset/issues/54
+                insertDeleteLink(row);
                 if (row.is(':visible')) {
-                    insertDeleteLink(row);
                     applyExtraClasses(row, i);
                 }
             }
