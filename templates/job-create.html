@@ -8,19 +8,19 @@ Jobs
 <script src="{% static 'js/jquery.formset.js' %}"></script>
 <script>
    $('.label-formset').formset({
-     addText: 'Add label',
+     addText: '<span class="text-primary">Add label</span>',
      deleteText: 'remove',
      prefix: 'fs1',
      formCssClass: 'dynamic-formset1'
    });
    $('.envvar-formset').formset({
-     addText: 'Add environment variable',
+     addText: '<span class="text-primary">Add environment variable</span>',
      deleteText: 'remove',
      prefix: 'fs2',
      formCssClass: 'dynamic-formset2'
    });
    $('.artifact-formset').formset({
-     addText: 'Add artifact',
+     addText: '<span class="text-primary">Add artifact</span>',
      deleteText: 'remove',
      prefix: 'fs3',
      formCssClass: 'dynamic-formset3'
