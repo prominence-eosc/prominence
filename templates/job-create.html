@@ -9,19 +9,19 @@ Jobs
 <script>
    $('.label-formset').formset({
      addText: '<span class="text-primary">Add label</span>',
-     deleteText: 'remove',
+     deleteText: '<span class="largetext">&times;</span>',
      prefix: 'fs1',
      formCssClass: 'dynamic-formset1'
    });
    $('.envvar-formset').formset({
      addText: '<span class="text-primary">Add environment variable</span>',
-     deleteText: 'remove',
+     deleteText: '<span class="largetext">&times;</span>',
      prefix: 'fs2',
      formCssClass: 'dynamic-formset2'
    });
    $('.artifact-formset').formset({
      addText: '<span class="text-primary">Add artifact</span>',
-     deleteText: 'remove',
+     deleteText: '<span class="largetext">&times;</span>',
      prefix: 'fs3',
      formCssClass: 'dynamic-formset3'
    });
@@ -52,8 +52,8 @@ Jobs
                      <br/>
                      <br/>
                      <b>Name</b><span class="text-secondary"> (Optional)</span><br/>
-                     {{ form.name }}
-                     <br/>
+		     {{ form.name }}
+		     <br/>
                      <br/>
                      <b>Labels</b><span class="text-secondary"> (Optional)</span><br/>
                      {{ labels_formset.management_form }}
