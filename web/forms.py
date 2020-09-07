@@ -38,6 +38,7 @@ class JobForm(forms.Form):
     container_image = forms.CharField()
     container_runtime = forms.ChoiceField(choices=CONTAINER_RUNTIMES)
     command = forms.CharField(required=False)
+    workdir = forms.CharField(required=False)
 
     nodes = forms.IntegerField(label='Nodes', initial=1, min_value=1, max_value=128)
     cpus = forms.IntegerField(label='CPUs', initial=1, min_value=1, max_value=128)

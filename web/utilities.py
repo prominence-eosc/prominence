@@ -15,6 +15,8 @@ def create_job(data, data_envvars, data_labels, data_artifacts, storage_list):
             task['cmd'] = data['command']
     if 'container_image' in data:
         task['image'] = data['container_image']
+    if 'workdir' in data:
+        task['workdir'] = data['workdir']
 
     env = {}
     for envvar in data_envvars:
