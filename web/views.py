@@ -155,8 +155,8 @@ def clouds(request):
 def job_create(request):
     if request.method == 'POST':
         form = JobForm(request.POST)
-        envvars_formset = EnvVarsFormSet(request.POST, prefix='fs1')
-        labels_formset = LabelsFormSet(request.POST, prefix='fs2')
+        labels_formset = LabelsFormSet(request.POST, prefix='fs1')
+        envvars_formset = EnvVarsFormSet(request.POST, prefix='fs2')
         artifacts_formset = ArtifactsFormSet(request.POST, prefix='fs3')
 
         if form.is_valid() and labels_formset.is_valid() and artifacts_formset.is_valid() and envvars_formset.is_valid():
@@ -177,9 +177,9 @@ def job_create(request):
             return redirect('/jobs')
     else:
         form = JobForm()
-        labels_formset = LabelsFormSet(prefix='fs2')
+        labels_formset = LabelsFormSet(prefix='fs1')
+        envvars_formset = EnvVarsFormSet(prefix='fs2')
         artifacts_formset = ArtifactsFormSet(prefix='fs3')
-        envvars_formset = EnvVarsFormSet(prefix='fs1')
 
     return render(request, 'job-create.html', {'form': form,
                                                'envvars_formset': envvars_formset,
