@@ -48,6 +48,8 @@ class JobForm(forms.Form):
     storage_name = forms.CharField(label='Name', required=False)
     storage_mountpoint = forms.CharField(label='Mount point', required=False)
 
+    policy_task_maxretries = forms.IntegerField(label='Task retries', initial=0, min_value=0, max_value=10)
+
 LabelsFormSet = formset_factory(LabelForm)
 EnvVarsFormSet = formset_factory(EnvVarForm)
 ArtifactsFormSet = formset_factory(ArtifactForm)
