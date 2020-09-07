@@ -34,16 +34,47 @@
 {% block contentuser %}
   <h2>Create job</h2>
 
-  <div class="col-md-6">
+  <div class="col-md-8">
 <form method="post" action="{% url 'job_create' %}" class="js-job-add-form">
   {% csrf_token %}
 
-  <b>Name</b><br/>
-  {{ form.name }}
+<div class="container">
+<ul class="nav nav-tabs">
+  <li class="nav-item"><a class="nav-link active" data-toggle="tab" href="#metadata">Metadata</a></li>
+  <li class="nav-item"><a class="nav-link" data-toggle="tab" href="#task">Task</a></li>
+  <li class="nav-item"><a class="nav-link" data-toggle="tab" href="#resources">Resources</a></li>
+  <li class="nav-item"><a class="nav-link" data-toggle="tab" href="#inputs">Input files</a></li>
+  <li class="nav-item"><a class="nav-link" data-toggle="tab" href="#artifacts">Artifacts</a></li>
+  <li class="nav-item"><a class="nav-link" data-toggle="tab" href="#storage">Storage</a></li>
+  <li class="nav-item"><a class="nav-link" data-toggle="tab" href="#policies">Policies</a></li>
+</ul>
+  
+<div class="tab-content">
+  <div id="metadata" class="tab-pane fade show active">
+  <br/>
+  Assign a name and optionally arbitrary labels as key-value pairs.
 
   <br/>
   <br/>
-  <b>Task</b>
+  <b>Name</b><br/>
+  {{ form.name }}
+
+
+  {{ labels_formset.management_form }}
+
+  <br/>
+  <br/>
+  <b>Labels</b><br/>
+  {% for label_form in labels_formset %}
+  <div class="label-formset">
+	  {{ label_form.key }}
+	  {{ label_form.value }}
+  </div>
+  {% endfor %}
+
+  </div>
+  <div id="task" class="tab-pane fade">
+	  <br/>
   <table>
 	  <tr>
 		  <td>Type</td>
@@ -78,11 +109,15 @@
   </div>
   {% endfor %}
 
-  <br/>
-  <br/>
-  <b>Resources</b>
-  <div class="card">
-	  <div class="card-body">
+  </div>
+  <div id="resources" class="tab-pane fade">
+
+	  <br/>
+
+Specify the resources required, including the number of nodes required for the job and the number of CPUs and amount of memory and disk space per node. An upper limit to the walltime required by the job is also specified.
+<br/>
+<br/>
+
   <table>
 	  <tr>
 		  <td>{{ form.nodes.label }}</td>
@@ -105,57 +140,68 @@
 		  <td>{{ form.walltime }}</td>
 	  </tr>
   </table>
-	  </div>
+
   </div>
 
+  <div id="inputs" class="tab-pane fade">
 
-  {{ labels_formset.management_form }}
+<br/>
+Any small input files required by the job.
+<br/>
+<br/>
 
-  <br/>
-  <b>Labels</b><br/>
-  {% for label_form in labels_formset %}
-  <div class="label-formset">
-	  {{ label_form.key }}
-	  {{ label_form.value }}
+
   </div>
-  {% endfor %}
+
+  <div id="artifacts" class="tab-pane fade">
+<br/>
+Additional input files which can be obtained from a URL.
+<br/>
+<br/>
 
   {{ artifacts_formset.management_form }}
 
   <br/>
-  <br/>
-  <b>Artifacts</b><br/>
   {% for artifact_form in artifacts_formset %}
   <div class="artifact-formset">
-	  {{ artifact_form.url.label_tag }}
-	  {{ artifact_form.url }}
-	  {{ artifact_form.executable.label_tag }}
-	  {{ artifact_form.executable }}
+          {{ artifact_form.url.label_tag }}
+          {{ artifact_form.url }}
+          {{ artifact_form.executable.label_tag }}
+          {{ artifact_form.executable }}
   </div>
   {% endfor %}
 
-  <br/>
-  <br/>
-  <b>Storage</b>
-  <table>
-	  <tr>
-		  <td>Name</td>
-		  <td>{{ form.storage_name }}</td>
-	  </tr>
-	  <tr>
-		  <td>Mount point</td>
-		  <td>{{ form.storage_mountpoint }}</td>
-	  </tr>
-  </table>
+  </div>
 
-  <br/>
-  <b>Policies</b>
-  <table>
-	  <tr>
-		  <td>Number of retries per task</td>
-		  <td>{{ form.policy_task_maxretries }}</td>
-	  </tr>
-  </table>
+  <div id="storage" class="tab-pane fade">
+
+<br/>
+Storage to be provided to jobs in a POSIX-like way.
+<br/>
+<br/>
+
+
+                  <b>Name</b><br/>
+                  {{ form.storage_name }}
+<br/>
+<br/>
+                  <b>Mount point</b><br/>
+                  {{ form.storage_mountpoint }}
+
+  </div>
+
+  <div id="policies" class="tab-pane fade">
+	  <br/>
+Policies can influence the way failures are handled and how resources are placed.
+	  <br/>
+	  <br/>
+
+ <b>Number of retries per task</b><br/>
+		  {{ form.policy_task_maxretries }}
+
+  </div>
+</div>
+</div>
 
   <br/>
   <br/>
