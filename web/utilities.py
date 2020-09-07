@@ -42,6 +42,7 @@ def create_job(data, data_envvars, data_labels, data_artifacts, storage_list):
         resources['cpus'] = data['cpus']
         resources['memory'] = data['memory']
         resources['disk'] = data['disk']
+        resources['walltime'] = data['walltime']*60 # convert hours to mins
     job['resources'] = resources
 
     if 'storage_name' in data:
