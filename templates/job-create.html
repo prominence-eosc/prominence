@@ -85,21 +85,24 @@
 	  <div class="card-body">
   <table>
 	  <tr>
-		  <td>Nodes</td>
-		  <td>{{ form.nodes }}
-		  </td>
+		  <td>{{ form.nodes.label }}</td>
+		  <td>{{ form.nodes }}</td>
 	  </tr>
 	  <tr>
-		  <td>CPUs</td>
+		  <td>{{ form.cpus.label }}</td>
 		  <td>{{ form.cpus }}</td>
 	  </tr>
 	  <tr>
-		  <td>Memory</td>
+		  <td>{{ form.memory.label }}</td>
 		  <td>{{ form.memory }}</td>
 		  </tr>
 	  <tr>
-		  <td>Disk</td>
+		  <td>{{ form.disk.label }}</td>
 		  <td>{{ form.disk }}</td>
+	  </tr>
+	  <tr>
+		  <td>{{ form.walltime.label }}</td>
+		  <td>{{ form.walltime }}</td>
 	  </tr>
   </table>
 	  </div>
