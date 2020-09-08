@@ -1,4 +1,6 @@
-def create_job(data, data_envvars, data_labels, data_artifacts, storage_list):
+import base64
+
+def create_job(data, data_envvars, data_labels, files, data_artifacts, storage_list, uuid):
     """
     Create JSON description of job from form
     """
@@ -77,9 +79,20 @@ def create_job(data, data_envvars, data_labels, data_artifacts, storage_list):
         if cartifact.get('url'):
             new_artifact = {}
             new_artifact['url'] = cartifact.get('url')
-            new_artifact['executable'] = cartifact.get('executable')
+            if cartifact.get('executable'):
+                new_artifact['executable'] = cartifact.get('executable')
             artifacts.append(new_artifact)
     if artifacts:
         job['artifacts'] = artifacts
+
+    inputs = []
+    for input_file in files:
+        new_input = {}
+        new_input['filename'] = files[input_file].name
+        new_input['content'] = base64.b64encode(files[input_file].read()).decode("utf-8")
+        inputs.append(new_input)
+
+    if inputs:
+        job['inputs'] = inputs
 
     return job

@@ -32,6 +32,9 @@ class ArtifactForm(forms.Form):
     url = forms.CharField(label='URL', required=False)
     executable = forms.BooleanField(required=False)
 
+class InputFileForm(forms.Form):
+    input_file = forms.FileField()
+
 class JobForm(forms.Form):
     name = forms.CharField(required=False)
     task_type = forms.ChoiceField(choices=TASK_TYPES)
@@ -53,5 +56,6 @@ class JobForm(forms.Form):
 
 LabelsFormSet = formset_factory(LabelForm)
 EnvVarsFormSet = formset_factory(EnvVarForm)
+InputFilesFormSet = formset_factory(InputFileForm)
 ArtifactsFormSet = formset_factory(ArtifactForm)
 

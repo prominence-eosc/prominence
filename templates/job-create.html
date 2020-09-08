@@ -25,12 +25,18 @@ Jobs
      prefix: 'fs3',
      formCssClass: 'dynamic-formset3'
    });
+   $('.input-formset').formset({
+     addText: '<span class="text-primary">Add input file</span>',
+     deleteText: '<span class="largetext">&times;</span>',
+     prefix: 'fs4',
+     formCssClass: 'dynamic-formset4'
+   });
 </script>
 {% endblock %}
 {% block contentuser %}
 <h2><a href="https://prominence.cloud/jobs"><i class="feather-32" data-feather="arrow-left"></i></a> Create job</h2>
 <br/>
-<form method="post" action="{% url 'job_create' %}">
+<form enctype="multipart/form-data" method="post" action="{% url 'job_create' %}">
    {% csrf_token %}
    <div class="project-tab">
       <div class="container">
@@ -92,41 +98,42 @@ Jobs
                   </div>
                   <div id="resources" class="tab-pane fade">
                      <br/>
-                     Specify the resources required, including the number of nodes required for the job and the number of CPUs and amount of memory and disk space per node. An upper limit to the walltime required by the job is also specified.
+                     <b>Number of nodes</b><br/>
+                      {{ form.nodes }}
                      <br/>
                      <br/>
-                     <table>
-                        <tr>
-                           <td>{{ form.nodes.label }}</td>
-                           <td>{{ form.nodes }}</td>
-                        </tr>
-                        <tr>
-                           <td>{{ form.cpus.label }}</td>
-                           <td>{{ form.cpus }}</td>
-                        </tr>
-                        <tr>
-                           <td>{{ form.memory.label }}</td>
-                           <td>{{ form.memory }}</td>
-                        </tr>
-                        <tr>
-                           <td>{{ form.disk.label }}</td>
-                           <td>{{ form.disk }}</td>
-                        </tr>
-                        <tr>
-                           <td>{{ form.walltime.label }}</td>
-                           <td>{{ form.walltime }}</td>
-                        </tr>
-                     </table>
+                     <b>CPUs per node</b><br/>
+                      {{ form.cpus }}</td>
+                     <br/>
+                     <br/>
+                     <b>Memory per node (GB)</b><br/>
+                      {{ form.memory }}
+                     <br/>
+                     <br/>
+                     <b>Disk (GB)</b><br/>
+                     {{ form.disk }}
+                     <br/>
+                     <br/>
+                     <b>Wall time (hours)</b><br/>
+                     {{ form.walltime }}</td>
                   </div>
                   <div id="inputs" class="tab-pane fade">
                      <br/>
-                     Any small input files required by the job.
+                     Any small input files required by the job such as config files or scripts.
                      <br/>
                      <br/>
+                     {{ inputs_formset.management_form }}
+                     {% for input_form in inputs_formset %}
+                     <div class="input-formset">
+                        {{ input_form.input_file.label_tag }}
+                        {{ input_form.input_file }}
+                     </div>
+                     {% endfor %}
+
                   </div>
                   <div id="artifacts" class="tab-pane fade">
                      <br/>
-                     Additional input files which can be obtained from a URL.
+                     Additional input files which can be obtained from a URL or from object storage.
                      <br/>
                      <br/>
                      {{ artifacts_formset.management_form }}
@@ -141,7 +148,7 @@ Jobs
                   </div>
                   <div id="storage" class="tab-pane fade">
                      <br/>
-                     Storage to be provided to jobs in a POSIX-like way.
+                     Optional storage to be provided to jobs in a POSIX-like way.
                      <br/>
                      <br/>
                      <b>Name</b><br/>

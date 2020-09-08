@@ -9,7 +9,7 @@ from django.contrib.auth.decorators import login_required
 from django.contrib.auth import get_user_model
 from rest_framework.authtoken.models import Token
 
-from .forms import StorageForm, JobForm, LabelsFormSet, ArtifactsFormSet, EnvVarsFormSet
+from .forms import StorageForm, JobForm, LabelsFormSet, ArtifactsFormSet, EnvVarsFormSet, InputFilesFormSet
 from .models import Storage
 from server.backend import ProminenceBackend
 from server.validate import validate_job
@@ -157,11 +157,13 @@ def job_create(request):
         form = JobForm(request.POST)
         labels_formset = LabelsFormSet(request.POST, prefix='fs1')
         envvars_formset = EnvVarsFormSet(request.POST, prefix='fs2')
+        inputs_formset = InputFilesFormSet(request.POST, request.FILES, prefix='fs4')
         artifacts_formset = ArtifactsFormSet(request.POST, prefix='fs3')
 
-        if form.is_valid() and labels_formset.is_valid() and artifacts_formset.is_valid() and envvars_formset.is_valid():
+        if form.is_valid() and labels_formset.is_valid() and artifacts_formset.is_valid() and envvars_formset.is_valid() and inputs_formset.is_valid():
+            job_uuid = str(uuid.uuid4())
             storage = request.user.storage_systems.all()
-            job_desc = create_job(form.cleaned_data, envvars_formset, labels_formset, artifacts_formset, storage)
+            job_desc = create_job(form.cleaned_data, envvars_formset, labels_formset, request.FILES, artifacts_formset, storage, job_uuid)
             user_name = request.user.username
             backend = ProminenceBackend(server.settings.CONFIG)
 
@@ -171,7 +173,7 @@ def job_create(request):
             # TODO: message that job is invalid
 
             # Submit job
-            (return_code, msg) = backend.create_job(user_name, 'group', 'email', str(uuid.uuid4()), job_desc)
+            (return_code, msg) = backend.create_job(user_name, 'group', 'email', job_uuid, job_desc)
             # TODO: if return code not zero, return message to user
 
             return redirect('/jobs')
@@ -179,12 +181,14 @@ def job_create(request):
         form = JobForm()
         labels_formset = LabelsFormSet(prefix='fs1')
         envvars_formset = EnvVarsFormSet(prefix='fs2')
+        inputs_formset = InputFilesFormSet(prefix='fs4')
         artifacts_formset = ArtifactsFormSet(prefix='fs3')
 
     return render(request, 'job-create.html', {'form': form,
                                                'envvars_formset': envvars_formset,
                                                'labels_formset': labels_formset,
-                                               'artifacts_formset': artifacts_formset})
+                                               'artifacts_formset': artifacts_formset,
+                                               'inputs_formset': inputs_formset})
 
 @login_required
 def job_delete(request, pk):
