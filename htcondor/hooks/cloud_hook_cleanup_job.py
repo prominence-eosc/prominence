@@ -1,5 +1,5 @@
-#!/usr/bin/python
-import ConfigParser
+#!/usr/bin/python3
+import configparser
 import json
 import logging
 from logging.handlers import RotatingFileHandler
@@ -77,7 +77,7 @@ def handle_notifications(iwd, job_id_original, job_id_routed, identity, email, s
 
     # Open JSON job description
     try:
-        filename = '%s/.job.json' % iwd
+        filename = '%s/job.json' % iwd
         with open(filename, 'r') as json_file:
             job_json = json.load(json_file)
     except Exception as err:
@@ -213,7 +213,7 @@ def cleanup_infrastructure():
 
 if __name__ == "__main__":
     # Read config file
-    CONFIG = ConfigParser.ConfigParser()
+    CONFIG = configparser.ConfigParser()
     CONFIG.read('/etc/prominence/prominence.ini')
 
     # Logging
