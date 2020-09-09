@@ -323,6 +323,18 @@ def create_dirs(path):
     else:
         logging.info('Using existing tmp directory')
 
+    # Create the mounts directory if necessary
+    if not os.path.isdir('/home/user/mounts'):
+        logging.info('Creating user mounts directory')
+        if not os.path.isdir('/home/user/mounts'):
+            try:
+                os.mkdir('/home/user/mounts')
+            except Exception as ex:
+                logging.error('Unable to create user mounts directory due to: %s', ex)
+                exit(1)
+    else:
+        logging.info('Using existing mounts directory')
+
     # Create mpi hosts directory
     logging.info('Creating mpihome directory')
     if not os.path.isdir(path + '/mpihome'):
@@ -800,8 +812,18 @@ def mount_storage(job):
             storage_provider = job['storage']['onedata']['provider']
             storage_token = job['storage']['onedata']['token']
 
+            # Create mount point if necessary
+            if not os.path.isdir('/home/user/mounts%s' % storage_mountpoint):
+                try:
+                    os.mkdir('/home/user/mounts%s' % storage_mountpoint)
+                except Exception as ex:
+                    logging.error('Unable to create mount directory due to: %s', ex)
+                    return False
+            else:
+                logging.info('Mounts directory already exists, no need to create it')
+
             try:
-                process = subprocess.Popen('/usr/bin/oneclient -t %s -H %s /mnt/%s' % (storage_token,
+                process = subprocess.Popen('/usr/bin/oneclient -t %s -H %s /home/user/mounts%s' % (storage_token,
                                                                                        storage_provider,
                                                                                        storage_mountpoint),
                                            shell=True,
@@ -847,7 +869,7 @@ def unmount_storage(job):
             storage_provider = job['storage']['onedata']['provider']
             storage_token = job['storage']['onedata']['token']
 
-            process = subprocess.Popen('/usr/bin/oneclient -t %s -H %s -u /mnt/%s' % (storage_token,
+            process = subprocess.Popen('/usr/bin/oneclient -t %s -H %s -u /home/user/mounts%s' % (storage_token,
                                                                                       storage_provider,
                                                                                       storage_mountpoint),
                                        shell=True,
@@ -861,7 +883,7 @@ def get_storage_mountpoint(job):
     Get mount point for fuse filesystem from job JSON
     """
     if 'storage' in job:
-        return '/mnt/%s:%s' % (job['storage']['mountpoint'], job['storage']['mountpoint'])
+        return job['storage']['mountpoint']
 
     return None
 
@@ -911,14 +933,14 @@ def download_singularity(image, image_new, location, path):
             # Create singularity image from Docker archive
 
             logging.info('Creating sif image from Docker archive')
-            success = create_sif_from_archive(image_new, '/mnt/%s' % image)
+            success = create_sif_from_archive(image_new, '/home/user/mounts/%s' % image)
 
             if not success:
                 return 1, False
         else:
             logging.info('Copying Singularity image from source on attached storage')
             try:
-                shutil.copyfile('/mnt/%s' % image, image_new)
+                shutil.copyfile('/home/user/mounts/%s' % image, image_new)
             except:
                 logging.error('Unable to copy container image from source location on attached storage')
                 return 1, False
@@ -1041,7 +1063,7 @@ def download_udocker(image, location, label, path):
         # Handle image stored on attached POSIX-like storage
         logging.info('Copying udocker image from source on attached storage')
         try:
-            shutil.copyfile('/mnt/%s' % image, '%s/image.tar' % location)
+            shutil.copyfile('/home/user/mounts/%s' % image, '%s/image.tar' % location)
         except:
             logging.error('Unable to copy container image from source location on attached storage')
             return 1, False
@@ -1146,7 +1168,7 @@ def run_udocker(image, cmd, workdir, env, path, mpi, mpi_processes, mpi_procs_pe
     mounts = ''
     if mountpoint is not None:
         logging.info('Mount point is %s', mountpoint)
-        mounts = '-v %s ' % mountpoint
+        mounts = '-v /home/user/mounts%s:%s ' % (mountpoint, mountpoint)
 
     # Setup for MPI
     if mpi:
@@ -1219,7 +1241,7 @@ def run_singularity(image, cmd, workdir, env, path, mpi, mpi_processes, mpi_proc
     mounts = ''
     if mountpoint is not None:
         logging.info('Mount point is %s', mountpoint)
-        mounts = '--bind %s ' % mountpoint
+        mounts = '--bind /home/user/mounts%s:%s ' % (mountpoint, mountpoint)
 
     # Artifact mounts
     for artifact in artifacts:
@@ -1415,7 +1437,7 @@ def run_tasks(job, path, is_batch):
                 image_pull_status = 'cached'
             elif not FINISH_NOW:
                 logging.info('Pulling image for task')
-                metrics_download = monitor(download_udocker, image, location, path)
+                metrics_download = monitor(download_udocker, image, location, count, path)
                 if metrics_download.time_wall > 0:
                     total_pull_time += metrics_download.time_wall
                 if metrics_download.exit_code != 0:
@@ -1613,6 +1635,9 @@ if __name__ == "__main__":
     success_tasks = False
     success_stageout = False
 
+    # Create the user home, tmp and mounts directories
+    create_dirs(path)
+
     # Mount user-specified storage if necessary
     (success_mounts, json_mounts) = mount_storage(job)
 
@@ -1620,9 +1645,6 @@ if __name__ == "__main__":
         # Replace output file/dir URL addresses if necessary
         if args.outfile or args.outdir:
             replace_output_urls(job, args.outfile, args.outdir)
-
-        # Create the user home & tmp directories
-        create_dirs(path)
 
         # Download any artifacts
         logging.info('Stagein any input files if necessary')
