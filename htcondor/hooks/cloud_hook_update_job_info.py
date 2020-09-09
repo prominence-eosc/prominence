@@ -1,6 +1,6 @@
-#!/usr/bin/python
+#!/usr/bin/python3
 from __future__ import print_function
-import ConfigParser
+import configparser
 import logging
 from logging.handlers import RotatingFileHandler
 import os
@@ -93,7 +93,7 @@ def update_classad():
 
     # Update any presigned URLs as necessary
     if job_status == 1:
-        new_args = update_presigned_urls.update_presigned_urls(args, '%s/.job.mapped.json' % iwd)
+        new_args = update_presigned_urls.update_presigned_urls(args, '%s/job.mapped.json' % iwd)
         if new_args:
             print('Args = "%s"' % new_args)
 
@@ -160,7 +160,7 @@ def update_classad():
 
 if __name__ == "__main__":
     # Read config file
-    CONFIG = ConfigParser.ConfigParser()
+    CONFIG = configparser.ConfigParser()
     CONFIG.read('/etc/prominence/prominence.ini')
 
     # Logging
