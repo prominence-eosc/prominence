@@ -50,6 +50,7 @@ Jobs
                   <a class="nav-item nav-link" data-toggle="tab" href="#artifacts">Artifacts</a>
                   <a class="nav-item nav-link" data-toggle="tab" href="#storage">Storage</a>
                   <a class="nav-item nav-link" data-toggle="tab" href="#policies">Policies</a>
+                  <a class="nav-item nav-link" data-toggle="tab" href="#notifications">Notifications</a>
                </div>
                <div class="tab-content">
                   <div id="metadata" class="tab-pane fade show active">
@@ -125,7 +126,6 @@ Jobs
                      {{ inputs_formset.management_form }}
                      {% for input_form in inputs_formset %}
                      <div class="input-formset">
-                        {{ input_form.input_file.label_tag }}
                         {{ input_form.input_file }}
                      </div>
                      {% endfor %}
@@ -141,14 +141,17 @@ Jobs
                      <div class="artifact-formset">
                         {{ artifact_form.url.label_tag }}
                         {{ artifact_form.url }}
+			&nbsp;
                         {{ artifact_form.executable.label_tag }}
                         {{ artifact_form.executable }}
+			&nbsp;
+			&nbsp;
                      </div>
                      {% endfor %}
                   </div>
                   <div id="storage" class="tab-pane fade">
                      <br/>
-                     Optional storage to be provided to jobs in a POSIX-like way.
+                     Optional storage to be automatically mounted and made available to jobs.
                      <br/>
                      <br/>
                      <b>Name</b><br/>
@@ -165,6 +168,12 @@ Jobs
                      <br/>
                      <b>Number of retries per task</b><br/>
                      {{ form.policy_task_maxretries }}
+                  </div>
+		  <div id="notifications" class="tab-pane fade">
+                     <br/>
+                     Send notifications for different job state events.
+                     <br/>
+                     <br/>
                   </div>
                </div>
             </div>
