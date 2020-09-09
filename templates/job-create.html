@@ -46,9 +46,7 @@ Jobs
                   <a class="nav-item nav-link active" data-toggle="tab" href="#metadata">Metadata</a>
                   <a class="nav-item nav-link" data-toggle="tab" href="#task">Task</a>
                   <a class="nav-item nav-link" data-toggle="tab" href="#resources">Resources</a>
-                  <a class="nav-item nav-link" data-toggle="tab" href="#inputs">Input files</a>
-                  <a class="nav-item nav-link" data-toggle="tab" href="#artifacts">Artifacts</a>
-                  <a class="nav-item nav-link" data-toggle="tab" href="#storage">Storage</a>
+                  <a class="nav-item nav-link" data-toggle="tab" href="#data">Data</a>
                   <a class="nav-item nav-link" data-toggle="tab" href="#policies">Policies</a>
                   <a class="nav-item nav-link" data-toggle="tab" href="#notifications">Notifications</a>
                </div>
@@ -118,8 +116,9 @@ Jobs
                      <b>Wall time (hours)</b><br/>
                      {{ form.walltime }}</td>
                   </div>
-                  <div id="inputs" class="tab-pane fade">
+                  <div id="data" class="tab-pane fade">
                      <br/>
+		     <h6>Input files</h6>
                      Any small input files required by the job such as config files or scripts.
                      <br/>
                      <br/>
@@ -129,10 +128,9 @@ Jobs
                         {{ input_form.input_file }}
                      </div>
                      {% endfor %}
-
-                  </div>
-                  <div id="artifacts" class="tab-pane fade">
                      <br/>
+                     <br/>
+		     <h6>Artifacts</h6>
                      Additional input files which can be obtained from a URL or from object storage.
                      <br/>
                      <br/>
@@ -148,18 +146,30 @@ Jobs
 			&nbsp;
                      </div>
                      {% endfor %}
-                  </div>
-                  <div id="storage" class="tab-pane fade">
                      <br/>
+                     <br/>
+		     <h6>Storage</h6>
                      Optional storage to be automatically mounted and made available to jobs.
                      <br/>
                      <br/>
-                     <b>Name</b><br/>
-                     {{ form.storage_name }}
-                     <br/>
-                     <br/>
-                     <b>Mount point</b><br/>
-                     {{ form.storage_mountpoint }}
+                     <table>
+                       <tr>
+                         <td>
+		           <b>Name</b>
+                        </td>
+                        <td>
+                          <b>Mount point</b>
+                        </td>
+                       </tr>
+                       <tr>
+                         <td>
+                           {{ form.storage_name }}
+                         </td>
+                         <td>
+                           {{ form.storage_mountpoint }}
+                         </td>
+                       </tr>
+                     </table>
                   </div>
                   <div id="policies" class="tab-pane fade">
                      <br/>
@@ -171,7 +181,7 @@ Jobs
                   </div>
 		  <div id="notifications" class="tab-pane fade">
                      <br/>
-                     Send notifications for different job state events.
+                     Notifications can be sent for transitions between different job states.
                      <br/>
                      <br/>
                   </div>
