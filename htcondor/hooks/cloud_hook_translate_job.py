@@ -1,13 +1,14 @@
-#!/usr/bin/python
+#!/usr/bin/python3
 from __future__ import print_function
 import base64
 import calendar
-import ConfigParser
+import configparser
 import json
 import logging
 from logging.handlers import RotatingFileHandler
 import re
 from string import Template
+import subprocess
 import sys
 import time
 import uuid
@@ -19,7 +20,6 @@ from cryptography.hazmat.primitives.asymmetric import rsa
 from cryptography.hazmat.backends import default_backend as crypto_default_backend
 import classad
 
-import make_x509_proxy
 import update_presigned_urls
 
 requests.packages.urllib3.disable_warnings()
@@ -63,7 +63,7 @@ def create_infrastructure_with_retries(uid, data):
     while count < max_retries and success is None:
         success = create_infrastructure(uid, data)
         if not success:
-            logging.warning('Infrastructe create request failed')
+            logger.warning('Infrastructe create request failed')
         count += 1
         time.sleep(count/2)
     return success
@@ -101,8 +101,8 @@ def prepare_credential_content(filename, itype=False, use_file=True):
             content = file_in.readlines()
     else:
         content = []
-        for line in filename.split('\n'):
-            content.append('%s\n' % line)
+        for line in filename.split(b'\n'):
+            content.append('%s\n' % line.decode('utf-8'))
 
     if itype:
         content = ['          %s' % line for line in content]
@@ -110,41 +110,41 @@ def prepare_credential_content(filename, itype=False, use_file=True):
         content = ['%s' % line for line in content]
     return ''.join(content)
 
-def create_worker_credentials(itype=False):
+def create_worker_credentials(itype, job_id):
     """
     Create worker node credentials
     """
-    root_ca = prepare_credential_content(CONFIG.get('credentials', 'root-ca'), itype)
-    signing_policy = prepare_credential_content(CONFIG.get('credentials', 'signing-policy'), itype)
-    mapfile = prepare_credential_content(CONFIG.get('credentials', 'mapfile'), itype)
+    # Create token for HTCondor auth
+    token_duration = 30*24*60*60
+    try:
+        run = subprocess.run(["sudo",
+                              "condor_token_create",
+                              "-identity",
+                              "worker@cloud",
+                              "-key",
+                              "token_key",
+                              "-lifetime",
+                              "%s" % token_duration],
+                             stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    except Exception as exc:
+        logger.error('[%s] condor_token_create failed with exception %s', job_id, exc)
+        exit(1)
+        
+    if run.returncode == 0:
+        token = run.stdout.strip()
+    else:
+        logger.error('[%s] condor_token_create failed, invalid return code', job_id)
+        exit(1)
 
-    # Proxy for HTCondor auth
-    expiry_time = int(time.time()) + 30*24*60*60
-    proxy = make_x509_proxy.make_x509_proxy(CONFIG.get('credentials', 'host-cert'),
-                                            CONFIG.get('credentials', 'host-key'),
-                                            expiry_time,
-                                            is_legacy_proxy=False,
-                                            cn=None)
-
-    proxy = prepare_credential_content(proxy, itype, False)
-
-    # Prepare ssh keys
+    # Create ssh keys
     (private_ssh_key_1, public_ssh_key_1) = create_ssh_keypair()
     (private_ssh_key_2, public_ssh_key_2) = create_ssh_keypair()
 
-    private_ssh_key_1 = prepare_credential_content(private_ssh_key_1, itype, False)
-    public_ssh_key_1 = prepare_credential_content(public_ssh_key_1, itype, False)
-    private_ssh_key_2 = prepare_credential_content(private_ssh_key_2, itype, False)
-    public_ssh_key_2 = prepare_credential_content(public_ssh_key_2, itype, False)
-
-    return (root_ca,
-            proxy,
-            signing_policy,
-            mapfile,
-            private_ssh_key_1,
-            public_ssh_key_1,
-            private_ssh_key_2,
-            public_ssh_key_2)
+    return (prepare_credential_content(token, itype, False),
+            prepare_credential_content(private_ssh_key_1, itype, False),
+            prepare_credential_content(public_ssh_key_1, itype, False),
+            prepare_credential_content(private_ssh_key_2, itype, False),
+            prepare_credential_content(public_ssh_key_2, itype, False))
 
 def translate_classad():
     """
@@ -189,7 +189,7 @@ def translate_classad():
 
     # Open JSON job description
     try:
-        filename = '%s/.job.json' % iwd
+        filename = '%s/job.json' % iwd
         with open(filename, 'r') as json_file:
             job_json = json.load(json_file)
     except Exception as err:
@@ -226,14 +226,11 @@ def translate_classad():
             radl_file = CONFIG.get('templates', 'single-node')
 
         # Create credentials for the worker nodes
-        (root_ca,
-         proxy,
-         signing_policy,
-         mapfile,
+        (token,
          private_ssh_key_1,
          public_ssh_key_1,
          private_ssh_key_2,
-         public_ssh_key_2) = create_worker_credentials(spacing_type)
+         public_ssh_key_2) = create_worker_credentials(spacing_type, job_id)
 
         # Calculate total cores and number of worker nodes
         num_total_cores = job_json['resources']['nodes']*job_json['resources']['cpus']
@@ -297,11 +294,9 @@ def translate_classad():
                                                      use_hostname=use_hostname,
                                                      disk_size=job_json['resources']['disk'],
                                                      job_id=cluster_id,
+                                                     uid_infra=uid_infra,
                                                      condor_host=condor_host,
-                                                     root_ca=root_ca,
-                                                     proxy=proxy,
-                                                     signing_policy=signing_policy,
-                                                     mapfile=mapfile,
+                                                     token=token,
                                                      private_ssh_key_1=private_ssh_key_1,
                                                      public_ssh_key_1=public_ssh_key_1,
                                                      private_ssh_key_2=private_ssh_key_2,
@@ -370,7 +365,7 @@ def translate_classad():
             data['requirements']['tags'] = {}
             data['requirements']['tags']['multi-node-jobs'] = 'true'
 
-        data['radl'] = base64.b64encode(radl_contents.encode('utf8'))
+        data['radl'] = base64.b64encode(radl_contents.encode('utf8')).decode()
         data['identifier'] = job_id
         data['identity'] = identity
         data['want'] = use_uid
@@ -410,7 +405,7 @@ def translate_classad():
 
 if __name__ == "__main__":
     # Read config file
-    CONFIG = ConfigParser.ConfigParser()
+    CONFIG = configparser.ConfigParser()
     CONFIG.read('/etc/prominence/prominence.ini')
 
     # Logging
