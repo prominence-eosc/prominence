@@ -6,3 +6,4 @@ django-crispy-forms
 gunicorn
 boto3
 htcondor
+pillow
