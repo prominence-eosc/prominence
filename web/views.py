@@ -84,7 +84,14 @@ def storage_delete(request, pk):
 def jobs(request):
     user_name = request.user.username
     backend = ProminenceBackend(server.settings.CONFIG)
-    jobs_list = backend.list_jobs([], user_name, True, False, None, -1, False, [], None, True)
+
+    workflow = None
+    jobs = []
+    if 'workflow_id' in request.GET:
+        jobs = [int(request.GET.get('workflow_id'))]
+        workflow = True
+
+    jobs_list = backend.list_jobs(jobs, user_name, True, False, workflow, -1, False, [], None, True)
     return render(request, 'jobs.html', {'job_list': jobs_list})
 
 @login_required
