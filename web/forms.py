@@ -54,6 +54,8 @@ class JobForm(forms.Form):
 
     policy_task_maxretries = forms.IntegerField(label='Task retries', initial=0, min_value=0, max_value=10)
 
+    notify_email_job_finished = forms.BooleanField(required=False)
+
 LabelsFormSet = formset_factory(LabelForm)
 EnvVarsFormSet = formset_factory(EnvVarForm)
 InputFilesFormSet = formset_factory(InputFileForm)

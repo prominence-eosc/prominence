@@ -47,6 +47,17 @@ def create_job(data, data_envvars, data_labels, files, data_artifacts, storage_l
         resources['walltime'] = data['walltime']*60 # convert hours to mins
     job['resources'] = resources
 
+    notifications = []
+    if 'notify_email_job_finished' in data:
+        if data['notify_email_job_finished']:
+            notify = {}
+            notify['event'] = 'jobFinished'
+            notify['type'] = 'email'
+            notifications.append(notify)
+
+    if notifications:
+        job['notifications'] = notifications
+
     if 'storage_name' in data:
         for storage in storage_list:
             if data['storage_name'] == storage.name:
