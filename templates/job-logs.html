@@ -3,14 +3,14 @@
 {% load static %}
 
 {% block title %}
-Job {{ job_id }}: standard streams
+Job {{ job_id }}: logs
 {% endblock %}
 
 {% block javascript %}
 {% endblock %}
 
 {% block contentuser %}
-<h2><a href="https://prominence.cloud/jobs"><i class="feather-32" data-feather="arrow-left"></i></a>Job {{ job_id }}: standard streams</h2>
+<h2><a href="https://prominence.cloud/jobs"><i class="feather-32" data-feather="arrow-left"></i></a>Job {{ job_id }}: logs</h2>
 
 <div class="project-tab">
 <div class="container">
@@ -22,7 +22,6 @@ Job {{ job_id }}: standard streams
 <div class="tab-content">
   <div id="stdoutput" class="tab-pane fade show active">
   <br/>
-  <h4>Standard output</h4>
   <div class="card bg-light">
   <div class="card-body">
   <pre>
@@ -33,7 +32,6 @@ Job {{ job_id }}: standard streams
   </div>
   <div id="stderror" class="tab-pane fade">
   <br/>
-  <h4>Standard error</h4>
   <div class="card bg-light">
   <div class="card-body">
   <pre>

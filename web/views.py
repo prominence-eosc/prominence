@@ -225,7 +225,7 @@ def job_describe(request, pk):
     return JsonResponse({})
 
 @login_required
-def job_std_streams(request, pk):
+def job_logs(request, pk):
     user_name = request.user.username
     backend = ProminenceBackend(server.settings.CONFIG)
     (uid, identity, iwd, out, err, name, _) = backend.get_job_unique_id(pk)
@@ -244,7 +244,7 @@ def job_std_streams(request, pk):
     if not stderr:
         stderr = ''
 
-    return render(request, 'job-std-streams.html', {'job_id': pk, 'stdout': stdout, 'stderr': stderr})
+    return render(request, 'job-logs.html', {'job_id': pk, 'stdout': stdout, 'stderr': stderr})
 
 @login_required
 def workflow_describe(request, pk):
