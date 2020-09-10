@@ -56,11 +56,11 @@ Jobs
                      Assign a name and any arbitrary labels as key-value pairs.
                      <br/>
                      <br/>
-                     <b>Name</b><span class="text-secondary"> (Optional)</span><br/>
+		     <b>Name</b><span class="text-secondary"> <span data-feather="help-circle"></span>  (Optional)</span><br/>
 		     {{ form.name }}
 		     <br/>
                      <br/>
-                     <b>Labels</b><span class="text-secondary"> (Optional)</span><br/>
+		     <b>Labels</b><span class="text-secondary"> <span data-feather="help-circle"></span> (Optional)</span><br/>
                      {{ labels_formset.management_form }}
                      {% for label_form in labels_formset %}
                      <div class="label-formset">
@@ -74,7 +74,7 @@ Jobs
                      <b>Task type</b><br/>
                      {{ form.task_type }}
                      <br/><br/>
-                     <b>Container image</b><br/>
+		     <b>Container image</b> <span class="text-secondary"><span data-feather="help-circle"></span></span><br/>
                      {{ form.container_image }}
                      <br/><br/>
                      <b>Container runtime</b><br/>
@@ -83,7 +83,7 @@ Jobs
                      <b>Command</b><span class="text-secondary"> (Optional)</span><br/>
                      {{ form.command }}
                      <br/><br/>
-                     <b>Work directory</b><span class="text-secondary"> (Optional)</span><br/>
+		     <b>Work directory</b><span class="text-secondary"> <span data-feather="help-circle"></span> (Optional)</span><br/>
                      {{ form.workdir }}
                      <br/><br/>
                      <b>Environment variables</b><span class="text-secondary"> (Optional)</span><br/>
