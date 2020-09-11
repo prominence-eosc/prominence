@@ -101,14 +101,33 @@ def jobs(request):
         if request.GET['completed'] == 'true':
             completed = True
 
-    jobs_list = backend.list_jobs(jobs, user_name, active, completed, workflow, -1, False, [], None, True)
+    num = -1
+    if 'num' in request.GET:
+        num = int(request.GET['num'])
+
+    jobs_list = backend.list_jobs(jobs, user_name, active, completed, workflow, num, False, [], None, True)
     return render(request, 'jobs.html', {'job_list': jobs_list})
 
 @login_required
 def workflows(request):
     user_name = request.user.username
     backend = ProminenceBackend(server.settings.CONFIG)
-    workflows_list = backend.list_workflows([], user_name, True, False, -1, False, [], None, True)
+
+    active = True
+    if 'active' in request.GET:
+        if request.GET['active'] == 'false':
+            active = False
+
+    completed = False
+    if 'completed' in request.GET:
+        if request.GET['completed'] == 'true':
+            completed = True
+
+    num = -1
+    if 'num' in request.GET:
+        num = int(request.GET['num'])
+
+    workflows_list = backend.list_workflows([], user_name, active, completed, num, False, [], None, True)
     return render(request, 'workflows.html', {'workflow_list': workflows_list})
 
 @login_required
