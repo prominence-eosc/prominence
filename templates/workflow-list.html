@@ -1,6 +1,6 @@
 {% for workflow in workflow_list %}
   <tr>
-    <td class="align-middle">{{ workflow.id }}</td>
+    <td class="align-middle"><a href="{% url 'workflow_describe' workflow.id %}">{{ workflow.id }}</a></td>
     <td class="align-middle">{{ workflow.name }}</td>
     <td class="align-middle">
       {% if workflow.status == "running" %}
@@ -32,7 +32,6 @@
 	    <span data-feather="more-vertical"></span>
         </button>
 	<div class="dropdown-menu" aria-labelledby="dropdownMenuButtonWorkflow{{ workflow.id }}">
-          <a class="dropdown-item" href="{% url 'workflow_describe' workflow.id %}">Info</a>
           <a class="dropdown-item js-delete-workflow" data-url="{% url 'workflow_delete' workflow.id %}">Delete</a>
 	  <a class="dropdown-item" href="{% url 'jobs' %}?workflow_id={{ workflow.id }}&completed=true&active=true">Show jobs</a>
         </div>
