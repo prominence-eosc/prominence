@@ -32,6 +32,11 @@ Jobs
      formCssClass: 'dynamic-formset4'
    });
 </script>
+<script>
+$(document).ready(function(){
+    $('[data-toggle="tooltip"]').tooltip();   
+});
+</script>
 {% endblock %}
 {% block contentuser %}
 <h2><a href="https://prominence.cloud/jobs"><i class="feather-32" data-feather="arrow-left"></i></a> Create job</h2>
@@ -56,11 +61,11 @@ Jobs
                      Assign a name and any arbitrary labels as key-value pairs.
                      <br/>
                      <br/>
-		     <b>Name</b><span class="text-secondary"> <span data-feather="help-circle"></span>  (Optional)</span><br/>
+		     <b>Name</b><span class="text-secondary"> <span data-feather="help-circle" data-toggle="tooltip" title="Names must be less than 512 characters in length."></span>  (Optional)</span><br/>
 		     {{ form.name }}
 		     <br/>
                      <br/>
-		     <b>Labels</b><span class="text-secondary"> <span data-feather="help-circle"></span> (Optional)</span><br/>
+		     <b>Labels</b><span class="text-secondary"> <span data-feather="help-circle" data-toggle="tooltip" title="Each key and value must be a string of less than 512 characters. Keys can only contain alphanumeric characters ([a-z0-9A-Z]) while values can also contain dashes (-), underscores (_), dots (.) and forward slashes (/)."></span> (Optional)</span><br/>
                      {{ labels_formset.management_form }}
                      {% for label_form in labels_formset %}
                      <div class="label-formset">
@@ -74,7 +79,7 @@ Jobs
                      <b>Task type</b><br/>
                      {{ form.task_type }}
                      <br/><br/>
-		     <b>Container image</b> <span class="text-secondary"><span data-feather="help-circle"></span></span><br/>
+		     <b>Container image</b> <span class="text-secondary"><span data-feather="help-circle" data-toggle="tooltip" title="Container images can be obtained from Docker Hub, Singularity Hub, or a tarball or Singularity Image Format file from a URL or mounted filesystem."></span></span><br/>
                      {{ form.container_image }}
                      <br/><br/>
                      <b>Container runtime</b><br/>
