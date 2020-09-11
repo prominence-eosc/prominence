@@ -68,7 +68,7 @@ def validate_workflow(workflow):
         if len(workflow['name']) > 512:
             return (False, 'workflow name must be less than 512 characters in length')
 
-        if workflow['name'] != '' and not re.match(r'^[a-zA-Z0-9\-\_\s\.]+$', workflow['name']):
+        if workflow['name'] != '' and not re.match(r'^[a-zA-Z0-9\-\_\s]+$', workflow['name']):
             return (False, 'invalid workflow name')
 
     # Jobs
