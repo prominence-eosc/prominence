@@ -187,4 +187,4 @@ def list_workflows(self, workflow_ids, identity, active, completed, num, detail,
 
         wfs.append(wfj)
 
-    return wfs
+    return sorted(wfs, key=lambda wf: int(wf['id']))
