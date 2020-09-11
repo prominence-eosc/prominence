@@ -113,12 +113,12 @@ Jobs
                      {{ form.disk }}
                      <br/>
                      <br/>
-                     <b>Wall time</b> (hours)<br/>
+                     <b>Maximum wall time</b> (hours)<br/>
                      {{ form.walltime }}</td>
                   </div>
                   <div id="data" class="tab-pane fade">
                      <br/>
-		     <h6>Input files</h6>
+		     <b>Input files</b><br/>
                      Any small input files required by the job such as config files or scripts.
                      <br/>
                      <br/>
@@ -130,7 +130,7 @@ Jobs
                      {% endfor %}
                      <br/>
                      <br/>
-		     <h6>Artifacts</h6>
+		     <b>Artifacts</b><br/>
                      Additional input files which can be obtained from a URL or from object storage.
                      <br/>
                      <br/>
@@ -148,7 +148,7 @@ Jobs
                      {% endfor %}
                      <br/>
                      <br/>
-		     <h6>Storage</h6>
+		     <b>Storage</b><br/>
                      Optional storage to be automatically mounted and made available to jobs.
                      <br/>
                      <br/>
