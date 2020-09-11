@@ -178,7 +178,7 @@ def validate_workflow(workflow):
                 return (False, 'invalid item "%s" in policies' % item)
 
         if 'maximumRetries' in workflow['policies']:
-            if not str(workflow['policies']['maximumRetries']).isdigit():
+            if not isinstance(workflow['policies']['maximumRetries'], int):
                 return (False, 'the number of retries must be an integer')
 
             if workflow['policies']['maximumRetries'] < 1:
@@ -189,7 +189,7 @@ def validate_workflow(workflow):
 
     # Retries
     if 'maximumRetries' in workflow:
-        if not str(workflow['maximumRetries']).isdigit():
+        if not isinstance(workflow['maximumRetries'], int):
             return (False, 'the number of retries must be an integer')
 
         if workflow['maximumRetries'] < 1:
@@ -298,13 +298,13 @@ def validate_job(job):
                 return (False, 'invalid item "%s" in resources' % item)
 
         if 'nodes' in job['resources']:
-            if not str(job['resources']['nodes']).isdigit():
+            if not isinstance(job['resources']['nodes'], int):
                 return (False, 'number of nodes must be an integer')
             if job['resources']['nodes'] < 1:
                 return (False, 'number of nodes must be at least 1')
 
         if 'cpus' in job['resources']:
-            if not str(job['resources']['cpus']).isdigit():
+            if not isinstance(job['resources']['cpus'], int):
                 return (False, 'number of cpus must be an integer')
             if job['resources']['cpus'] < 1:
                 return (False, 'number of cpus must be at least 1')
@@ -312,7 +312,7 @@ def validate_job(job):
             return (False, 'number of cpus must be defined')
 
         if 'memory' in job['resources']:
-            if not str(job['resources']['memory']).isdigit():
+            if not isinstance(job['resources']['memory'], int):
                 return (False, 'memory must be an integer')
             if job['resources']['memory'] < 1:
                 return (False, 'memory must be at least 1')
@@ -320,13 +320,13 @@ def validate_job(job):
             return (False, 'memory (in GB) must be defined')
 
         if 'disk' in job['resources']:
-            if not str(job['resources']['disk']).isdigit():
+            if not isinstance(job['resources']['disk'], int):
                 return (False, 'required disk must be an integer')
             if job['resources']['disk'] < 1:
                 return (False, 'disk must be at least 1')
 
         if 'walltime' in job['resources']:
-            if not str(job['resources']['walltime']).isdigit():
+            if not isinstance(job['resources']['walltime'], int):
                 return (False, 'required walltime must be an integer')
             if job['resources']['walltime'] < 1:
                 return (False, 'walltime must be at least 1 minute')
@@ -357,7 +357,7 @@ def validate_job(job):
                     return (False, 'environment variables must be defined as a dict')
 
             if 'procsPerNode' in task:
-                if not str(task['procsPerNode']).isdigit():
+                if not isinstance(task['procsPerNode'], int):
                     return (False, 'number of processes per node must be an integer')
                 if task['procsPerNode'] < 1:
                     return (False, 'number of processes per node must be at least 1')
@@ -472,7 +472,7 @@ def validate_job(job):
                 return (status, msg)
 
         if 'maximumRetries' in job['policies']:
-            if not str(job['policies']['maximumRetries']).isdigit():
+            if not isinstance(job['policies']['maximumRetries'], int):
                 return (False, 'the number of retries must be an integer')
 
             if job['policies']['maximumRetries'] < 1:
@@ -482,7 +482,7 @@ def validate_job(job):
                 return (False, 'the number of retries must be less than 6')
 
         if 'maximumTimeInQueue' in job['policies']:
-            if not str(job['policies']['maximumTimeInQueue']).isdigit():
+            if not isinstance(job['policies']['maximumTimeInQueue'], int):
                 return (False, 'the maximum time in queue must be an integer')
 
             if job['policies']['maximumTimeInQueue'] < 1:
@@ -492,7 +492,7 @@ def validate_job(job):
                 return (False, 'the maximum time in queue must be less than 44640')
 
         if 'maximumIdleTimePerResource' in job['policies']:
-            if not str(job['policies']['maximumIdleTimePerResource']).isdigit():
+            if not isinstance(job['policies']['maximumIdleTimePerResource'], int):
                 return (False, 'the maximum idle time per resource must be an integer')
 
             if job['policies']['maximumIdleTimePerResource'] < 1:
