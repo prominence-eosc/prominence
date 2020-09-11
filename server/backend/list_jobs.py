@@ -441,6 +441,6 @@ def list_jobs(self, job_ids, identity, active, completed, workflow, num, detail,
         jobs.append(jobj)
 
         # Sort jobs by id
-        jobs = sorted(jobs, key=lambda k: k['id'])
+        jobs = sorted(jobs, key=lambda job: job['id'])
 
     return jobs
