@@ -19,6 +19,17 @@
       New workflow
     </button>
 
+      <div class="dropdown">
+          <button class="btn btn-outline-dark" type="button" id="dropdownMenuButtonWorkflow" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+            Show
+        </button>
+        <div class="dropdown-menu" aria-labelledby="dropdownMenuButtonWorkflow">
+          <a class="dropdown-item" href="/workflows">Show active workflows</a>
+          <a class="dropdown-item" href="/workflows?completed=true&active=false&num=1">Show last completed workflow</a>
+          <a class="dropdown-item" href="/workflows?completed=true&active=false&num=10">Show last 10 completed workflows</a>
+        </div>
+      </div>
+
     <form class="form-inline">
       <input class="form-control" type="search" placeholder="Search/filter" aria-label="Search">
       <button class="btn btn-outline-dark" type="submit"><span data-feather="search"></span></button>

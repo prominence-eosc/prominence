@@ -19,6 +19,17 @@
      New job
    </a>
 
+      <div class="dropdown">
+          <button class="btn btn-outline-dark" type="button" id="dropdownMenuButtonJob" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+            Show
+        </button>
+        <div class="dropdown-menu" aria-labelledby="dropdownMenuButtonJob">
+          <a class="dropdown-item" href="/jobs">Show active jobs</a>
+          <a class="dropdown-item" href="/jobs?completed=true&active=false&num=1">Show last completed job</a>
+          <a class="dropdown-item" href="/jobs?completed=true&active=false&num=10">Show last 10 completed jobs</a>
+        </div>
+      </div>
+
     <form class="form-inline">
       <input class="form-control" type="search" placeholder="Search/filter" aria-label="Search">
       <button class="btn btn-outline-dark" type="submit"><span data-feather="search"></span></button>
