@@ -91,7 +91,17 @@ def jobs(request):
         jobs = [int(request.GET.get('workflow_id'))]
         workflow = True
 
-    jobs_list = backend.list_jobs(jobs, user_name, True, False, workflow, -1, False, [], None, True)
+    active = True
+    if 'active' in request.GET:
+        if request.GET['active'] == 'false':
+            active = False
+
+    completed = False
+    if 'completed' in request.GET:
+        if request.GET['completed'] == 'true':
+            completed = True
+
+    jobs_list = backend.list_jobs(jobs, user_name, active, completed, workflow, -1, False, [], None, True)
     return render(request, 'jobs.html', {'job_list': jobs_list})
 
 @login_required
