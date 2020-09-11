@@ -6,11 +6,11 @@
       {% if job.status == "running" %}
         <span class="badge badge-success">Running</span>
       {% elif job.status == "failed" %}
-        <span class="badge badge-danger">Failed</span>
+      <span class="badge badge-danger" data-toggle="tooltip" title="{{ job.statusReason }}">Failed</span>
       {% elif job.status == "deleted" %}
         <span class="badge badge-secondary">Deleted</span>
       {% elif job.status == "killed" %}
-        <span class="badge badge-danger">Killed</span>
+      <span class="badge badge-danger" data-toggle="tooltip" title="{{ job.statusReason }}">Killed</span>
       {% elif job.status == "pending" %}
         <span class="badge badge-info">Pending</span>
       {% elif job.status == "completed" %}
