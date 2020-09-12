@@ -12,7 +12,7 @@
       {% elif job.status == "killed" %}
       <span class="badge badge-danger" data-toggle="tooltip" title="{{ job.statusReason }}">Killed</span>
       {% elif job.status == "pending" %}
-        <span class="badge badge-info">Pending</span>
+      <span class="badge badge-info" data-toggle="tooltip" title="{{ job.statusReason }}">Pending</span>
       {% elif job.status == "completed" %}
         <span class="badge badge-light">Completed</span>
       {% endif %}
