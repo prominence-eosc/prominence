@@ -1,6 +1,7 @@
 """
 API views for managing workflows
 """
+import re
 import uuid
 
 from rest_framework.authentication import TokenAuthentication
@@ -50,11 +51,17 @@ class WorkflowsView(views.APIView):
         if not workflow_status:
             return Response({'error': msg}, status=status.HTTP_400_BAD_REQUEST)
 
-        # Set groups TODO: this is not quite right yet
+        # Set groups
         groups = []
         for entitlement in request.user.entitlements.split(','):
-            if 'member' in entitlement:
-                groups.append(entitlement)
+            match = re.match(r'urn:mace:egi.eu:group:(\w+):role=member#aai.egi.eu', entitlement)
+            if match:
+                if match.group(1) not in groups:
+                    groups.append(match.group(1))
+
+        # If user not a member of any VOs, assign to a default group
+        if not groups:
+            groups.append('default')
 
         # Create workflow
         (return_code, data) = self._backend.create_workflow(request.user.username,
