@@ -4,6 +4,7 @@ import json
 import logging
 from logging.handlers import RotatingFileHandler
 import os
+import socket
 import sys
 import time
 import requests
@@ -11,6 +12,40 @@ from requests.auth import HTTPBasicAuth
 import classad
 
 import send_email
+
+def get_job_json_output(iwd):
+    try:
+        filename = '%s/promlet.0.json' % iwd
+        with open(filename, 'r') as json_file:
+            return json.load(json_file)
+    except Exception as err:
+        logger.error('[%d] Unable to open JSON promlet due to: %s', job_id_routed, err)
+
+    return {}
+
+def send_to_socket(job_id, identity, infra_site, promlet_json):
+    """
+    Sends InfluxDB formatted accounting record to Telegraf socket
+    """
+    telegraf_socket = "/tmp/telegraf.sock"
+    sock = socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM)
+    sock.connect(telegraf_socket)
+
+    cputime = 0
+    walltime = 0
+    if 'tasks' in promlet_json:
+        for task in promlet_json['tasks']:
+            if 'cpuTimeUsage' in task:
+                cputime += task['cpuTimeUsage']
+            if 'wallTimeUsage' in task:
+                walltime += task['wallTimeUsage']
+
+    message = "accounting,identity=%s,infra_site=%s job_id=%d,walltime=%d,cputime=%d\n" % (identity, infra_site, job_id, walltime, cputime)
+
+    try:
+        sock.send(message.encode('utf8'))
+    except Exception as exc:
+        logger.error('[%d] Unable to write accounting record to Telegraf socket due to: %s', job_id, exc)
 
 def format_duration(tis):
     """
@@ -168,6 +203,11 @@ def cleanup_infrastructure():
     exit_code = -1
 
     logger.info('[%s] Started working on infrastructure with id %s of type %s on site %s with state %s', job_id, infra_id, infra_type, infra_site, infra_state)
+
+    promlet_json = get_job_json_output(iwd)
+
+    # Send accounting record to Telegraf
+    send_to_socket(cluster_id_user, identity, infra_site, promlet_json)
 
     # Send any notifications if necessary, currently we only consider completed jobs
     if job_status == 4:
