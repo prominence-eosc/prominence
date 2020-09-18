@@ -13,13 +13,13 @@ import classad
 
 import send_email
 
-def get_job_json_output(iwd):
+def get_job_json_output(iwd, job_id):
     try:
         filename = '%s/promlet.0.json' % iwd
         with open(filename, 'r') as json_file:
             return json.load(json_file)
     except Exception as err:
-        logger.error('[%d] Unable to open JSON promlet due to: %s', job_id_routed, err)
+        logger.error('[%d] Unable to open JSON promlet due to: %s', job_id, err)
 
     return {}
 
@@ -204,7 +204,7 @@ def cleanup_infrastructure():
 
     logger.info('[%s] Started working on infrastructure with id %s of type %s on site %s with state %s', job_id, infra_id, infra_type, infra_site, infra_state)
 
-    promlet_json = get_job_json_output(iwd)
+    promlet_json = get_job_json_output(iwd, cluster_id)
 
     # Send accounting record to Telegraf
     send_to_socket(cluster_id_user, identity, infra_site, promlet_json)
