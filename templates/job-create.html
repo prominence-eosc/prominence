@@ -123,8 +123,8 @@ $(document).ready(function(){
                   </div>
                   <div id="data" class="tab-pane fade">
                      <br/>
-		     <b>Input files</b><br/>
-                     Any small input files required by the job such as config files or scripts.
+		     <b>Input files</b><span class="text-secondary"> <span data-feather="help-circle" data-toggle="tooltip" title="Files must be less than 512 KB in size"></span></span><br/>
+                     Any small input files required by the job such as configuration files or scripts.
                      <br/>
                      <br/>
                      {{ inputs_formset.management_form }}
@@ -192,7 +192,7 @@ $(document).ready(function(){
 		     <table>
 			     <tr>
 				     <td>
-					     Send email when job is finished
+					     Send emails when jobs finish
 				     </td>
 				     <td>
 					     {{ form.notify_email_job_finished }}
