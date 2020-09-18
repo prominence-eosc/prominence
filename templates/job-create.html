@@ -39,7 +39,7 @@ $(document).ready(function(){
 </script>
 {% endblock %}
 {% block contentuser %}
-<h2><a href="https://prominence.cloud/jobs"><i class="feather-32" data-feather="arrow-left"></i></a> Create job</h2>
+<h2><a href="/jobs"><i class="feather-32" data-feather="arrow-left"></i></a> Create job</h2>
 <br/>
 <form enctype="multipart/form-data" method="post" action="{% url 'job_create' %}">
    {% csrf_token %}
