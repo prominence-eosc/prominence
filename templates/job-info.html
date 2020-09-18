@@ -12,6 +12,17 @@ Job {{ job.id }}: details
 {% block contentuser %}
 <h2><a href="#" onclick="history.go(-1)"><i class="feather-32" data-feather="arrow-left"></i></a> Job {{ job.id }}: details</h2>
 
+<div class="project-tab">
+<div class="container">
+<ul class="nav nav-tabs">
+  <li class="nav-item"><a class="nav-link active" data-toggle="tab" href="#details">Details</a></li>
+  <li class="nav-item"><a class="nav-link" data-toggle="tab" href="#monitoring">Monitoring</a></li>
+</ul>
+
+<div class="tab-content">
+  <div id="details" class="tab-pane fade show active">
+  <br/>
+
 <b>Name</b>
 <br/>
 {{ job.name }}
@@ -112,6 +123,14 @@ None
 {% else %}
 Not yet assigned
 {% endif %}
+
+  </div>
+  <div id="monitoring" class="tab-pane fade">
+  <br/>
+  </div>
+</div>
+</div>
+</div>
 
 <br/>
 <br/>
