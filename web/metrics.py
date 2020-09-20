@@ -29,10 +29,12 @@ class JobMetrics(object):
         return jobs_idle, jobs_running
 
 class JobResourceUsageMetrics(object):
-    def __init__(self, url, token, org, bucket):
-        self.client = influxdb_client.InfluxDBClient(url=url, token=token, org=org)
-        self.bucket = bucket
-        self.org = org
+    def __init__(self, config):
+        self.client = influxdb_client.InfluxDBClient(url=config['INFLUXDB_URL'],
+                                                     token=config['INFLUXDB_TOKEN'],
+                                                     org=config['INFLUXDB_ORG'])
+        self.bucket = config['INFLUXDB_BUCKET']
+        self.org = config['INFLUXDB_ORG']
 
     def get_job(self, job_id, since):
         query_api = self.client.query_api()
