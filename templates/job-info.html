@@ -42,7 +42,7 @@ function renderChart(data, label) {
 }
 
 function getChartData(job_id) {
-    $("#loadingMessage").html('<img src="./giphy.gif" alt="" srcset="">');
+    $("#loadingMessage").html('<span data-feather="loader"></span>');
     $.ajax({
         url: "/jobs/" + job_id + "/usage/",
         success: function (result) {
