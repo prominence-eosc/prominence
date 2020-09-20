@@ -266,7 +266,8 @@ def job_json(request, pk):
 @login_required
 def job_usage(request, pk):
     metrics = JobResourceUsageMetrics(server.settings.CONFIG)
-    return JsonResponse(metrics.get_job(pk, 6000))
+    # TODO: need to specify the range in a better way than this
+    return JsonResponse(metrics.get_job(pk, 20160))
 
 @login_required
 def job_logs(request, pk):
