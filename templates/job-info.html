@@ -7,6 +7,57 @@ Job {{ job.id }}: details
 {% endblock %}
 
 {% block javascript %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.9.3/Chart.bundle.js" integrity="sha512-G8JE1Xbr0egZE5gNGyUm1fF764iHVfRXshIoUWCTPAbKkkItp/6qal5YAHXrxEu4HNfPTQs6HOu3D5vCGS1j3w==" crossorigin="anonymous"></script>
+<script>
+function renderChart(data, label) {
+    var ctx = document.getElementById('myChart').getContext('2d');
+    var chart = new Chart(ctx, {
+        type: 'line',
+        data: {
+            datasets: [{
+                label: label,
+                borderColor: 'rgb(0, 0, 0)',
+		fill: false,
+		data: data
+            }]
+        },
+        options: {
+            legend: {
+	        display: false
+	    },
+            scales: {
+                xAxes: [{
+                    type: 'time',
+                    distribution: 'linear',
+		    time: {
+                    displayFormats: {
+                        hour: 'HH',
+                        minute: 'HH:mm'}
+		    }
+	        }]
+	    }
+        }
+    });
+}
+
+function getChartData(job_id) {
+    $("#loadingMessage").html('<img src="./giphy.gif" alt="" srcset="">');
+    $.ajax({
+        url: "/jobs/" + job_id + "/usage/",
+        success: function (result) {
+            $("#loadingMessage").html("");
+            renderChart(result.memory, 'Memory');
+        },
+        error: function (err) {
+            $("#loadingMessage").html("Error");
+        }
+    });
+}
+
+$(document).ready(function () {
+    getChartData({{ job.id }});
+});
+</script>
 {% endblock %}
 
 {% block contentuser %}
@@ -127,8 +178,14 @@ Not yet assigned
   </div>
   <div id="monitoring" class="tab-pane fade">
   <br/>
-  <h6>CPU UTILIZATION</h6>
-  <h6>MEMORY UTILIZATION</h6>
+  <h6>Memory utilisation</h6>
+<div class="container">
+<div class="row">
+	<div class="col-sm-8">
+<canvas id="myChart" width="800" height="400"></canvas>
+	</div>
+</div>
+</div>
   </div>
 </div>
 </div>
