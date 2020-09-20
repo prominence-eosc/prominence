@@ -8,7 +8,7 @@
     </a>
    </li>
    <li class="nav-item">
-    <a class="nav-link {% if request.resolver_match.view_name == 'jobs' %}active{% endif %}" href="/jobs">
+    <a class="nav-link {% if request.resolver_match.view_name == 'jobs' or request.resolver_match.view_name == 'job_describe' or request.resolver_match.view_name == 'job_create' or request.resolver_match.view_name == 'job_logs' %}active{% endif %}" href="/jobs">
      <span data-feather="square"></span>
      Jobs
     </a>
