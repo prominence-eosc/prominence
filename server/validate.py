@@ -255,6 +255,7 @@ def validate_job(job):
                         'walltime']
 
     policies_valids = ['maximumRetries',
+                       'maximumRetriesPerTask',
                        'preemptible',
                        'maximumTimeInQueue',
                        'maximumIdleTimePerResource',
@@ -480,6 +481,16 @@ def validate_job(job):
 
             if job['policies']['maximumRetries'] > 6:
                 return (False, 'the number of retries must be less than 6')
+
+        if 'maximumRetriesPerTask' in job['policies']:
+            if not isinstance(job['policies']['maximumRetriesPerTask'], int):
+                return (False, 'the number of retries per task must be an integer')
+
+            if job['policies']['maximumRetriesPerTask'] < 1:
+                return (False, 'the number of retries per task must be greater than 0')
+
+            if job['policies']['maximumRetriesPerTask'] > 6:
+                return (False, 'the number of retries per task must be less than 6')
 
         if 'maximumTimeInQueue' in job['policies']:
             if not isinstance(job['policies']['maximumTimeInQueue'], int):

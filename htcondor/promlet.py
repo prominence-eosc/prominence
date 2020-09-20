@@ -1299,8 +1299,8 @@ def run_tasks(job, path, is_batch):
     """
     num_retries = 0
     if 'policies' in job:
-        if 'maximumRetries' in job['policies']:
-            num_retries = job['policies']['maximumRetries']
+        if 'maximumRetriesPerTask' in job['policies']:
+            num_retries = job['policies']['maximumRetriesPerTask']
 
     # Move input files into userhome directory
     move_inputs(job, path)
