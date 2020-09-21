@@ -41,7 +41,6 @@ def list_jobs(self, job_ids, identity, active, completed, workflow, num, detail,
                       'ProminenceWorkflowName',
                       'ProminenceExitCode',
                       'ProminencePreemptible',
-                      'ProminenceImagePullSuccess',
                       'Iwd',
                       'Args']
     jobs_state_map = {1:'idle',
@@ -209,11 +208,6 @@ def list_jobs(self, job_ids, identity, active, completed, workflow, num, detail,
                     jobj['statusReason'] = 'Unable to stageout output to object storage'
 
         # Return status as failed if container image pull failed
-        if 'ProminenceImagePullSuccess' in job:
-            if job['ProminenceImagePullSuccess'] == 1:
-                jobj['status'] = 'failed'
-                jobj['statusReason'] = 'Container image pull failed'
-
         for task in tasks_u:
             if 'imagePullStatus' in task:
                 if task['imagePullStatus'] == 'failed':

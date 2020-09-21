@@ -50,7 +50,6 @@ PROMINENCE_ATTRS_TO_COPY = ProminenceInfrastructureType, \
                            ProminenceOutputLocationsUser, \
                            ProminenceOutputDirLocationsUser, \
                            ProminenceImagePullTime, \
-                           ProminenceImagePullSuccess, \
                            ProminenceExecuteTime, \
                            ProminenceExitCode, \
                            JobCurrentStartExecutingDate, \
