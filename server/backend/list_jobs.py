@@ -385,6 +385,15 @@ def list_jobs(self, job_ids, identity, active, completed, workflow, num, detail,
                         else:
                             new_tasks_u.append(task_u)
                     execution['tasks'] = new_tasks_u
+
+                stagein_time = 0
+                if 'stagein' in job_u:
+                    for artifact in job_u['stagein']:
+                        if 'time' in artifact:
+                            stagein_time += artifact['time']
+
+                    execution['artifactDownloadTime'] = stagein_time
+
                 jobj['execution'] = execution
 
             if 'ProminenceJobUniqueIdentifier' in job:
