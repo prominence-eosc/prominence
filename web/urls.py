@@ -21,7 +21,8 @@ urlpatterns = [
     re_path(r'^workflows/$', views.workflows, name='workflows'),
     re_path(r'^workflows/(?P<pk>\d+)/delete/$', views.workflow_delete, name='workflow_delete'),
     re_path(r'^workflows/(?P<pk>\d+)$', views.workflow_describe, name='workflow_describe'),
-    re_path(r'^create-token/$', views.create_token, name='create-token'),
-    re_path(r'^revoke-token/$', views.revoke_token, name='revoke-token'),
-    re_path(r'^register-token/$', views.register_token, name='register-token'),
+    re_path(r'^user/usage/$', views.user_usage, name='user-usage'),
+    re_path(r'^user/create-token/$', views.create_token, name='create-token'),
+    re_path(r'^user/revoke-token/$', views.revoke_token, name='revoke-token'),
+    re_path(r'^user/register-token/$', views.register_token, name='register-token'),
 ]
