@@ -50,7 +50,7 @@ class JobResourceUsageMetrics(object):
         try:
             results = self.client.query_api().query(org=self.org, query=query)
         except:
-            return return {'memory': []}
+            return {'memory': []}
 
         memory = []
 
