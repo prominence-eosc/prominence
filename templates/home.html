@@ -34,9 +34,12 @@ function renderChart(data_running, data_idle, label) {
                     type: 'time',
                     distribution: 'linear',
 		    time: {
+			    min: '{{ xaxis_min }}',
+			    max: '{{ xaxis_max }}',
                     displayFormats: {
                         hour: 'HH',
-                        minute: 'HH:mm'}
+                        minute: 'HH:mm',
+                        second: 'HH:mm:ss'}
 		    }
 	        }]
 	    }

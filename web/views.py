@@ -1,3 +1,4 @@
+from datetime import datetime, timedelta
 import uuid
 import requests
 from requests.auth import HTTPBasicAuth
@@ -19,7 +20,9 @@ from .metrics import JobMetrics, JobResourceUsageMetrics
 
 def index(request):
     if request.user.is_authenticated:
-        return render(request, 'home.html')
+        xaxis_min = (datetime.now() - timedelta(hours=24)).strftime("%Y-%m-%dT%H:%M:%SZ")
+        xaxis_max = datetime.now().strftime("%Y-%m-%dT%H:%M:%SZ")
+        return render(request, 'home.html', {'xaxis_min': xaxis_min, 'xaxis_max': xaxis_max})
     else:
         return render(request, 'index.html')
 
