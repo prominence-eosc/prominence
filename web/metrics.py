@@ -14,7 +14,10 @@ class JobMetrics(object):
                  '|> filter(fn:(r) => r._measurement == "jobs_by_identity")'
                  '|> filter(fn:(r) => r.identity == "' + identity + '")')
 
-        results = self.client.query_api().query(org=self.org, query=query)
+        try:
+            results = self.client.query_api().query(org=self.org, query=query)
+        except:
+            return {'idle': [], 'running': []}
 
         jobs_running = []
         jobs_idle = []
@@ -44,7 +47,10 @@ class JobResourceUsageMetrics(object):
                  '|> filter(fn:(r) => r._measurement == "jobs_resource_usage")'
                  '|> filter(fn:(r) => r.id == "' + str(job_id) + '")')
 
-        results = self.client.query_api().query(org=self.org, query=query)
+        try:
+            results = self.client.query_api().query(org=self.org, query=query)
+        except:
+            return return {'memory': []}
 
         memory = []
 
