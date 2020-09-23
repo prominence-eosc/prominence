@@ -1,14 +1,14 @@
 import influxdb_client
 
 class JobMetrics(object):
-    def __init__(self, url, token, org, bucket):
-        self.client = influxdb_client.InfluxDBClient(url=url, token=token, org=org)
-        self.bucket = bucket
-        self.org = org
+    def __init__(self, config):
+        self.client = influxdb_client.InfluxDBClient(url=config['INFLUXDB_URL'],
+                                                     token=config['INFLUXDB_TOKEN'],
+                                                     org=config['INFLUXDB_ORG'])
+        self.bucket = config['INFLUXDB_BUCKET']
+        self.org = config['INFLUXDB_ORG']
 
     def get_jobs(self, identity, since):
-        query_api = self.client.query_api()
-
         query = (' from(bucket:"' + self.bucket + '")'
                  '|> range(start: -"' + since + 'm)'
                  '|> filter(fn:(r) => r._measurement == "jobs_by_identity")'
@@ -21,12 +21,14 @@ class JobMetrics(object):
 
         for table in results:
             for row in table.records:
+                raw_time = row.values["_time"]
+                new_time = raw_time.strftime("%Y-%m-%dT%H:%M:%SZ")
                 if row.values["_field"] == "idle":
-                    jobs_idle.append({row.values["_time"], row.values["_value"]})
+                    jobs_idle.append({'t': new_time, 'y': int(row.values["_value"])})
                 if row.values["_field"] == "running":
-                    jobs_running.append({row.values["_time"], row.values["_value"]})
+                    jobs_running.append({'t': new_time, 'y': int(row.values["_value"])})
 
-        return jobs_idle, jobs_running
+        return {'idle': jobs_idle, 'running': jobs_running}
 
 class JobResourceUsageMetrics(object):
     def __init__(self, config):
@@ -37,8 +39,6 @@ class JobResourceUsageMetrics(object):
         self.org = config['INFLUXDB_ORG']
 
     def get_job(self, job_id, since):
-        query_api = self.client.query_api()
-
         query = (' from(bucket:"' + self.bucket + '")'
                  '|> range(start: -' + str(since) + 'm)'
                  '|> filter(fn:(r) => r._measurement == "jobs_resource_usage")'
