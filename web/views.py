@@ -272,8 +272,8 @@ def job_usage(request, pk):
 @login_required
 def user_usage(request):
     user_name = request.user.username
-    metrics = JobUsageMetrics(server.settings.CONFIG)
-    return JsonResponse(metrics.get_jobs(1440))
+    metrics = JobMetrics(server.settings.CONFIG)
+    return JsonResponse(metrics.get_jobs(user_name, 1440))
 
 @login_required
 def job_logs(request, pk):
