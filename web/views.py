@@ -15,7 +15,7 @@ from server.backend import ProminenceBackend
 from server.validate import validate_job
 import server.settings
 from .utilities import create_job
-from .metrics import JobResourceUsageMetrics
+from .metrics import JobMetrics, JobResourceUsageMetrics
 
 def index(request):
     if request.user.is_authenticated:
@@ -268,6 +268,12 @@ def job_usage(request, pk):
     metrics = JobResourceUsageMetrics(server.settings.CONFIG)
     # TODO: need to specify the range in a better way than this
     return JsonResponse(metrics.get_job(pk, 20160))
+
+@login_required
+def user_usage(request):
+    user_name = request.user.username
+    metrics = JobUsageMetrics(server.settings.CONFIG)
+    return JsonResponse(metrics.get_jobs(1440))
 
 @login_required
 def job_logs(request, pk):
