@@ -3,22 +3,28 @@
 {% block javascript %}
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.9.3/Chart.bundle.js" integrity="sha512-G8JE1Xbr0egZE5gNGyUm1fF764iHVfRXshIoUWCTPAbKkkItp/6qal5YAHXrxEu4HNfPTQs6HOu3D5vCGS1j3w==" crossorigin="anonymous"></script>
 <script>
-  function renderChart(data_running, data_idle, label) {
-      var ctx = document.getElementById('recent-jobs-chart').getContext('2d');
+  function renderChartByState(data_running, data_idle, label) {
+      var ctx = document.getElementById('recent-jobs-by-state-chart').getContext('2d');
       var chart = new Chart(ctx, {
-          type: 'line',
+          type: 'bar',
           data: {
               datasets: [{
                   label: 'Running',
-                  borderColor: 'rgb(0, 0, 0)',
+                  borderColor: 'rgb(0, 255, 0)',
+                  backgroundColor: 'rgb(0, 255, 0)',
+		      borderWidth: 1,
   		fill: false,
+		      steppedLine: true,
   		pointRadius: 0,
   		data: data_running
               },
               {
                   label: 'Idle',
                   borderColor: 'rgb(0, 0, 255)',
+                  backgroundColor: 'rgb(0, 0, 255)',
+		      borderWidth: 1,
   		fill: false,
+		      steppedLine: true,
   		pointRadius: 0,
   		data: data_idle
               }],
@@ -38,20 +44,24 @@
                           hour: 'HH',
                           minute: 'HH:mm',
                           second: 'HH:mm:ss'}
-  		    }
-  	        }]
+  		    },
+			  stacked: true
+  	        }],
+                   yAxes: [{
+                   stacked: true
+               }]
   	    }
           }
       });
   }
   
-  function getChartData() {
+  function getChartDataByState() {
       $("#loadingMessage").html('<span data-feather="loader"></span>');
       $.ajax({
           url: "/user/usage/",
           success: function (result) {
               $("#loadingMessage").html("");
-              renderChart(result.running, result.idle, 'Recent jobs');
+              renderChartByState(result.running, result.idle, 'Recent jobs');
           },
           error: function (err) {
               $("#loadingMessage").html("Error");
@@ -59,22 +69,87 @@
       });
   }
   
+  function renderChartByCloud(data, label) {
+      var ctx = document.getElementById('recent-jobs-by-cloud-chart').getContext('2d');
+      var chart = new Chart(ctx, {
+          type: 'bar',
+          data: {
+              datasets: data
+          },
+          options: {
+              legend: {
+  	        display: true
+  	    },
+              scales: {
+                  xAxes: [{
+                      type: 'time',
+                      distribution: 'linear',
+  		    time: {
+  			    min: '{{ xaxis_min }}',
+  			    max: '{{ xaxis_max }}',
+                      displayFormats: {
+                          hour: 'HH',
+                          minute: 'HH:mm',
+                          second: 'HH:mm:ss'
+		      }
+  		    },
+			  stacked: true
+  	        }],
+             yAxes: [{
+                stacked: true
+            }]
+  	    }
+          }
+      });
+  }
+  
+  function getChartDataByCloud() {
+      $("#loadingMessage").html('<span data-feather="loader"></span>');
+      $.ajax({
+          url: "/user/usage/?by-resource",
+          success: function (result) {
+              $("#loadingMessage").html("");
+              renderChartByCloud(result.data, 'Recent jobs');
+          },
+          error: function (err) {
+              $("#loadingMessage").html("Error");
+          }
+      });
+  }
+
   $(document).ready(function () {
-      getChartData();
+      getChartDataByState();
+      getChartDataByCloud();
   });
+  
 </script>
 {% endblock %}
 {% block contentuser %}
+<div class="container">
 <div class="card">
   <div class="card-body">
-    <h6 class="card-title">Recent job history</h6>
+    <h6 class="card-title">Recent jobs by state</h6>
     <div class="container">
       <div class="row">
         <div class="col-sm-8">
-          <canvas id="recent-jobs-chart" width="800" height="300"></canvas>
+          <canvas id="recent-jobs-by-state-chart" width="800" height="300"></canvas>
         </div>
       </div>
     </div>
   </div>
+</div>
+<br/>
+<div class="card">
+  <div class="card-body">
+    <h6 class="card-title">Recent jobs by resource</h6>
+    <div class="container">
+      <div class="row">
+        <div class="col-sm-8">
+          <canvas id="recent-jobs-by-cloud-chart" width="800" height="300"></canvas>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
 </div>
 {% endblock %}
