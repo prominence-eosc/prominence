@@ -1,6 +1,9 @@
 import influxdb_client
 
-class JobMetrics(object):
+class Metrics:
+    """
+    Base class for setting up configuration for accessing InfluxDB
+    """
     def __init__(self, config):
         self.client = influxdb_client.InfluxDBClient(url=config['INFLUXDB_URL'],
                                                      token=config['INFLUXDB_TOKEN'],
@@ -8,6 +11,10 @@ class JobMetrics(object):
         self.bucket = config['INFLUXDB_BUCKET']
         self.org = config['INFLUXDB_ORG']
 
+class JobMetrics(Metrics):
+    """
+    Get idle and running jobs for the specified user
+    """
     def get_jobs(self, identity, since):
         query = (' from(bucket:"' + self.bucket + '")'
                  '|> range(start: -' + str(since) + 'm)'
@@ -33,14 +40,10 @@ class JobMetrics(object):
 
         return {'idle': jobs_idle, 'running': jobs_running}
 
-class JobMetricsByCloud(object):
-    def __init__(self, config):
-        self.client = influxdb_client.InfluxDBClient(url=config['INFLUXDB_URL'],
-                                                     token=config['INFLUXDB_TOKEN'],
-                                                     org=config['INFLUXDB_ORG'])
-        self.bucket = config['INFLUXDB_BUCKET']
-        self.org = config['INFLUXDB_ORG']
-
+class JobMetricsByCloud(Metrics):
+    """
+    Get running jobs by resource for the specified user
+    """
     def _create_dataset(self, identifier, label, data):
         colors = []
         colors.append([0, 0, 0])
@@ -71,6 +74,8 @@ class JobMetricsByCloud(object):
             return []
 
         data = {}
+        sites = []
+        times = []
 
         for table in results:
             for row in table.records:
@@ -80,7 +85,25 @@ class JobMetricsByCloud(object):
 
                 if site not in data:
                     data[site] = []
+                    sites.append(site)
                 data[site].append({'t': new_time, 'y': int(row.values["_value"])})
+                if new_time not in times:
+                    times.append(new_time)
+
+        times = sorted(times)
+
+        # For chart.js stacked bar charts we need to ensure that every dataset has a value at the
+        # same time
+        for site in data:
+            new = []
+            for time in times:
+                value = 0
+                for myvalues in data[site]:
+                    if time == myvalues['t']:
+                        value = myvalues['y']
+                pair = ({'t': time, 'y': value})
+                new.append(pair)
+            data[site] = new
 
         counter = 0
         results = []
@@ -90,14 +113,10 @@ class JobMetricsByCloud(object):
 
         return {'data': results}
 
-class JobResourceUsageMetrics(object):
-    def __init__(self, config):
-        self.client = influxdb_client.InfluxDBClient(url=config['INFLUXDB_URL'],
-                                                     token=config['INFLUXDB_TOKEN'],
-                                                     org=config['INFLUXDB_ORG'])
-        self.bucket = config['INFLUXDB_BUCKET']
-        self.org = config['INFLUXDB_ORG']
-
+class JobResourceUsageMetrics(Metrics):
+    """
+    Get resource usage metrics for the specified job
+    """
     def get_job(self, job_id, since):
         query = (' from(bucket:"' + self.bucket + '")'
                  '|> range(start: -' + str(since) + 'm)'
