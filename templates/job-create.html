@@ -1,5 +1,6 @@
 {% extends 'user-base.html' %}
 {% load static %}
+{% load widget_tweaks %}
 {% block title %}
 Jobs
 {% endblock %}
@@ -61,11 +62,16 @@ $(document).ready(function(){
                      Assign a name and any arbitrary labels as key-value pairs.
                      <br/>
                      <br/>
-		     <b>Name</b><span class="text-secondary"> <span data-feather="help-circle" data-toggle="tooltip" title="Names must be less than 512 characters in length."></span>  (Optional)</span><br/>
-		     {{ form.name }}
-		     <br/>
-                     <br/>
-		     <b>Labels</b><span class="text-secondary"> <span data-feather="help-circle" data-toggle="tooltip" title="Each key and value must be a string of less than 512 characters. Keys can only contain alphanumeric characters ([a-z0-9A-Z]) while values can also contain dashes (-), underscores (_), dots (.) and forward slashes (/)."></span> (Optional)</span><br/>
+		     <div class="container">
+		     <div class="form-group row">
+		     <div class="col-xs-4">
+		     <b>Name</b><span class="text-secondary"> <span data-feather="help-circle" data-toggle="tooltip" title="Names must be less than 512 characters in length."></span>  (Optional)</span>
+		     {{ form.name|add_class:"form-control form-control-sm" }}
+		     </div>
+		     </div>
+		     <div class="form-group row">
+		     <div class="col-xs-4">
+		     <b>Labels</b><span class="text-secondary"> <span data-feather="help-circle" data-toggle="tooltip" title="Each key and value must be a string of less than 512 characters. Keys can only contain alphanumeric characters ([a-z0-9A-Z]) while values can also contain dashes (-), underscores (_), dots (.) and forward slashes (/)."></span> (Optional)</span>
                      {{ labels_formset.management_form }}
                      {% for label_form in labels_formset %}
                      <div class="label-formset">
@@ -74,24 +80,45 @@ $(document).ready(function(){
                      </div>
                      {% endfor %}
                   </div>
+		     </div>
+		  </div>
+		  </div>
                   <div id="task" class="tab-pane fade">
                      <br/>
-                     <b>Task type</b><br/>
-                     {{ form.task_type }}
-                     <br/><br/>
-		     <b>Container image</b> <span class="text-secondary"><span data-feather="help-circle" data-toggle="tooltip" title="Container images can be obtained from Docker Hub, Singularity Hub, or a tarball or Singularity Image Format file from a URL or mounted filesystem."></span></span><br/>
-                     {{ form.container_image }}
-                     <br/><br/>
-                     <b>Container runtime</b><br/>
-                     {{ form.container_runtime }}
-                     <br/><br/>
-                     <b>Command</b><span class="text-secondary"> (Optional)</span><br/>
-                     {{ form.command }}
-                     <br/><br/>
-		     <b>Work directory</b><span class="text-secondary"> <span data-feather="help-circle" data-toggle="tooltip" title="By default the current directory will be a scratch directory available to the job. Set the work directory if a specific alternative current directory is required"></span> (Optional)</span><br/>
-                     {{ form.workdir }}
-                     <br/><br/>
-                     <b>Environment variables</b><span class="text-secondary"> (Optional)</span><br/>
+		     <div class="container">
+		     <div class="form-group row">
+		     <div class="col-xs-4">
+                     <b>Task type</b>
+                     {{ form.task_type|add_class:"form-control form-control-sm" }}
+		     </div>
+		     </div>
+		     <div class="form-group row">
+		     <div class="col-xs-4">
+		     <b>Container image</b> <span class="text-secondary"><span data-feather="help-circle" data-toggle="tooltip" title="Container images can be obtained from Docker Hub, Singularity Hub, or a tarball or Singularity Image Format file from a URL or mounted filesystem."></span></span>
+                     {{ form.container_image|add_class:"form-control form-control-sm" }}
+		     </div>
+		     </div>
+		     <div class="form-group row">
+		     <div class="col-xs-4">
+                     <b>Container runtime</b>
+                     {{ form.container_runtime|add_class:"form-control form-control-sm" }}
+		     </div>
+		     </div>
+		     <div class="form-group row">
+		     <div class="col-xs-4">
+                     <b>Command</b><span class="text-secondary"> (Optional)</span>
+                     {{ form.command|add_class:"form-control form-control-sm" }}
+		     </div>
+		     </div>
+		     <div class="form-group row">
+		     <div class="col-xs-4">
+		     <b>Work directory</b><span class="text-secondary"> <span data-feather="help-circle" data-toggle="tooltip" title="By default the current directory will be a scratch directory available to the job. Set the work directory if a specific alternative current directory is required"></span> (Optional)</span>
+                     {{ form.workdir|add_class:"form-control form-control-sm" }}
+		     </div>
+		     </div>
+		     <div class="form-group row">
+		     <div class="col-xs-4">
+                     <b>Environment variables</b><span class="text-secondary"> (Optional)</span>
                      {{ envvars_formset.management_form }}
                      {% for envvar_form in envvars_formset %}
                      <div class="envvar-formset">
@@ -99,27 +126,44 @@ $(document).ready(function(){
                         {{ envvar_form.value }}
                      </div>
                      {% endfor %}
+		     </div>
+		     </div>
+                  </div>
                   </div>
                   <div id="resources" class="tab-pane fade">
                      <br/>
-                     <b>Number of nodes</b><br/>
-                      {{ form.nodes }}
-                     <br/>
-                     <br/>
-                     <b>CPUs per node</b><br/>
-                      {{ form.cpus }}</td>
-                     <br/>
-                     <br/>
-		     <b>Memory per node</b> (GB)<br/>
-                      {{ form.memory }}
-                     <br/>
-                     <br/>
-                     <b>Disk</b> (GB)<br/>
-                     {{ form.disk }}
-                     <br/>
-                     <br/>
-                     <b>Maximum wall time</b> (hours)<br/>
-                     {{ form.walltime }}</td>
+		     <div class="container">
+                     <div class="form-group row">
+                     <div class="col-xs-4">
+                     <b>Number of nodes</b>
+                     {{ form.nodes|add_class:"form-control form-control-sm" }}
+                     </div>
+                     </div>
+                     <div class="form-group row">
+                     <div class="col-xs-4">
+                     <b>CPUs per node</b>
+                     {{ form.cpus|add_class:"form-control form-control-sm" }}</td>
+                     </div>
+                     </div>
+                     <div class="form-group row">
+                     <div class="col-xs-4">
+		     <b>Memory per node</b> (GB)
+                     {{ form.memory|add_class:"form-control form-control-sm" }}
+                     </div>
+                     </div>
+                     <div class="form-group row">
+                     <div class="col-xs-4">
+                     <b>Disk</b> (GB)
+                     {{ form.disk|add_class:"form-control form-control-sm" }}
+                     </div>
+                     </div>
+                     <div class="form-group row">
+                     <div class="col-xs-4">
+                     <b>Maximum wall time</b> (hours)
+                     {{ form.walltime|add_class:"form-control form-control-sm" }}</td>
+                     </div>
+                     </div>
+                  </div>
                   </div>
                   <div id="data" class="tab-pane fade">
                      <br/>
@@ -181,12 +225,20 @@ $(document).ready(function(){
                      Policies can influence the way failures are handled and how resources are placed.
                      <br/>
                      <br/>
-		     <b>Number of retries per job</b><span class="text-secondary"> <span data-feather="help-circle" data-toggle="tooltip" title="If a job fails it can be retried from scratch on new infrastructure"></span></span><br/>
-                     {{ form.policy_job_maxretries }}
-                     <br/>
-                     <br/>
-		     <b>Number of retries per task</b><span class="text-secondary"> <span data-feather="help-circle" data-toggle="tooltip" title="If a task within a job fails it can be retried without deploying new infrastructure"></span></span><br/>
-                     {{ form.policy_task_maxretries }}
+                     <div class="container">
+                     <div class="form-group row">
+                     <div class="col-xs-4">
+		     <b>Number of retries per job</b><span class="text-secondary"> <span data-feather="help-circle" data-toggle="tooltip" title="If a job fails it can be retried from scratch on new infrastructure"></span></span>
+                     {{ form.policy_job_maxretries|add_class:"form-control form-control-sm" }}
+                     </div>
+                     </div>
+                     <div class="form-group row">
+                     <div class="col-xs-4">
+		     <b>Number of retries per task</b><span class="text-secondary"> <span data-feather="help-circle" data-toggle="tooltip" title="If a task within a job fails it can be retried without deploying new infrastructure"></span></span>
+                     {{ form.policy_task_maxretries|add_class:"form-control form-control-sm" }}
+                     </div>
+                     </div>
+                  </div>
                   </div>
 		  <div id="notifications" class="tab-pane fade">
                      <br/>
