@@ -41,9 +41,21 @@ body {
   box-shadow: inset -1px 0 0 rgba(0, 0, 0, .1);
 }
 
+.sidebar .active{
+  background-color: #e6f2ff;
+}
+
+.sidebar .feather .active{
+  color: #000;
+}
+
+.sidebar .nav-item:hover{
+  background-color: #f2f2f2;
+ }
+
 .sidebar .nav-link {
   font-weight: 500;
-  color: #333;
+  color: #666;
 }
 
 .sidebar .nav-link .feather {
@@ -52,7 +64,9 @@ body {
 }
 
 .sidebar .nav-link.active {
-  color: #007bff;
+  color: #000000;
+  font-weight: 600;
+  /*color: #007bff;*/
 }
 
 .sidebar .nav-link:hover .feather,
@@ -117,6 +131,7 @@ body {
 .project-tab #tabs{
     background: #007b5e;
     color: #eee;
+    border: 1px solid transparent;
 }
 .project-tab #tabs h6.section-title{
     color: #eee;
