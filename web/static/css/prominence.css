@@ -42,10 +42,6 @@ body {
   padding: 1px;
 }
 
-.sidebar .active{
-  border-left: 3px solid #0275d8;
-}
-
 .sidebar .feather .active{
   color: #0275d8;
 }
@@ -66,8 +62,6 @@ body {
 
 .sidebar .nav-link.active {
   color: #0275d8;
-  font-weight: 600;
-  /*color: #007bff;*/
 }
 
 .sidebar .nav-link:hover .feather,
