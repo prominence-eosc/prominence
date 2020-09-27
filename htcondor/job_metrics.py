@@ -12,6 +12,7 @@ identities = []
 jobs_by_identity_r = {}
 cpus_by_identity_r = {}
 jobs_by_identity_i = {}
+cpus_by_identity_i = {}
 jobs_by_identity_site_r = {}
 cpus_by_identity_site_r = {}
 
@@ -44,6 +45,7 @@ for result in results:
 
             if identity not in cpus_by_identity_r:
                 cpus_by_identity_r[identity] = 0
+                cpus_by_identity_i[identity] = 0
 
             if identity not in jobs_by_identity_site_r:
                 jobs_by_identity_site_r[identity] = {}
@@ -55,6 +57,7 @@ for result in results:
             
             if job["JobStatus"] == 1:
                 jobs_by_identity_i[identity] += 1
+                cpus_by_identity_i[identity] += int(job["RequestCpus"])
 
             if job["JobStatus"] == 2:
                 jobs_by_identity_r[identity] += 1
@@ -67,7 +70,7 @@ for result in results:
               
 for identity in identities:
     print("jobs_by_identity,identity=%s idle=%d,running=%d" % (identity, jobs_by_identity_i[identity], jobs_by_identity_r[identity]))
-    print("cpus_by_identity,identity=%s idle=%d,running=%d" % (identity, jobs_by_identity_i[identity], cpus_by_identity_r[identity]))
+    print("cpus_by_identity,identity=%s idle=%d,running=%d" % (identity, cpus_by_identity_i[identity], cpus_by_identity_r[identity]))
     for site in sites:
         if site in jobs_by_identity_site_r[identity]:
             print("jobs_by_identity_by_site,identity=%s,site=%s running=%d" % (identity, site, jobs_by_identity_site_r[identity][site]))
