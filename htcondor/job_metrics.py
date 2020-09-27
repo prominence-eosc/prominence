@@ -20,10 +20,11 @@ for result in results:
     host = result["Name"]
     schedd_ad = coll.locate(htcondor.DaemonTypes.Schedd, host)
     schedd = htcondor.Schedd(schedd_ad)
-    jobs = schedd.query('RoutedBy =!= "jobrouter"', ["JobStatus",
-                                                     "ProminenceInfrastructureSite",
-                                                     "ProminenceIdentity",
-                                                     "RequestCpus"])
+    jobs = schedd.query('RoutedBy =!= "jobrouter" && Cmd != "/usr/bin/condor_dagman"',
+                        ["JobStatus",
+                         "ProminenceInfrastructureSite",
+                         "ProminenceIdentity",
+                         "RequestCpus"])
     for job in jobs:
         if "JobStatus" in job and "ProminenceIdentity" in job:
             identity = job['ProminenceIdentity']
