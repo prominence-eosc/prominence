@@ -43,11 +43,13 @@ body {
 }
 
 .sidebar .active{
-  background-color: #e2e2e2;
+  /*background-color: #e2e2e2;*/
+  /*background-color: #daeeff;*/
+  border-left: 3px solid #0275d8;
 }
 
 .sidebar .feather .active{
-  color: #000;
+  color: #0275d8;
 }
 
 .sidebar .nav-item:hover{
@@ -65,7 +67,7 @@ body {
 }
 
 .sidebar .nav-link.active {
-  color: #000000;
+  color: #0275d8;
   font-weight: 600;
   /*color: #007bff;*/
 }
