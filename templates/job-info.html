@@ -3,7 +3,7 @@
 {% load static %}
 
 {% block title %}
-Job {{ job.id }}: details
+Job {{ job.id }}
 {% endblock %}
 
 {% block javascript %}
@@ -63,7 +63,7 @@ $(document).ready(function () {
 {% endblock %}
 
 {% block contentuser %}
-<h2><a href="#" onclick="history.go(-1)"><i class="feather-32" data-feather="arrow-left"></i></a> Job {{ job.id }}: details</h2>
+<h2><a href="#" onclick="history.go(-1)"><i class="feather-32" data-feather="arrow-left"></i></a> Job {{ job.id }}</h2>
 
 <div class="project-tab">
 <div class="container">
