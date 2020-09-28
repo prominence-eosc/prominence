@@ -4,17 +4,17 @@
     <td class="align-middle">{{ job.name }}</td>
     <td class="align-middle">
       {% if job.status == "running" %}
-        <span class="badge badge-success">Running</span>
+      Running
       {% elif job.status == "failed" %}
-      <span class="badge badge-danger" data-toggle="tooltip" title="{{ job.statusReason }}">Failed</span>
+      Failed
       {% elif job.status == "deleted" %}
-        <span class="badge badge-secondary">Deleted</span>
+      Deleted
       {% elif job.status == "killed" %}
-      <span class="badge badge-danger" data-toggle="tooltip" title="{{ job.statusReason }}">Killed</span>
+      Killed
       {% elif job.status == "pending" %}
-      <span class="badge badge-info" data-toggle="tooltip" title="{{ job.statusReason }}">Pending</span>
+      Pending
       {% elif job.status == "completed" %}
-        <span class="badge badge-light">Completed</span>
+      Completed
       {% endif %}
     </td>
     <td class="align-middle">{{ job.events.createTime }}</td>

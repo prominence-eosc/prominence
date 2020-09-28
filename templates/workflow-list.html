@@ -4,17 +4,17 @@
     <td class="align-middle">{{ workflow.name }}</td>
     <td class="align-middle">
       {% if workflow.status == "running" %}
-        <span class="badge badge-success">Running</span>
+      Running
       {% elif workflow.status == "failed" %}
-        <span class="badge badge-danger">Failed</span>
+      Failed
       {% elif workflow.status == "deleted" %}
-        <span class="badge badge-secondary">Deleted</span>
+      Deleted
       {% elif workflow.status == "killed" %}
-        <span class="badge badge-danger">Killed</span>
+      Killed
       {% elif workflow.status == "pending" %}
-        <span class="badge badge-info">Pending</span>
+      Pending
       {% elif workflow.status == "completed" %}
-        <span class="badge badge-light">Completed</span>
+      Completed
       {% endif %}
     </td>
     <td class="align-middle">{{ workflow.events.createTime }}</td>
