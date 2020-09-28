@@ -89,10 +89,16 @@ def create_workflow(self, username, groups, email, uid, jjob):
 
     dag = []
 
-    # Retries
+    # Policies
+    job_placement_policies = None
     if 'policies' in jjob:
+        # Job retries
         if 'maximumRetries' in jjob['policies']:
             dag.append('RETRY ALL_NODES %d' % jjob['policies']['maximumRetries'])
+
+        # If placement policies are defined in the workflow, apply these to all jobs
+        if 'placement' in jjob['policies']:
+            job_placement_policies = jjob['policies']['placement']
 
     if 'dependencies' in jjob or 'factory' not in jjob:
         # Handle DAG workflows & bags of jobs
@@ -100,6 +106,14 @@ def create_workflow(self, username, groups, email, uid, jjob):
             # All jobs must have names
             if 'name' not in job:
                 return (1, {"error":"All jobs in a workflow must have names"})
+
+            # Add placement policies if defined
+            if job_placement_policies:
+                if 'policies' not in job:
+                    job['policies'] = {}
+                    job['policies']['placement'] = job_placement_policies
+                elif 'placement' not in job['policies']:
+                    job['policies']['placement'] = job_placement_policies
 
             # Create job sandbox
             try:
