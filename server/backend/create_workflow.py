@@ -111,9 +111,7 @@ def create_workflow(self, username, groups, email, uid, jjob):
             if job_placement_policies:
                 if 'policies' not in job:
                     job['policies'] = {}
-                    job['policies']['placement'] = job_placement_policies
-                elif 'placement' not in job['policies']:
-                    job['policies']['placement'] = job_placement_policies
+                job['policies']['placement'] = job_placement_policies
 
             # Create job sandbox
             try:
