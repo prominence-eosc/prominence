@@ -4,7 +4,7 @@ import re
 import shutil
 import uuid
 
-from .utilities import condor_str, kill_proc, run
+from .utilities import condor_str, run
 from .write_htcondor_job import write_htcondor_job
 
 def write_parameter_value(value):
