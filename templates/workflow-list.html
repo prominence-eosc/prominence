@@ -24,7 +24,10 @@
     {% endif %}
     </td>
     <td class="align-middle">
-	    {{ workflow.progress.done }}/{{ workflow.progress.total }}
+	    <div class="progress data-toggle="tooltip" title="done: {{ workflow.progress.done }}, failed: {{ workflow.progress.failed }}, total: {{ workflow.progress.total }}">
+		    <div class="progress-bar bg-success" role="progressbar" style="width:{{ workflow.progress.donePercentage }}%" aria-valuenow="{{ workflow.progress.done }}" aria-valuemin="0" aria-valuemax="{{ workflow.progress.total }}"></div>
+		    <div class="progress-bar bg-danger" role="progressbar" style="width:{{ workflow.progress.failedPercentage }}%" aria-valuenow="{{ workflow.progress.failed }}" aria-valuemin="0" aria-valuemax="{{ workflow.progress.total }}"></div>
+	    </div>
     </td>
     <td class="align-middle">
       <div class="dropdown">

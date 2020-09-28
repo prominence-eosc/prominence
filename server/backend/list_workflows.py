@@ -168,6 +168,10 @@ def list_workflows(self, workflow_ids, identity, active, completed, num, detail,
         nodes['queued'] = nodes_queued
         nodes['waiting'] = nodes_unready
 
+        if display:
+            nodes['donePercentage'] = int(100.0*nodes_done/nodes_total)
+            nodes['failedPercentage'] = int(100.0*nodes_failed/nodes_total)
+
         # Completed workflows with failed jobs should be reported as failed, not completed
         if wfj['status'] == 'completed' and nodes_failed > 0:
             wfj['status'] = 'failed'
