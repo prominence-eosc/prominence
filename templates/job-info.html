@@ -154,6 +154,8 @@ Provider: {{ job.storage.onedata.provider }}
 {% else %}
 URL: {{ job.storage.webdav.url }}
 {% endif %}
+<br/>
+Mountpoint: {{ job.storage.mountpoint }}
 {% else %}
 None
 {% endif %}
