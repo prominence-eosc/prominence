@@ -28,13 +28,14 @@
     <td class="align-middle">{{ task.cmd }}</td>
     {% endfor %}
     <td class="align-middle">
-      <div class="dropdown">
+      <div class="dropleft">
 	  <button class="btn btn-outline-secondary" type="button" id="dropdownMenuButtonJob{{ job.id }}" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false" style="border:none;">
 	    <span data-feather="more-vertical"></span>
         </button>
 	<div class="dropdown-menu" aria-labelledby="dropdownMenuButtonJob{{ job.id }}">
-          <a class="dropdown-item js-delete-job" data-url="{% url 'job_delete' job.id %}">Delete</a>
           <a class="dropdown-item" href="{% url 'job_logs' job.id %}">Logs</a>
+	  <a class="dropdown-item" href="{% url 'job_remove_from_queue' job.id %}">Remove job from queue</a>
+          <a class="dropdown-item js-delete-job" data-url="{% url 'job_delete' job.id %}">Delete</a>
         </div>
       </div>
     </td>
