@@ -109,8 +109,18 @@ def jobs(request):
     if 'num' in request.GET:
         num = int(request.GET['num'])
 
-    jobs_list = backend.list_jobs(jobs, user_name, active, completed, workflow, num, False, [], None, True)
-    return render(request, 'jobs.html', {'job_list': jobs_list})
+    constraint = ()
+    search = ''
+    if 'fq' in request.GET:
+        fq = request.GET['fq']
+        search = fq
+        if ':' in fq:
+            pieces = fq.split(':')
+            if len(pieces) == 2:
+                constraint = (pieces[0], pieces[1])
+
+    jobs_list = backend.list_jobs(jobs, user_name, active, completed, workflow, num, False, constraint, None, True)
+    return render(request, 'jobs.html', {'job_list': jobs_list, 'search': search})
 
 @login_required
 def workflows(request):
