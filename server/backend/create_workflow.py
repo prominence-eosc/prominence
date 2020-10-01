@@ -292,6 +292,9 @@ def create_workflow(self, username, groups, email, uid, jwf):
     # DAGMan status file
     dag.append('NODE_STATUS_FILE workflow.dag.status')
 
+    # Dot file
+    dag.append('DOT dag.dot')
+
     # Write DAGMan definition file
     try:
         with open(job_sandbox + '/job.dag', 'w') as fd:
