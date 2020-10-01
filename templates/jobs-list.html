@@ -1,6 +1,21 @@
 {% for job in job_list %}
   <tr>
-    <td class="align-middle"><a href="{% url 'job_describe' job.id %}">{{ job.id }}</a></td>
+    <td class="align-middle">
+      {% if job.status == "running" %}
+      <i class="text-primary fa fa-repeat" aria-hidden="true"></i>
+      {% elif job.status == "failed" %}
+      <i class="text-danger fa fa-exclamation-circle" aria-hidden="true"></i>
+      {% elif job.status == "deleted" %}
+      <i class="text-info fa fa-minus-circle" aria-hidden="true"></i>
+      {% elif job.warning == "killed" %}
+      <i class="text-warning fa fa-exclamation-circle" aria-hidden="true"></i>
+      {% elif job.status == "pending" %}
+      <i class="text-secondary fa fa-circle" aria-hidden="true"></i>
+      {% elif job.status == "completed" %}
+      <i class="text-success fa fa-check-circle" aria-hidden="true"></i>
+      {% endif %}
+</td><td class="align-middle">
+    <a href="{% url 'job_describe' job.id %}">{{ job.id }}</a></td>
     <td class="align-middle">{{ job.name }}</td>
     <td class="align-middle">
       {% if job.status == "running" %}
@@ -42,6 +57,6 @@
   </tr>
 {% empty %}
   <tr>
-    <td colspan="8" class="text-center font-italic">No jobs</td>
+    <td colspan="9" class="text-center font-italic">No jobs</td>
   </tr>
 {% endfor %}

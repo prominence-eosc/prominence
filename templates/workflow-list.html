@@ -1,5 +1,20 @@
 {% for workflow in workflow_list %}
   <tr>
+    <td class="align-middle">
+      {% if workflow.status == "running" %}
+      <i class="text-primary fa fa-repeat" aria-hidden="true"></i>
+      {% elif workflow.status == "failed" %}
+      <i class="text-danger fa fa-exclamation-circle" aria-hidden="true"></i>
+      {% elif workflow.status == "deleted" %}
+      <i class="text-info fa fa-minus-circle" aria-hidden="true"></i>
+      {% elif workflow.warning == "killed" %}
+      <i class="text-warning fa fa-exclamation-circle" aria-hidden="true"></i>
+      {% elif workflow.status == "pending" %}
+      <i class="text-secondary fa fa-circle" aria-hidden="true"></i>
+      {% elif workflow.status == "completed" %}
+      <i class="text-success fa fa-check-circle" aria-hidden="true"></i>
+      {% endif %}
+</td>
     <td class="align-middle"><a href="{% url 'workflow_describe' workflow.id %}">{{ workflow.id }}</a></td>
     <td class="align-middle">{{ workflow.name }}</td>
     <td class="align-middle">
@@ -44,6 +59,6 @@
   </tr>
 {% empty %}
   <tr>
-    <td colspan="7" class="text-center font-italic">No workflows</td>
+    <td colspan="8" class="text-center font-italic">No workflows</td>
   </tr>
 {% endfor %}
