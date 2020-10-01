@@ -179,6 +179,17 @@ None
 Not yet assigned
 {% endif %}
 
+{% if job.parameters %}
+<br/>
+<br/>
+<b>Parameters</b>
+<table>
+{% for key, value in job.parameters.items %}
+<tr><td>{{ key }}:</td><td>{{ value }}</td></tr>
+{% endfor %}
+</table>
+{% endif %}
+
   </div>
   <div id="monitoring" class="tab-pane fade">
   <br/>
