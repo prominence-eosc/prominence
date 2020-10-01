@@ -141,8 +141,18 @@ def workflows(request):
     if 'num' in request.GET:
         num = int(request.GET['num'])
 
-    workflows_list = backend.list_workflows([], user_name, active, completed, num, False, [], None, True)
-    return render(request, 'workflows.html', {'workflow_list': workflows_list})
+    constraint = ()
+    search = ''
+    if 'fq' in request.GET:
+        fq = request.GET['fq']
+        search = fq
+        if ':' in fq:
+            pieces = fq.split(':')
+            if len(pieces) == 2:
+                constraint = (pieces[0], pieces[1])
+
+    workflows_list = backend.list_workflows([], user_name, active, completed, num, False, constraint, None, True)
+    return render(request, 'workflows.html', {'workflow_list': workflows_list, 'search': search})
 
 @login_required
 def create_token(request):
