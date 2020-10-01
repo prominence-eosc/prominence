@@ -34,7 +34,7 @@
         </button>
 	<div class="dropdown-menu" aria-labelledby="dropdownMenuButtonJob{{ job.id }}">
           <a class="dropdown-item" href="{% url 'job_logs' job.id %}">Logs</a>
-	  <a class="dropdown-item" href="{% url 'job_remove_from_queue' job.id %}">Remove job from queue</a>
+	  <a class="dropdown-item" href="%">Remove from queue</a>
           <a class="dropdown-item js-delete-job" data-url="{% url 'job_delete' job.id %}">Delete</a>
         </div>
       </div>
