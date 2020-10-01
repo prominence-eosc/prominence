@@ -18,6 +18,7 @@ def list_workflows(self, workflow_ids, identity, active, completed, num, detail,
                       'RemoveReason',
                       'QDate',
                       'JobStartDate',
+                      'CompletionDate',
                       'Cmd',
                       'Iwd'
                       ]
@@ -99,11 +100,14 @@ def list_workflows(self, workflow_ids, identity, active, completed, num, detail,
 
         if 'end_time' in dag_metrics:
             events['endTime'] = int(dag_metrics['end_time'])
-
+        
             # For rescue DAGs, end_time might already exist, but it's from the original workflow
             if 'startTime' in events:
                 if events['endTime'] < events['startTime']:
                     del events['endTime']
+
+        elif 'CompletionDate' in wf:
+            events['endTime'] = int(wf['CompletionDate'])
 
         # If necessary convert unix epoch timestamps into nicely formatted date/times
         if display:
