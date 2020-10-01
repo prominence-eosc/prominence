@@ -175,7 +175,8 @@ def create_workflow(self, username, groups, email, uid, jwf):
                     parameters = []
                     count = 0
                     for parameter in job_factory['parameters']:
-                        parameters.append('prominencevalue%d="%s"' % (count, write_parameter_value(parameter['values'][index])))
+                        parameters.append('prominencevalue%d="%s"' % (count,
+                                                                      write_parameter_value(parameter['values'][index])))
                         count += 1
                     dag.append('JOB %s%d job.jdl DIR %s' % (job['name'], index, job['name']))
                     dag.append('VARS %s%d %s prominencecount="%d" %s' % (job['name'], index,
@@ -183,6 +184,85 @@ def create_workflow(self, username, groups, email, uid, jwf):
                                                                           index,
                                                                           self._output_urls(jwf, uid, index)))
                     jobs_in_dag.append('%s%d' % (job['name'], index))
+            elif job_factory['type'] == 'parameterSweep':
+                num_dimensions = len(job_factory['parameters'])
+
+                ps_num = []
+                ps_name = []
+                ps_start = []
+                ps_end = []
+                ps_step = []
+
+                for i in range(num_dimensions):
+                    ps_name.append(job_factory['parameters'][i]['name'])
+                    ps_start.append(float(job_factory['parameters'][i]['start']))
+                    ps_end.append(float(job_factory['parameters'][i]['end']))
+                    ps_step.append(float(job_factory['parameters'][i]['step']))
+
+                    # Determine the number of values for each parameter
+                    value = ps_start[i]
+                    count = 0
+                    while value <= ps_end[i]:
+                        value += ps_step[i]
+                        count += 1
+                    ps_num.append(count)
+
+                # Generate extra_args
+                cjob['extra_args'] = output_params(jwf) + ' '
+                for i in range(num_dimensions):
+                    cjob['extra_args'] += '--param %s=$(prominencevalue%d) ' % (ps_name[i], i)
+
+                if num_dimensions == 1:
+                    job_count = 0
+                    for x1 in range(ps_num[0]):
+                        x1_val = ps_start[0] + x1*ps_step[0]
+                        dag.append('JOB %s%d job.jdl DIR %s' % (job['name'], job_count, job['name']))
+                        dag.append('VARS %s%d prominencevalue0="%s" prominencecount="%d" %s' % (job['name'], job_count, write_parameter_value(x1_val), job_count, self._output_urls(jwf, uid, job_count)))
+                        jobs_in_dag.append('%s%d' % (job['name'], job_count))
+                        job_count += 1
+
+                elif num_dimensions == 2:
+                    job_count = 0
+                    for x1 in range(ps_num[0]):
+                        for y1 in range(ps_num[1]):
+                            x1_val = ps_start[0] + x1*ps_step[0]
+                            y1_val = ps_start[1] + y1*ps_step[1]
+                            dag.append('JOB %s%d job.jdl DIR %s' % (job['name'], job_count, job['name']))
+                            dag.append('VARS %s%d prominencevalue0="%s" prominencevalue1="%s" prominencecount="%d" %s' % (job['name'], job_count, write_parameter_value(x1_val), write_parameter_value(y1_val), job_count, self._output_urls(jwf, uid, job_count)))
+                            jobs_in_dag.append('%s%d' % (job['name'], job_count))
+                            job_count += 1
+
+                elif num_dimensions == 3:
+                    job_count = 0
+                    for x1 in range(ps_num[0]):
+                        for y1 in range(ps_num[1]):
+                            for z1 in range(ps_num[2]):
+                                x1_val = ps_start[0] + x1*ps_step[0]
+                                y1_val = ps_start[1] + y1*ps_step[1]
+                                z1_val = ps_start[2] + z1*ps_step[2]
+                                dag.append('JOB %s%d job.jdl DIR %s' % (job['name'], job_count, job['name']))
+                                dag.append('VARS %s%d prominencevalue0="%s" prominencevalue1="%s" prominencevalue2="%s" prominencecount="%d" %s' % (job['name'], job_count, write_parameter_value(x1_val), write_parameter_value(y1_val), write_parameter_value(z1_val), job_count, self._output_urls(jwf, uid, job_count)))
+                                jobs_in_dag.append('%s%d' % (job['name'], job_count))
+                                job_count += 1
+
+                elif num_dimensions == 4:
+                    job_count = 0
+                    for x1 in range(ps_num[0]):
+                        for y1 in range(ps_num[1]):
+                            for z1 in range(ps_num[2]):
+                                for t1 in range(ps_num[3]):
+                                    x1_val = ps_start[0] + x1*ps_step[0]
+                                    y1_val = ps_start[1] + y1*ps_step[1]
+                                    z1_val = ps_start[2] + z1*ps_step[2]
+                                    t1_val = ps_start[3] + t1*ps_step[3]
+                                    dag.append('JOB %s%d job.jdl DIR %s' % (job['name'], job_count, job['name']))
+                                    dag.append('VARS %s%d prominencevalue0="%s" prominencevalue1="%s" prominencevalue2="%s" prominencevalue3="%s" prominencecount="%d" %s' % (job['name'], job_count, write_parameter_value(x1_val), write_parameter_value(y1_val), write_parameter_value(z1_val), write_parameter_value(t1_val), job_count, self._output_urls(jwf, uid, job_count)))
+                                    jobs_in_dag.append('%s%d' % (job['name'], job_count))
+                                    job_count += 1
+
+                elif num_dimensions > 4:
+                    return (1, {"error": "Currently only parameter sweeps up to 4D are supported"})
+
 
             # Write JDL
             if not write_htcondor_job(cjob, '%s/%s/job.jdl' % (job_sandbox, job['name'])):
