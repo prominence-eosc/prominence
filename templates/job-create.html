@@ -241,10 +241,13 @@ $(document).ready(function(){
                      {{ form.policy_task_maxretries|add_class:"form-control form-control-sm" }}
                      </div>
                      </div>
+		     <div class="row">
+		     <b>Queues</b>
+		     </div>
 		     <div class="form-group row">
                      <div class="col-xs-4">
-                     <b>Leave in job queue</b></b><span class="text-secondary"> <span data-feather="help-circle" data-toggle="tooltip" title="By default jobs in a terminal state disappear from the queue. Setting this option causes the job to remain in the queue until it is explicitly removed."></span></span>
-		     {{ form.policy_leave_job_in_queue}}
+                     {{ form.policy_leave_job_in_queue}}
+                     Leave in job queue<span class="text-secondary"> <span data-feather="help-circle" data-toggle="tooltip" title="By default jobs in a terminal state disappear from the queue. Setting this option causes the job to remain in the queue until it is explicitly removed."></span></span>
                      </div>
                      </div>
                   </div>
@@ -257,10 +260,10 @@ $(document).ready(function(){
 		     <table>
 			     <tr>
 				     <td>
-					     Send emails when jobs finish
+					     {{ form.notify_email_job_finished }}
 				     </td>
 				     <td>
-					     {{ form.notify_email_job_finished }}
+					     Send emails when jobs finish
 				     </td>
 			     </tr>
 		     </table>
