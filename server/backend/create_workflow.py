@@ -11,12 +11,14 @@ def write_parameter_value(value):
     """
     Write a parameter value, taking into account its type
     """
+    output = None
     if isinstance(value, int):
-        return '%d' % value
+        output = '%d' % value
     elif isinstance(value, float):
-        return '%f' % value
+        output = '%f' % value
     elif isinstance(value, basestring):
-        return '%s' % value
+        output = '%s' % value
+    return output
 
 def output_params(workflow):
     """
@@ -66,7 +68,7 @@ def _output_urls(self, workflow, uid, label):
 
     return lists
 
-def create_workflow(self, username, groups, email, uid, jjob):
+def create_workflow(self, username, groups, email, uid, jwf):
     """
     Create a workflow
     """
@@ -77,13 +79,13 @@ def create_workflow(self, username, groups, email, uid, jjob):
 
     # Workflow name
     wf_name = ''
-    if 'name' in jjob:
-        wf_name = str(jjob['name'])
+    if 'name' in jwf:
+        wf_name = str(jwf['name'])
 
     # Write the workflow JSON description to disk
     try:
         with open(job_sandbox + '/workflow.json', 'w') as fd:
-            json.dump(jjob, fd)
+            json.dump(jwf, fd)
     except IOError:
         return (1, {"error":"Unable to write workflow.json"})
 
@@ -91,39 +93,55 @@ def create_workflow(self, username, groups, email, uid, jjob):
 
     # Policies
     job_placement_policies = None
-    if 'policies' in jjob:
+    if 'policies' in jwf:
         # Job retries
-        if 'maximumRetries' in jjob['policies']:
-            dag.append('RETRY ALL_NODES %d' % jjob['policies']['maximumRetries'])
+        if 'maximumRetries' in jwf['policies']:
+            dag.append('RETRY ALL_NODES %d' % jwf['policies']['maximumRetries'])
 
         # If placement policies are defined in the workflow, apply these to all jobs
-        if 'placement' in jjob['policies']:
-            job_placement_policies = jjob['policies']['placement']
+        if 'placement' in jwf['policies']:
+            job_placement_policies = jwf['policies']['placement']
 
-    if 'dependencies' in jjob or 'factory' not in jjob:
-        # Handle DAG workflows & bags of jobs
-        for job in jjob['jobs']:
-            # All jobs must have names
-            if 'name' not in job:
-                return (1, {"error":"All jobs in a workflow must have names"})
+    jobs_in_dag = []
+    for job in jwf['jobs']:
+        # All jobs must have names
+        if 'name' not in job:
+            return (1, {"error":"All jobs in a workflow must have names"})
 
-            # Add placement policies if defined
-            if job_placement_policies:
-                if 'policies' not in job:
-                    job['policies'] = {}
-                job['policies']['placement'] = job_placement_policies
+        # Add placement policies if defined
+        if job_placement_policies:
+            if 'policies' not in job:
+                job['policies'] = {}
+            job['policies']['placement'] = job_placement_policies
 
-            # Create job sandbox
-            try:
-                os.makedirs(job_sandbox + '/' + job['name'])
-                os.makedirs(job_sandbox + '/' + job['name'] + '/input')
-            except IOError:
-                return (1, {"error":"Unable to create job sandbox directories"})
+        # Check if this job has a factory
+        job_factory = None
+        for factory in jwf['factories']:
+            for job_in_factory in factory['jobs']:
+                if job['name'] == job_in_factory:
+                    job_factory = factory
 
-            job_filename = job_sandbox + '/' + job['name'] + '/job.jdl'
+        # Create job sandbox
+        try:
+            os.makedirs(job_sandbox + '/' + job['name'])
+            os.makedirs(job_sandbox + '/' + job['name'] + '/input')
+        except IOError:
+            return (1, {"error":"Unable to create job sandbox directories"})
 
+        job_filename = job_sandbox + '/' + job['name'] + '/job.jdl'
+
+        # Copy executable to job sandbox
+        shutil.copyfile(self._promlet_file, os.path.join(job_sandbox, job['name'], 'promlet.py'))
+        os.chmod(job_sandbox + '/' + job['name'] + '/promlet.py', 0o775)
+
+        if not job_factory:
             # Create dict containing HTCondor job
-            (status, msg, cjob) = self._create_htcondor_job(username, groups, email, str(uuid.uuid4()), job, job_sandbox + '/' + job['name'])
+            (_, _, cjob) = self._create_htcondor_job(username,
+                                                  groups,
+                                                  email,
+                                                  str(uuid.uuid4()),
+                                                  job,
+                                                  '%s/%s' % (job_sandbox, job['name']))
             cjob['+ProminenceWorkflowName'] = condor_str(wf_name)
 
             # Write JDL
@@ -131,138 +149,65 @@ def create_workflow(self, username, groups, email, uid, jjob):
                 return (1, {"error":"Unable to write JDL for job"})
 
             # Append job to DAG description
-            dag.append('JOB ' + job['name'] + ' job.jdl DIR ' + job['name'])
-            dag.append('VARS ' + job['name'] + ' prominencecount="0"')
+            dag.append('JOB %s job.jdl DIR %s' % ( job['name'], job['name']))
+            dag.append('VARS %s prominencecount="0"' % job['name'])
+            jobs_in_dag.append(job['name'])
 
-            # Copy executable to job sandbox
-            shutil.copyfile(self._promlet_file, os.path.join(job_sandbox, job['name'], 'promlet.py'))
-            os.chmod(job_sandbox + '/' + job['name'] + '/promlet.py', 0o775)
+        else:
+            # Create dict containing HTCondor job
+            (_, _, cjob) = self._create_htcondor_job(username,
+                                                     groups,
+                                                     email,
+                                                     str(uuid.uuid4()),
+                                                     job,
+                                                     '%s/%s' % (job_sandbox, job['name']),
+                                                     True)
 
-        # Define dependencies if necessary
-        if 'dependencies' in jjob:
-            for parent in jjob['dependencies']:
-                children = " ".join(jjob['dependencies'][parent])
-                dag.append('PARENT ' + parent + ' CHILD ' + children)
+            cjob['+ProminenceWorkflowName'] = condor_str(wf_name)
+            cjob['+ProminenceFactoryId'] = '$(prominencecount)'
 
-    elif 'factory' in jjob:
-        # Copy executable to job sandbox
-        shutil.copyfile(self._promlet_file, os.path.join(job_sandbox, 'promlet.py'))
-        os.chmod(job_sandbox + '/promlet.py', 0o775)
+            if job_factory['type'] == 'zip':
+                cjob['extra_args'] = output_params(jwf) + ' '
+                for index in range(len(job_factory['parameters'])):
+                    cjob['extra_args'] += '--param %s=$(prominencevalue%d) ' % (job_factory['parameters'][index]['name'], index)
 
-        # Create dict containing HTCondor job
-        (status, msg, cjob) = self._create_htcondor_job(username, groups, email, str(uuid.uuid4()), jjob['jobs'][0], job_sandbox, True)
-        cjob['+ProminenceWorkflowName'] = condor_str(wf_name)
-        cjob['+ProminenceFactoryId'] = '$(prominencecount)'
-
-        if jjob['factory']['type'] == 'parametricSweep':
-            num_dimensions = len(jjob['factory']['parameters'])
-
-            if num_dimensions == 1:
-                ps_name = jjob['factory']['parameters'][0]['name']
-                ps_start = float(jjob['factory']['parameters'][0]['start'])
-                ps_end = float(jjob['factory']['parameters'][0]['end'])
-                ps_step = float(jjob['factory']['parameters'][0]['step'])
-
-                cjob['extra_args'] = '--param %s=$(prominencevalue0) %s' % (ps_name, output_params(jjob))
-
-                value = ps_start
-                job_count = 0
-                while value <= ps_end:
-                    dag.append('JOB job%d job.jdl' % job_count)
-                    dag.append('VARS job%d prominencevalue0="%s" prominencecount="%d" %s' % (job_count,
-                                                                                             write_parameter_value(value),
-                                                                                             job_count,
-                                                                                             self._output_urls(jjob, uid, job_count)))
-                    value += ps_step
-                    job_count += 1
-
-            else:
-                ps_num = []
-                ps_name = []
-                ps_start = []
-                ps_end = []
-                ps_step = []
-
-                for i in range(num_dimensions):
-                    ps_name.append(jjob['factory']['parameters'][i]['name'])
-                    ps_start.append(float(jjob['factory']['parameters'][i]['start']))
-                    ps_end.append(float(jjob['factory']['parameters'][i]['end']))
-                    ps_step.append(float(jjob['factory']['parameters'][i]['step']))
-
-                    # Determine the number of values for each parameter
-                    value = ps_start[i]
+                for index in range(len(job_factory['parameters'][0]['values'])):
+                    parameters = []
                     count = 0
-                    while value <= ps_end[i]:
-                        value += ps_step[i]
+                    for parameter in job_factory['parameters']:
+                        parameters.append('prominencevalue%d="%s"' % (count, write_parameter_value(parameter['values'][index])))
                         count += 1
-                    ps_num.append(count)
+                    dag.append('JOB %s%d job.jdl DIR %s' % (job['name'], index, job['name']))
+                    dag.append('VARS %s%d %s prominencecount="%d" %s' % (job['name'], index,
+                                                                          ' '.join(parameters),
+                                                                          index,
+                                                                          self._output_urls(jwf, uid, index)))
+                    jobs_in_dag.append('%s%d' % (job['name'], index))
 
-                # Generate extra_args
-                cjob['extra_args'] = output_params(jjob) + ' '
-                for i in range(num_dimensions):
-                    cjob['extra_args'] += '--param %s=$(prominencevalue%d) ' % (ps_name[i], i)
+            # Write JDL
+            if not write_htcondor_job(cjob, '%s/%s/job.jdl' % (job_sandbox, job['name'])):
+                return (1, {"error":"Unable to write JDL for job"})
 
-                # TODO: need to work out how to have n nested for loops, for arbitrary n
+    # Define dependencies if necessary
+    if 'dependencies' in jwf:
+        # Generate full list of parents, taking into account job factories
+        parents = {}
+        for parent in jwf['dependencies']:
+            for item in jobs_in_dag:
+                if parent in item:
+                    parents[item] = parent
 
-                if num_dimensions == 2:
-                    job_count = 0
-                    for x1 in range(ps_num[0]):
-                        for y1 in range(ps_num[1]):
-                            x1_val = ps_start[0] + x1*ps_step[0]
-                            y1_val = ps_start[1] + y1*ps_step[1]
-                            dag.append('JOB job%d job.jdl' % job_count)
-                            dag.append('VARS job%d prominencevalue0="%s" prominencevalue1="%s" prominencecount="%d" %s' % (job_count, write_parameter_value(x1_val), write_parameter_value(y1_val), job_count, self._output_urls(jjob, uid, job_count)))
-                            job_count += 1
+        for parent in parents:
+            # Generate full list of children, taking into account job factories
+            children = []
+            for child in jwf['dependencies'][parents[parent]]:
+                for item in jobs_in_dag:
+                    if child in item:
+                        children.append(item)
 
-                elif num_dimensions == 3:
-                    job_count = 0
-                    for x1 in range(ps_num[0]):
-                        for y1 in range(ps_num[1]):
-                            for z1 in range(ps_num[2]):
-                                x1_val = ps_start[0] + x1*ps_step[0]
-                                y1_val = ps_start[1] + y1*ps_step[1]
-                                z1_val = ps_start[2] + z1*ps_step[2]
-                                dag.append('JOB job%d job.jdl' % job_count)
-                                dag.append('VARS job%d prominencevalue0="%s" prominencevalue1="%s" prominencevalue2="%s" prominencecount="%d" %s' % (job_count, write_parameter_value(x1_val), write_parameter_value(y1_val), write_parameter_value(z1_val), job_count, self._output_urls(jjob, uid, job_count)))
-                                job_count += 1
-
-                elif num_dimensions == 4:
-                    job_count = 0
-                    for x1 in range(ps_num[0]):
-                        for y1 in range(ps_num[1]):
-                            for z1 in range(ps_num[2]):
-                                for t1 in range(ps_num[3]):
-                                    x1_val = ps_start[0] + x1*ps_step[0]
-                                    y1_val = ps_start[1] + y1*ps_step[1]
-                                    z1_val = ps_start[2] + z1*ps_step[2]
-                                    t1_val = ps_start[3] + t1*ps_step[3]
-                                    dag.append('JOB job%d job.jdl' % job_count)
-                                    dag.append('VARS job%d prominencevalue0="%s" prominencevalue1="%s" prominencevalue2="%s" prominencevalue3="%s" prominencecount="%d" %s' % (job_count, write_parameter_value(x1_val), write_parameter_value(y1_val), write_parameter_value(z1_val), write_parameter_value(t1_val), job_count, self._output_urls(jjob, uid, job_count)))
-                                    job_count += 1
-
-                elif num_dimensions > 4:
-                    return (1, {"error": "Currently only parameter sweeps up to 4D are supported"})
-
-        elif jjob['factory']['type'] == 'zip':
-
-            cjob['extra_args'] = output_params(jjob) + ' '
-            for index in range(len(jjob['factory']['parameters'])):
-                cjob['extra_args'] += '--param %s=$(prominencevalue%d) ' % (jjob['factory']['parameters'][index]['name'], index)
-            for index in range(len(jjob['factory']['parameters'][0]['values'])):
-                parameters = []
-                count = 0
-                for parameter in jjob['factory']['parameters']:
-                    parameters.append('prominencevalue%d="%s"' % (count, write_parameter_value(parameter['values'][index])))
-                    count += 1
-                dag.append('JOB job%d job.jdl' % index)
-                dag.append('VARS job%d %s prominencecount="%d" %s' % (index,
-                                                                      ' '.join(parameters),
-                                                                      index,
-                                                                      self._output_urls(jjob, uid, index)))
-
-        # Write JDL
-        if not write_htcondor_job(cjob, '%s/job.jdl' % job_sandbox):
-            return (1, {"error":"Unable to write JDL for job"})
+            # Create relationship
+            dag.append('PARENT %s CHILD %s' % (parent,
+                                               " ".join(children)))
 
     # DAGMan status file
     dag.append('NODE_STATUS_FILE workflow.dag.status')
@@ -276,9 +221,9 @@ def create_workflow(self, username, groups, email, uid, jjob):
 
     # Handle labels
     dag_appends = []
-    if 'labels' in jjob:
-        for label in jjob['labels']:
-            value = jjob['labels'][label]
+    if 'labels' in jwf:
+        for label in jwf['labels']:
+            value = jwf['labels'][label]
             dag_appends.append("'+ProminenceUserMetadata_%s=\"%s\"'" % (label, value))
 
     # Create command to submit to DAGMan
@@ -295,12 +240,12 @@ def create_workflow(self, username, groups, email, uid, jjob):
     cmd += " job.dag "
 
     # Submit to DAGMan
-    (return_code, stdout, stderr, timedout) = run(cmd, job_sandbox, 30)
-    m = re.search(r'submitted to cluster\s(\d+)', str(stdout))
+    (_, stdout, _, _) = run(cmd, job_sandbox, 30)
+    match = re.search(r'submitted to cluster\s(\d+)', str(stdout))
     data = {}
-    if m:
+    if match:
         retval = 201
-        data['id'] = int(m.group(1))
+        data['id'] = int(match.group(1))
     else:
         retval = 1
         data = {"error":"Workflow submission failed"}
