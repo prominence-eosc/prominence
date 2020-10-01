@@ -26,6 +26,10 @@ def create_job(data, data_envvars, data_labels, files, data_artifacts, storage_l
         if data['policy_task_maxretries'] > 0:
             policies['maximumRetries'] = data['policy_task_maxretries']
 
+    if 'policy_leave_job_in_queue' in data:
+        if data['policy_leave_job_in_queue']:
+            policies['leaveInQueue'] = True
+
     if policies:
         job['policies'] = policies
 

@@ -54,6 +54,7 @@ class JobForm(forms.Form):
 
     policy_task_maxretries = forms.IntegerField(label='Task retries', initial=0, min_value=0, max_value=6)
     policy_job_maxretries = forms.IntegerField(label='Job retries', initial=0, min_value=0, max_value=6)
+    policy_leave_job_in_queue = forms.BooleanField(required=False)
 
     notify_email_job_finished = forms.BooleanField(required=False)
 
