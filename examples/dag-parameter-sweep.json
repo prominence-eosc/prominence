@@ -1,0 +1,59 @@
+{
+  "name": "dag-parameter-sweep-workflow",
+  "jobs": [
+    {
+      "resources": {
+        "nodes": 1,
+        "cpus": 1,
+        "memory": 1,
+        "disk": 10
+      },
+      "tasks": [
+        {
+          "image": "busybox",
+          "runtime": "singularity",
+          "cmd": "echo $frame"
+        }
+      ],
+      "name": "render"
+    },
+    {
+      "resources": {
+        "nodes": 1,
+        "cpus": 1,
+        "memory": 1,
+        "disk": 10
+      },
+      "tasks": [
+        {
+          "image": "busybox",
+          "runtime": "singularity",
+          "cmd": "echo hello"
+        }
+      ],
+      "name": "merge"
+    }
+  ],
+  "factories": [
+    {
+      "name": "frames",
+      "type": "parameterSweep",
+      "jobs": [
+        "render"
+      ],
+      "parameters": [
+        {
+          "name": "frame",
+          "start": 1,
+          "end": 3,
+          "step": 1
+        }
+      ]
+    }
+  ],
+  "dependencies": {
+    "render": [
+      "merge"
+    ]
+  }
+}

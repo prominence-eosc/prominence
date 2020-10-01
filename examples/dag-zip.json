@@ -1,0 +1,61 @@
+{
+  "name": "zip-dag-workflow",
+  "jobs": [
+    {
+      "resources": {
+        "nodes": 1,
+        "cpus": 1,
+        "memory": 1,
+        "disk": 10
+      },
+      "tasks": [
+        {
+          "image": "busybox",
+          "runtime": "singularity",
+          "cmd": "echo $frame"
+        }
+      ],
+      "name": "render"
+    },
+    {
+      "resources": {
+        "nodes": 1,
+        "cpus": 1,
+        "memory": 1,
+        "disk": 10
+      },
+      "tasks": [
+        {
+          "image": "busybox",
+          "runtime": "singularity",
+          "cmd": "echo hello"
+        }
+      ],
+      "name": "merge"
+    }
+  ],
+  "factories": [
+    {
+      "name": "frames",
+      "type": "zip",
+      "jobs": [
+        "render"
+      ],
+      "parameters": [
+        {
+          "name": "frame",
+          "values": [
+            0,
+            1,
+            2
+          ]
+        }
+      ]
+    }
+  ],
+  "dependencies": {
+    "render": [
+      "merge"
+    ]
+  }
+}
