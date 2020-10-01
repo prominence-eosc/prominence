@@ -35,8 +35,9 @@
 	    <span data-feather="more-vertical"></span>
         </button>
 	<div class="dropdown-menu" aria-labelledby="dropdownMenuButtonWorkflow{{ workflow.id }}">
-          <a class="dropdown-item js-delete-workflow" data-url="{% url 'workflow_delete' workflow.id %}">Delete</a>
 	  <a class="dropdown-item" href="{% url 'jobs' %}?workflow_id={{ workflow.id }}&completed=true&active=true">Show jobs</a>
+	  <a class="dropdown-item" href="%">Remove from queue</a>
+          <a class="dropdown-item js-delete-workflow" data-url="{% url 'workflow_delete' workflow.id %}">Delete</a>
         </div>
       </div>
     </td>
