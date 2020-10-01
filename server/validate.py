@@ -133,12 +133,12 @@ def validate_workflow(workflow):
                             'factory %s references a job %s which is not defined' % (factory['name'],
                                                                                      factory_job_name))
 
-            if factory['type'] not in ['parametricSweep', 'zip']:
+            if factory['type'] not in ['parameterSweep', 'zip']:
                 return (False, 'invalid factory type')
 
-            if factory['type'] == 'parametricSweep':
+            if factory['type'] == 'parameterSweep':
                 if 'parameters' not in factory:
-                    return (False, 'a factory of type parametricSweep must have parameters specified')
+                    return (False, 'a factory of type parameterSweep must have parameters specified')
 
                 if not isinstance(factory['parameters'], list):
                     return (False, 'parameters must be a list')
