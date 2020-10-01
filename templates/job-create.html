@@ -65,13 +65,13 @@ $(document).ready(function(){
 		     <div class="container">
 		     <div class="form-group row">
 		     <div class="col-xs-4">
-		     <b>Name</b><span class="text-secondary"> <span data-feather="help-circle" data-toggle="tooltip" title="Names must be less than 512 characters in length."></span>  (Optional)</span>
+		     <b>Name</b><span class="text-secondary"> <span class="fa fa-question-circle" data-toggle="tooltip" title="Names must be less than 512 characters in length."></span>  (Optional)</span>
 		     {{ form.name|add_class:"form-control form-control-sm" }}
 		     </div>
 		     </div>
 		     <div class="form-group row">
 		     <div class="col-xs-4">
-		     <b>Labels</b><span class="text-secondary"> <span data-feather="help-circle" data-toggle="tooltip" title="Each key and value must be a string of less than 512 characters. Keys can only contain alphanumeric characters ([a-z0-9A-Z]) while values can also contain dashes (-), underscores (_), dots (.) and forward slashes (/)."></span> (Optional)</span>
+		     <b>Labels</b><span class="text-secondary"> <span class="fa fa-question-circle" data-toggle="tooltip" title="Each key and value must be a string of less than 512 characters. Keys can only contain alphanumeric characters ([a-z0-9A-Z]) while values can also contain dashes (-), underscores (_), dots (.) and forward slashes (/)."></span> (Optional)</span>
                      {{ labels_formset.management_form }}
                      {% for label_form in labels_formset %}
                      <div class="label-formset">
@@ -97,7 +97,7 @@ $(document).ready(function(){
 		     </div>
 		     <div class="form-group row">
 		     <div class="col-xs-4">
-		     <b>Container image</b> <span class="text-secondary"><span data-feather="help-circle" data-toggle="tooltip" title="Container images can be obtained from Docker Hub, Singularity Hub, or a tarball or Singularity Image Format file from a URL or mounted filesystem."></span></span>
+		     <b>Container image</b> <span class="text-secondary"><span class="fa fa-question-circle" data-toggle="tooltip" title="Container images can be obtained from Docker Hub, Singularity Hub, or a tarball or Singularity Image Format file from a URL or mounted filesystem."></span></span>
                      {{ form.container_image|add_class:"form-control form-control-sm" }}
 		     </div>
 		     </div>
@@ -115,7 +115,7 @@ $(document).ready(function(){
 		     </div>
 		     <div class="form-group row">
 		     <div class="col-xs-4">
-		     <b>Work directory</b><span class="text-secondary"> <span data-feather="help-circle" data-toggle="tooltip" title="By default the current directory will be a scratch directory available to the job. Set the work directory if a specific alternative current directory is required"></span> (Optional)</span>
+		     <b>Work directory</b><span class="text-secondary"> <span class="fa fa-question-circle" data-toggle="tooltip" title="By default the current directory will be a scratch directory available to the job. Set the work directory if a specific alternative current directory is required"></span> (Optional)</span>
                      {{ form.workdir|add_class:"form-control form-control-sm" }}
 		     </div>
 		     </div>
@@ -170,7 +170,7 @@ $(document).ready(function(){
                   </div>
                   <div id="data" class="tab-pane fade">
                      <br/>
-		     <b>Input files</b><span class="text-secondary"> <span data-feather="help-circle" data-toggle="tooltip" title="Files must be less than 512 KB in size"></span></span><br/>
+		     <b>Input files</b><span class="text-secondary"> <span class="fa fa-question-circle" data-toggle="tooltip" title="Files must be less than 512 KB in size"></span></span><br/>
                      Any small input files required by the job such as configuration files or scripts.
                      <br/>
                      <br/>
@@ -231,13 +231,13 @@ $(document).ready(function(){
                      <div class="container">
                      <div class="form-group row">
                      <div class="col-xs-4">
-		     <b>Number of retries per job</b><span class="text-secondary"> <span data-feather="help-circle" data-toggle="tooltip" title="If a job fails it can be retried from scratch on new infrastructure"></span></span>
+		     <b>Number of retries per job</b><span class="text-secondary"> <span class="fa fa-question-circle" data-toggle="tooltip" title="If a job fails it can be retried from scratch on new infrastructure"></span></span>
                      {{ form.policy_job_maxretries|add_class:"form-control form-control-sm" }}
                      </div>
                      </div>
                      <div class="form-group row">
                      <div class="col-xs-4">
-		     <b>Number of retries per task</b><span class="text-secondary"> <span data-feather="help-circle" data-toggle="tooltip" title="If a task within a job fails it can be retried without deploying new infrastructure"></span></span>
+		     <b>Number of retries per task</b><span class="text-secondary"> <span class="fa fa-question-circle" data-toggle="tooltip" title="If a task within a job fails it can be retried without deploying new infrastructure"></span></span>
                      {{ form.policy_task_maxretries|add_class:"form-control form-control-sm" }}
                      </div>
                      </div>
@@ -247,7 +247,7 @@ $(document).ready(function(){
 		     <div class="form-group row">
                      <div class="col-xs-4">
                      {{ form.policy_leave_job_in_queue}}
-                     Leave in job queue<span class="text-secondary"> <span data-feather="help-circle" data-toggle="tooltip" title="By default jobs in a terminal state disappear from the queue. Setting this option causes the job to remain in the queue until it is explicitly removed."></span></span>
+                     Leave in job queue<span class="text-secondary"> <span class="fa fa-question-circle" data-toggle="tooltip" title="By default jobs in a terminal state disappear from the queue. Setting this option causes the job to remain in the queue until it is explicitly removed."></span></span>
                      </div>
                      </div>
                   </div>
