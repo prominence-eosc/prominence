@@ -28,13 +28,13 @@ $(document).ready(function(){
 
 	  <div class="p-2">
 <div class="btn-group btn-group-toggle" data-toggle="buttons">
-  <label class="btn btn-outline-dark" data-toggle="tooltip" title="Show only running and pending jobs">
+  <label class="btn btn-outline-dark">
 	  <input type="radio" name="options" id="option1" autocomplete="off" onclick="javascript:window.location.href='/jobs'; return false;" {{ state_selectors.active }}> Active
   </label>
-  <label class="btn btn-outline-dark" data-toggle="tooltip" title="Show jobs in terminal states">
+  <label class="btn btn-outline-dark">
 	  <input type="radio" name="options" id="option2" autocomplete="off" onclick="javascript:window.location.href='/jobs?completed=true&limit=10'; return false;" {{ state_selectors.completed }}> Completed
   </label>
-  <label class="btn btn-outline-dark" data-toggle="tooltip" title="Show jobs in any state">
+  <label class="btn btn-outline-dark">
 	  <input type="radio" name="options" id="option3" autocomplete="off" onclick="javascript:window.location.href='/jobs?completed=true&active=true&limit=10'; return false;" {{ state_selectors.all }}> All
   </label>
 </div>
