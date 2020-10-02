@@ -95,6 +95,10 @@ def jobs(request):
         jobs = [int(request.GET.get('workflow_id'))]
         workflow = True
 
+    limit = -1
+    if 'limit' in request.GET:
+        limit = int(request.GET['limit'])
+
     active = True
     if 'active' in request.GET:
         if request.GET['active'] == 'false':
@@ -104,10 +108,7 @@ def jobs(request):
     if 'completed' in request.GET:
         if request.GET['completed'] == 'true':
             completed = True
-
-    limit = -1
-    if 'limit' in request.GET:
-        limit = int(request.GET['limit'])
+            limit = 1
 
     constraint = ()
     name_constraint = None
