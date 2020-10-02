@@ -84,10 +84,10 @@ class WorkflowsView(views.APIView):
         # Constraints
         constraint = (None, None)
         if 'constraint' in request.query_params:
-            if '=' in request.query_params.get('constraint'):
-                if len(request.query_params.get('constraint').split('=')) == 2:
-                    constraint = (request.query_params.get('constraint').split('=')[0],
-                                  request.query_params.get('constraint').split('=')[1])
+            if ':' in request.query_params.get('constraint'):
+                if len(request.query_params.get('constraint').split(':')) == 2:
+                    constraint = (request.query_params.get('constraint').split(':')[0],
+                                  request.query_params.get('constraint').split(':')[1])
                 else:
                     return Response({'error': 'invalid constraint'},
                                     status=status.HTTP_400_BAD_REQUEST)
