@@ -105,9 +105,9 @@ def jobs(request):
         if request.GET['completed'] == 'true':
             completed = True
 
-    num = -1
-    if 'num' in request.GET:
-        num = int(request.GET['num'])
+    limit = -1
+    if 'limit' in request.GET:
+        limit = int(request.GET['limit'])
 
     constraint = ()
     name_constraint = None
@@ -122,7 +122,7 @@ def jobs(request):
         else:
             name_constraint = fq
 
-    jobs_list = backend.list_jobs(jobs, user_name, active, completed, workflow, num, False, constraint, name_constraint, True)
+    jobs_list = backend.list_jobs(jobs, user_name, active, completed, workflow, limit, False, constraint, name_constraint, True)
     return render(request, 'jobs.html', {'job_list': jobs_list, 'search': search})
 
 @login_required
@@ -140,9 +140,9 @@ def workflows(request):
         if request.GET['completed'] == 'true':
             completed = True
 
-    num = -1
-    if 'num' in request.GET:
-        num = int(request.GET['num'])
+    limit = -1
+    if 'limit' in request.GET:
+        limit = int(request.GET['limit'])
 
     constraint = ()
     name_constraint = None
@@ -157,7 +157,7 @@ def workflows(request):
         else:
             name_constraint = fq
 
-    workflows_list = backend.list_workflows([], user_name, active, completed, num, False, constraint, name_constraint, True)
+    workflows_list = backend.list_workflows([], user_name, active, completed, limit, False, constraint, name_constraint, True)
     return render(request, 'workflows.html', {'workflow_list': workflows_list, 'search': search})
 
 @login_required
