@@ -99,16 +99,31 @@ def jobs(request):
     if 'limit' in request.GET:
         limit = int(request.GET['limit'])
 
-    active = True
+    active = False
     if 'active' in request.GET:
-        if request.GET['active'] == 'false':
-            active = False
+        if request.GET['active'] == 'true':
+            active = True
 
     completed = False
     if 'completed' in request.GET:
         if request.GET['completed'] == 'true':
             completed = True
-            limit = 1
+            if limit == -1:
+                limit = 1
+
+    if not active and not completed:
+        active = True
+
+    state_selectors = {}
+    state_selectors['active'] = ''
+    state_selectors['completed'] = ''
+    state_selectors['all'] = ''
+    if (active and not completed) or (not active and not completed):
+        state_selectors['active'] = 'checked'
+    elif active and completed:
+        state_selectors['all'] = 'checked'
+    elif not active and completed:
+        state_selectors['completed'] = 'checked'
 
     constraint = ()
     name_constraint = None
@@ -124,26 +139,42 @@ def jobs(request):
             name_constraint = fq
 
     jobs_list = backend.list_jobs(jobs, user_name, active, completed, workflow, limit, False, constraint, name_constraint, True)
-    return render(request, 'jobs.html', {'job_list': jobs_list, 'search': search})
+    return render(request, 'jobs.html', {'job_list': jobs_list, 'search': search, 'state_selectors': state_selectors})
 
 @login_required
 def workflows(request):
     user_name = request.user.username
     backend = ProminenceBackend(server.settings.CONFIG)
 
-    active = True
+    limit = -1
+    if 'limit' in request.GET:
+        limit = int(request.GET['limit'])
+
+    active = False
     if 'active' in request.GET:
-        if request.GET['active'] == 'false':
-            active = False
+        if request.GET['active'] == 'true':
+            active = True
 
     completed = False
     if 'completed' in request.GET:
         if request.GET['completed'] == 'true':
             completed = True
+            if limit == -1:
+                limit = 1
 
-    limit = -1
-    if 'limit' in request.GET:
-        limit = int(request.GET['limit'])
+    if not active and not completed:
+        active = True
+
+    state_selectors = {}
+    state_selectors['active'] = ''
+    state_selectors['completed'] = ''
+    state_selectors['all'] = ''
+    if (active and not completed) or (not active and not completed):
+        state_selectors['active'] = 'checked'
+    elif active and completed:
+        state_selectors['all'] = 'checked'
+    elif not active and completed:
+        state_selectors['completed'] = 'checked'
 
     constraint = ()
     name_constraint = None
@@ -159,7 +190,7 @@ def workflows(request):
             name_constraint = fq
 
     workflows_list = backend.list_workflows([], user_name, active, completed, limit, False, constraint, name_constraint, True)
-    return render(request, 'workflows.html', {'workflow_list': workflows_list, 'search': search})
+    return render(request, 'workflows.html', {'workflow_list': workflows_list, 'search': search, 'state_selectors': state_selectors})
 
 @login_required
 def create_token(request):

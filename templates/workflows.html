@@ -23,14 +23,14 @@
 
 <div class="p-2">
 <div class="btn-group btn-group-toggle" data-toggle="buttons">
-  <label class="btn btn-outline-dark active">
-    <input type="radio" name="options" id="option1" autocomplete="off" onclick="javascript:window.location.href='/workflows'; return false;" checked> Active
+  <label class="btn btn-outline-dark">
+    <input type="radio" name="options" id="option1" autocomplete="off" onclick="javascript:window.location.href='/workflows'; return false;" {{ state_selectors.active }}> Active
   </label>
   <label class="btn btn-outline-dark">
-    <input type="radio" name="options" id="option2" autocomplete="off" onclick="javascript:window.location.href='/workflows?completed=true&limit=10'; return false;"> Completed
+    <input type="radio" name="options" id="option2" autocomplete="off" onclick="javascript:window.location.href='/workflows?completed=true&limit=10'; return false;" {{ state_selectors.completed }}> Completed
   </label>
   <label class="btn btn-outline-dark">
-    <input type="radio" name="options" id="option3" autocomplete="off" onclick="javascript:window.location.href='/workflows?completed=true&active=true&limit=10'; return false;"> All
+    <input type="radio" name="options" id="option3" autocomplete="off" onclick="javascript:window.location.href='/workflows?completed=true&active=true&limit=10'; return false;" {{ state_selectors.all }}> All
   </label>
 </div>
 </div>
