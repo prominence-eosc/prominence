@@ -103,19 +103,19 @@ class WorkflowsView(views.APIView):
         # Active and/or completed workflows
         active = True
         completed = False
-        num = 1
+        limit = 1
 
         if 'completed' in request.query_params:
             if request.query_params.get('completed') == 'true':
                 completed = True
                 active = False
-                if 'num' in request.query_params:
-                    num = request.query_params.get('num')
+                if 'limit' in request.query_params:
+                    limit = request.query_params.get('limit')
 
         if 'all' in request.query_params:
             completed = True
             active = True
-            num = -1
+            limit = -1
 
         # Get workflow ids
         workflow_ids = get_workflow_ids(workflow_id, request)
@@ -129,7 +129,7 @@ class WorkflowsView(views.APIView):
                                             request.user.username,
                                             active,
                                             completed,
-                                            num,
+                                            limit,
                                             detail,
                                             constraint,
                                             name_constraint)

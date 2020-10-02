@@ -103,26 +103,26 @@ class JobsView(views.APIView):
         # Active and/or completed jobs
         active = True
         completed = False
-        num = 1
+        limit = 1
 
         if 'completed' in request.query_params:
             if request.query_params.get('completed') == 'true':
                 completed = True
                 active = False
-                if 'num' in request.query_params:
-                    num = request.query_params.get('num')
+                if 'limit' in request.query_params:
+                    limit = request.query_params.get('limit')
 
         if 'all' in request.query_params:
             completed = True
             active = True
-            num = -1
+            limit = -1
 
         # Select jobs from a workflow if necessary
         workflow = False
         if 'workflow' in request.query_params:
             if request.query_params.get('workflow') == 'true':
                 workflow = True
-                num = -1
+                limit = -1
 
         # Get job ids
         job_ids = get_job_ids(job_id, request)
@@ -137,7 +137,7 @@ class JobsView(views.APIView):
                                        active,
                                        completed,
                                        workflow,
-                                       num,
+                                       limit,
                                        detail,
                                        constraint,
                                        name_constraint)
