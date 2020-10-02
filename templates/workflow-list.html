@@ -6,11 +6,11 @@
       {% elif workflow.status == "failed" %}
       <i class="text-danger fa fa-exclamation-circle" aria-hidden="true"></i>
       {% elif workflow.status == "deleted" %}
-      <i class="text-info fa fa-minus-circle" aria-hidden="true"></i>
-      {% elif workflow.warning == "killed" %}
+      <i class="text-secondary fa fa-minus-circle" aria-hidden="true"></i>
+      {% elif workflow.status == "killed" %}
       <i class="text-warning fa fa-exclamation-circle" aria-hidden="true"></i>
       {% elif workflow.status == "pending" %}
-      <i class="text-secondary fa fa-circle" aria-hidden="true"></i>
+      <i class="text-info fa fa-circle" aria-hidden="true"></i>
       {% elif workflow.status == "completed" %}
       <i class="text-success fa fa-check-circle" aria-hidden="true"></i>
       {% endif %}
