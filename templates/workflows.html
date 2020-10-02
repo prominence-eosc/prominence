@@ -22,16 +22,17 @@
 </div>
 
 <div class="p-2">
-      <div class="dropdown">
-          <button class="btn btn-outline-dark" type="button" id="dropdownMenuButtonWorkflow" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-            Show
-        </button>
-        <div class="dropdown-menu" aria-labelledby="dropdownMenuButtonWorkflow">
-          <a class="dropdown-item" href="/workflows">Active workflows</a>
-          <a class="dropdown-item" href="/workflows?completed=true&active=false&limit=1">Last completed workflow</a>
-          <a class="dropdown-item" href="/workflows?completed=true&active=false&limit=10">Last 10 completed workflows</a>
-        </div>
-      </div>
+<div class="btn-group btn-group-toggle" data-toggle="buttons">
+  <label class="btn btn-outline-dark active">
+    <input type="radio" name="options" id="option1" autocomplete="off" onclick="javascript:window.location.href='/workflows'; return false;" checked> Active
+  </label>
+  <label class="btn btn-outline-dark">
+    <input type="radio" name="options" id="option2" autocomplete="off" onclick="javascript:window.location.href='/workflows?completed=true&limit=10'; return false;"> Completed
+  </label>
+  <label class="btn btn-outline-dark">
+    <input type="radio" name="options" id="option3" autocomplete="off" onclick="javascript:window.location.href='/workflows?completed=true&active=true&limit=10'; return false;"> All
+  </label>
+</div>
 </div>
 
 <div class="p-2">
