@@ -74,6 +74,7 @@ $(document).ready(function () {
 <ul class="nav nav-tabs">
   <li class="nav-item"><a class="nav-link active" data-toggle="tab" href="#details">Details</a></li>
   <li class="nav-item"><a class="nav-link" data-toggle="tab" href="#monitoring">Monitoring</a></li>
+  <li class="nav-item"><a class="nav-link" data-toggle="tab" href="#statistics">Statistics</a></li>
 </ul>
 
 <div class="tab-content">
@@ -102,6 +103,16 @@ $(document).ready(function () {
 <b>Status reason</b>
 <br/>
 {{ job.statusReason }}
+{% endif %}
+
+<br/>
+<br/>
+<b>Site</b>
+<br/>
+{% if job.execution.site %}
+{{ job.execution.site }}
+{% else %}
+Not yet assigned
 {% endif %}
 
 <br/>
@@ -170,25 +181,6 @@ Mountpoint: {{ job.storage.mountpoint }}
 None
 {% endif %}
 
-<br/>
-<br/>
-<b>Events</b>
-<br/>
-<table>
-  <tr><td>Created:</td><td>{{ job.events.createTime }}</td></tr>
-  <tr><td>Start time:</td><td>{{ job.events.startTime }}</td></tr>
-  <tr><td>End time:</td><td>{{ job.events.endTime }}</td></tr>
-</table>
-
-<br/>
-<b>Site</b>
-<br/>
-{% if job.execution.site %}
-{{ job.execution.site }}
-{% else %}
-Not yet assigned
-{% endif %}
-
 {% if job.parameters %}
 <br/>
 <br/>
@@ -203,22 +195,43 @@ Not yet assigned
   </div>
   <div id="monitoring" class="tab-pane fade">
   <br/>
-  <div class="container">
-  <div class="col-sm-8">
-<div class="card">
-  <h6 class="card-header">Memory utilisation (MB)</h6>
-<div class="card-body">
-<div class="container">
-<div class="row">
-<canvas id="myChart" width="800" height="400"></canvas>
-	</div>
-</div>
-</div>
-</div>
-</div>
-</div>
+    <div class="container">
+      <div class="col-sm-8">
+        <div class="card">
+          <h6 class="card-header">Memory utilisation (MB)</h6>
+          <div class="card-body">
+            <div class="container">
+              <div class="row">
+                <canvas id="myChart" width="800" height="400"></canvas>
+	      </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
-</div>
+
+<div id="statistics" class="tab-pane fade">
+  <br/>
+<b>Events</b>
+<br/>
+<table>
+  <tr><td> Created</td><td>{{ job.events.createTime }}</td></tr>
+  <tr><td> Start time</td><td>{{ job.events.startTime }}</td></tr>
+  <tr><td> End time</td><td>{{ job.events.endTime }}</td></tr>
+</table>
+<br/>
+
+<b>Tasks</b><br/>
+{% for task in job.execution.tasks %}
+Image pull time: {{ task.imagePullTime|floatformat:"0" }}<br/>
+Exit code: {{ task.exitCode }} <br/>
+CPU time: {{ task.cpuTimeUsage|floatformat:"0" }}<br/>
+Wall time: {{ task.wallTimeUsage|floatformat:"0" }}<br/>
+Retries: {{ task.retries }}<br/>
+{% endfor %}
+  </div>
+
 </div>
 </div>
 
