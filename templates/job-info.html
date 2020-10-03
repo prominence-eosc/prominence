@@ -84,7 +84,19 @@ $(document).ready(function () {
 <br/>
 <b>Status</b>
 <br/>
-{{ job.status }}
+{% if job.status == "running" %}
+<i class="text-primary fa fa-repeat" aria-hidden="true"></i> Running
+{% elif job.status == "failed" %}
+<i class="text-danger fa fa-exclamation-circle" aria-hidden="true"></i> Failed
+{% elif job.status == "deleted" %}
+<i class="text-secondary fa fa-minus-circle" aria-hidden="true"></i> Deleted
+{% elif job.status == "killed" %}
+<i class="text-warning fa fa-exclamation-circle" aria-hidden="true"></i> Killed
+{% elif job.status == "pending" %}
+<i class="text-info fa fa-circle" aria-hidden="true"></i> Pending
+{% elif job.status == "completed" %}
+<i class="text-success fa fa-check-circle" aria-hidden="true"></i> Completed
+{% endif %}
 
 {% if job.statusReason %}
 <br/>

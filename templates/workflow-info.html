@@ -3,14 +3,14 @@
 {% load static %}
 
 {% block title %}
-Workflow {{ workflow.id }}: details
+Workflow {{ workflow.id }}
 {% endblock %}
 
 {% block javascript %}
 {% endblock %}
 
 {% block contentuser %}
-<h2><a href="#" onclick="history.go(-1)"><i class="feather-32" data-feather="arrow-left"></i></a>Workflow {{ workflow.id }}: details</h2>
+<h2><a href="#" onclick="history.go(-1)"><i class="feather-32" data-feather="arrow-left"></i></a>Workflow {{ workflow.id }}</h2>
 
 
 <b>Name</b>
@@ -21,7 +21,19 @@ Workflow {{ workflow.id }}: details
 <br/>
 <b>Status</b>
 <br/>
-{{ workflow.status }}
+{% if workflow.status == "running" %}
+<i class="text-primary fa fa-repeat" aria-hidden="true"></i> Running
+{% elif workflow.status == "failed" %}
+<i class="text-danger fa fa-exclamation-circle" aria-hidden="true"></i> Failed
+{% elif workflow.status == "deleted" %}
+<i class="text-secondary fa fa-minus-circle" aria-hidden="true"></i> Deleted
+{% elif workflow.status == "killed" %}
+<i class="text-warning fa fa-exclamation-circle" aria-hidden="true"></i> Killed
+{% elif workflow.status == "pending" %}
+<i class="text-info fa fa-circle" aria-hidden="true"></i> Pending
+{% elif workflow.status == "completed" %}
+<i class="text-success fa fa-check-circle" aria-hidden="true"></i> Completed
+{% endif %}
 
 {% if workflow.statusReason %}
 <br/>
