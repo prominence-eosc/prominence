@@ -10,15 +10,12 @@ Workflow {{ workflow.id }}
 {% endblock %}
 
 {% block contentuser %}
-<h2><a href="#" onclick="history.go(-1)"><i class="feather-32" data-feather="arrow-left"></i></a>Workflow {{ workflow.id }}</h2>
+<h2><a href="#" onclick="history.go(-1)"><i class="feather-32" data-feather="arrow-left"></i></a>Workflow {{ workflow.id }}
+{% if workflow.name %}
+: {{ workflow.name }}
+{% endif %}
+</h2>
 
-
-<b>Name</b>
-<br/>
-{{ workflow.name }}
-
-<br/>
-<br/>
 <b>Status</b>
 <br/>
 {% if workflow.status == "running" %}

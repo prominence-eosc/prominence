@@ -63,7 +63,11 @@ $(document).ready(function () {
 {% endblock %}
 
 {% block contentuser %}
-<h2><a href="#" onclick="history.go(-1)"><i class="feather-32" data-feather="arrow-left"></i></a> Job {{ job.id }}</h2>
+<h2><a href="#" onclick="history.go(-1)"><i class="feather-32" data-feather="arrow-left"></i></a> Job {{ job.id }}
+{% if job.name %}
+: {{ job.name }}
+{% endif %}
+</h2>
 
 <div class="project-tab">
 <div class="container">
@@ -76,12 +80,6 @@ $(document).ready(function () {
   <div id="details" class="tab-pane fade show active">
   <br/>
 
-<b>Name</b>
-<br/>
-{{ job.name }}
-
-<br/>
-<br/>
 <b>Status</b>
 <br/>
 {% if job.status == "running" %}
