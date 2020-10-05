@@ -14,8 +14,8 @@
       {% elif job.status == "completed" %}
       <i class="text-success fa fa-check-circle" aria-hidden="true"></i>
       {% endif %}
-</td><td class="align-middle">
-    <a href="{% url 'job_describe' job.id %}">{{ job.id }}</a></td>
+      &nbsp;
+      <a href="{% url 'job_describe' job.id %}">{{ job.id }}</a></td>
     <td class="align-middle">{{ job.name }}</td>
     <td class="align-middle">
       {% if job.status == "running" %}
@@ -54,9 +54,5 @@
         </div>
       </div>
     </td>
-  </tr>
-{% empty %}
-  <tr>
-    <td colspan="9" class="text-center font-italic">No jobs</td>
   </tr>
 {% endfor %}
