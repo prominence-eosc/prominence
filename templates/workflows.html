@@ -11,17 +11,16 @@
 {% endblock %}
 
 {% block contentuser %}
-  <h2>Workflows</h2>
+  <h2 style="display: inline">Workflows</h2>
+  &nbsp; &nbsp; &nbsp; &nbsp;
+  <h6 style="display: inline"> <a href="{% url 'job_create' %}">
+                  <span class="fa fa-plus"></span>
+     CREATE WORKFLOW
+          </a></h6>
 
 <div class="d-flex">
-          <div class="mr-auto p-2">
-    <button type="button" class="btn btn-primary js-create_workflow">
-      <span class="fa fa-plus"></span>
-      Create workflow
-    </button>
-</div>
 
-<div class="p-2">
+<div class="ml-auto p-2">
 <div class="btn-group btn-group-toggle" data-toggle="buttons">
   <label class="btn btn-outline-dark">
     <input type="radio" name="options" id="option1" autocomplete="off" onclick="javascript:window.location.href='/workflows'; return false;" {{ state_selectors.active }}> Active
