@@ -3,7 +3,7 @@
 echo "CONDOR_HOST = $CONDOR_HOST" > /etc/condor/config.d/docker
 echo "COLLECTOR_HOST = $CONDOR_HOST:9618" >> /etc/condor/config.d/docker
 echo "CCB_ADDRESS = $CONDOR_HOST:9618" >> /etc/condor/config.d/docker
-echo "START = ProminenceWantCluster =?= \"$CONDOR_CLUSTER\" && PROMINENCE_WORKER_HEALTHY =?= True" >> /etc/condor/config.d/docker
+echo "START = ProminenceWantCluster =?= \"$CONDOR_CLUSTER\"" >> /etc/condor/config.d/docker
 echo "PROM_CLOUD = \"$CONDOR_CLOUD\"" >> /etc/condor/config.d/docker
 echo "PROM_NODES = $CONDOR_NODES" >> /etc/condor/config.d/docker
 echo "PROM_CORES_TOTAL = $CONDOR_CORES" >> /etc/condor/config.d/docker
