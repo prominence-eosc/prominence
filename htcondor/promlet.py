@@ -129,11 +129,11 @@ def setup_onedata_dir(data):
 
     logging.info('OneData provider supports oneclient versions: %s', ','.join(versions_supported))
 
-    one_data_dirs = glob.glob('/opt/oneclient-*.*.*')
+    one_data_dirs = glob.glob('/opt/oneclient-*.*')
     versions_available = []
 
     for one_data_dir in one_data_dirs:
-        match = re.search(r'oneclient-(\d\d\.\d\d)\.', one_data_dir)
+        match = re.search(r'oneclient-(\d\d\.\d\d)', one_data_dir)
         if match:
             versions_available.append(match.group(1))
 
