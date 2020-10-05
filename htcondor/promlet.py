@@ -94,6 +94,71 @@ fi
 exit $?
 """
 
+def setup_onedata_dir(data):
+    """
+    Determines the oneclient versions supported by the OneData provider,
+    and sets up the appropriate oneclient software
+    """
+    provider = None
+    if 'storage' in data:
+        if 'type' in data['storage']:
+            if data['storage']['type'] == 'onedata':
+                if 'provider' in data['storage']['onedata']:
+                    provider = data['storage']['onedata']['provider']
+
+    provider = 'https://%s/configuration' % provider
+
+    data = {}
+
+    try:
+        response = requests.get(provider)
+        data = response.json()
+    except:
+        logging.error('Unable to get OneData provider configuration')
+        exit(1)
+
+    versions = []
+    if 'compatibleOneclientVersions' in data:
+        versions = data['compatibleOneclientVersions']
+
+    versions_supported = []
+    for version in versions:
+        version = str(version).rsplit('.', 1)[0]
+        if version not in versions_supported:
+            versions_supported.append(version)
+
+    logging.info('OneData provider supports oneclient versions: %s', ','.join(versions_supported))
+
+    one_data_dirs = glob.glob('/opt/oneclient-*.*.*')
+    versions_available = []
+
+    for one_data_dir in one_data_dirs:
+        match = re.search(r'oneclient-(\d\d\.\d\d)\.', one_data_dir)
+        if match:
+            versions_available.append(match.group(1))
+
+    logging.info('OneData client versions available: %s', ','.join(versions_available))
+
+    found_version = None
+    for version_supported in versions_supported:
+        for version_avail in versions_available:
+            if version_avail in version_supported:
+                found_version = version_supported
+
+    if found_version:
+        logging.info('Setting up oneclient for OneData version %s', found_version)
+        for one_data_dir in one_data_dirs:
+            if found_version in one_data_dir:
+                # Create symlink for /opt/oneclient directory
+                try:
+                    os.symlink(one_data_dir, '/opt/oneclient')
+                except:
+                    logging.error('Unable to create OneData symlink from %s', one_data_dir)
+                    exit(1)
+    else:
+        logging.error('No compatible OneData client found')
+        exit(1)
+
 def create_sif_from_archive(image_out, image_in):
     """
     Create a Singularity image from a Docker archive
@@ -811,6 +876,10 @@ def mount_storage(job):
             logging.info('Mounting OneData provider at %s', storage_mountpoint)
             storage_provider = job['storage']['onedata']['provider']
             storage_token = job['storage']['onedata']['token']
+
+            # Setup OneData client (client needs to have the same version as the provider)
+            logging.info('Setting up the appropriate OneData client version')
+            setup_onedata_dir(job)
 
             # Create mount point if necessary
             if not os.path.isdir('/home/user/mounts%s' % storage_mountpoint):
