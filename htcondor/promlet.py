@@ -892,7 +892,7 @@ def mount_storage(job):
                 logging.info('Mounts directory already exists, no need to create it')
 
             try:
-                process = subprocess.Popen('/usr/bin/oneclient -t %s -H %s /home/user/mounts%s' % (storage_token,
+                process = subprocess.Popen('/usr/bin/oneclient -i -t %s -H %s /home/user/mounts%s' % (storage_token,
                                                                                        storage_provider,
                                                                                        storage_mountpoint),
                                            shell=True,
@@ -938,7 +938,7 @@ def unmount_storage(job):
             storage_provider = job['storage']['onedata']['provider']
             storage_token = job['storage']['onedata']['token']
 
-            process = subprocess.Popen('/usr/bin/oneclient -t %s -H %s -u /home/user/mounts%s' % (storage_token,
+            process = subprocess.Popen('/usr/bin/oneclient -i -t %s -H %s -u /home/user/mounts%s' % (storage_token,
                                                                                       storage_provider,
                                                                                       storage_mountpoint),
                                        shell=True,
