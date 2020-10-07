@@ -8,21 +8,36 @@
 
 {% block javascript %}
   <script src="{% static 'js/storage.js' %}"></script>
+<script>
+$(document).ready(function() {
+        $('#storage-table').DataTable({
+order: [[0, 'asc']],
+"columnDefs": [
+    { "orderable": false, "targets": [3] },
+  ],    
+"language": {
+      "emptyTable": "No storage systems"
+    },  
+"bPaginate": true,
+    "bLengthChange": false,
+    "bFilter": false,
+    "bInfo": true,
+    "bAutoWidth": false
+        });
+} );
+</script>
 {% endblock %}
 
 {% block contentuser %}
 
-  <h2>Storage systems</h2>
+  <h2 style="display: inline">Storage</h2>
+  &nbsp; &nbsp; &nbsp; &nbsp;
+  <h6 style="display: inline"> <a href="{% url 'storage_add' %}">
+                  <span class="fa fa-plus"></span>
+     ADD STORAGE
+          </a></h6>
 
-  <p/>
-  <p>
-    <button type="button" class="btn btn-primary js-add-storage" data-url="{% url 'storage_add' %}">
-      <span class="fa fa-plus"></span>
-      Add storage
-    </button>
-  </p>
-
-  <table class="table table-striped table-bordered" id="storage-table">
+  <table class="table table-striped" id="storage-table">
     <thead>
       <tr>
         <th>Name</th>
