@@ -14,8 +14,8 @@
       {% elif workflow.status == "completed" %}
       <i class="text-success fa fa-check-circle" aria-hidden="true"></i>
       {% endif %}
-</td>
-    <td class="align-middle"><a href="{% url 'workflow_describe' workflow.id %}">{{ workflow.id }}</a></td>
+      &nbsp;
+    <a href="{% url 'workflow_describe' workflow.id %}">{{ workflow.id }}</a></td>
     <td class="align-middle">{{ workflow.name }}</td>
     <td class="align-middle">
       {% if workflow.status == "running" %}
@@ -56,9 +56,5 @@
         </div>
       </div>
     </td>
-  </tr>
-{% empty %}
-  <tr>
-    <td colspan="8" class="text-center font-italic">No workflows</td>
   </tr>
 {% endfor %}
