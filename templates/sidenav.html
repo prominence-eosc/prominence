@@ -20,9 +20,9 @@
     </a>
    </li>
    <li class="nav-item">
-    <a class="nav-link" href="/clouds">
+	   <a class="nav-link {% if request.resolver_match.view_name == 'compute' %}active{% endif %}" href="/compute">
      <span data-feather="cloud"></span>
-     Clouds
+     Compute
     </a>
    </li>   
    <li class="nav-item">

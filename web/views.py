@@ -246,7 +246,7 @@ def register_token(request):
     return HttpResponse('')
 
 @login_required
-def clouds(request):
+def compute(request):
     return render(request, 'clouds.html')
 
 @login_required
