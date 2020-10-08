@@ -1,19 +1,18 @@
 {% for storage_system in storage %}
   <tr>
-    <td>{{ storage_system.name }}</td>
-    <td>{{ storage_system.get_storage_type_display }}</td>
-    <td>{{ storage_system.hostname }}</td>
-    <td style="width: 200px">
-      <button type="button"
-              class="btn btn-warning btn-sm js-update-storage"
-              data-url="{% url 'storage_update' storage_system.id %}">
-	<span class="fa fa-pencil"></span> Edit
-      </button>
-      <button type="button"
-              class="btn btn-danger btn-sm js-delete-storage"
-              data-url="{% url 'storage_delete' storage_system.id %}">
-	<span class="fa fa-trash"></span> Delete
-      </button>
+    <td class="align-middle">{{ storage_system.name }}</td>
+    <td class="align-middle">{{ storage_system.get_storage_type_display }}</td>
+    <td class="align-middle">{{ storage_system.hostname }}</td>
+    <td class="align-middle">
+      <div class="dropleft">
+          <button class="btn btn-outline-secondary" type="button" id="dropdownMenuButtonStorage{{ storage_system.id }}" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false" style="border:none;">
+            <span data-feather="more-vertical"></span>
+        </button>
+        <div class="dropdown-menu" aria-labelledby="dropdownMenuButtonStorage{{ storage_system.id }}">
+          <a class="dropdown-item" href="{% url 'storage_update' storage_system.id %}">Update</a>
+          <a class="dropdown-item js-delete-storage" data-url="{% url 'storage_delete' storage_system.id %}">Delete</a>
+        </div>
+      </div>
     </td>
   </tr>
 {% endfor %}    

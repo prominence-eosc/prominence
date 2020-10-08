@@ -13,7 +13,8 @@ class Storage(models.Model):
     name = models.CharField(max_length=120)
     hostname = models.CharField(max_length=120)
     username = models.CharField(max_length=120, blank=True)
-    password = models.CharField(max_length=250)
+    password = models.CharField(max_length=250, blank=True)
+    token = models.CharField(max_length=250, blank=True)
     space = models.CharField(max_length=120, blank=True)
     storage_type = models.PositiveSmallIntegerField(choices=STORAGE_TYPES)
 

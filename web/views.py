@@ -57,18 +57,29 @@ def save_storage_form(request, form, template_name):
 def storage_add(request):
     if request.method == 'POST':
         form = StorageForm(request.POST)
+        if form.is_valid():
+            storage = form.save(commit=False)
+            storage.user = request.user
+            storage.save()
+        return redirect('/storage')
     else:
         form = StorageForm()
-    return save_storage_form(request, form, 'storage-add.html')
+
+    return render(request, 'storage-add.html', {'form': form})
 
 @login_required
 def storage_update(request, pk):
     storage = get_object_or_404(Storage, user=request.user, pk=pk)
     if request.method == 'POST':
         form = StorageForm(request.POST, instance=storage)
+        if form.is_valid():
+            storage = form.save(commit=False)
+            storage.user = request.user
+            storage.save()
+        return redirect('/storage')
     else:
         form = StorageForm(instance=storage)
-    return save_storage_form(request, form, 'storage-update.html')
+    return render(request, 'storage-update.html', {'form': form, 'id': pk})
 
 @login_required
 def storage_delete(request, pk):

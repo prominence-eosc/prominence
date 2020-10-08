@@ -1,16 +1,78 @@
-<form method="post" action="{% url 'storage_add' %}" class="js-storage-add-form">
+{% extends 'user-base.html' %}
+{% load static %}
+{% load widget_tweaks %}
+{% block title %}
+Add storage
+{% endblock %}
+{% block javascript %}
+<script>
+$('.token').hide();
+$('select[name="storage_type"]').on('change',function(){
+   var selectedVal=$(this).val();
+   switch(selectedVal){
+       case '1':
+                   $('.token').hide();
+                   $('.username').show();
+                   $('.password').show();
+             break;
+       case '2':
+                   $('.username').hide();
+                   $('.password').hide();
+                   $('.token').show();
+             break;
+       default:
+                   $('.token').hide();
+                   $('.username').show();
+                   $('.password').show();
+             break;
+   }
+});
+</script>
+{% endblock %}
+{% block contentuser %}
+<h2><a href="/storage"><i class="feather-32" data-feather="arrow-left"></i></a> Add storage</h2>
+<br/>
+<form method="post" action="{% url 'storage_add' %}">
   {% csrf_token %}
-  <div class="modal-header">
-    <h5 class="modal-title">Add a new storage system</h5>
-    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-      <span aria-hidden="true">&times;</span>
-    </button>
+<div class="container">
+  <div class="form-group row type">
+    <div class="col-xs-4">
+    <b>Name</b>
+    {{ form.name|add_class:"form-control form-control-sm" }}
+    </div>
   </div>
-  <div class="modal-body">
-    {% include 'storage-form.html' %}
+  <div class="form-group row">
+    <div class="col-xs-4">
+    <b>Type</b>
+    {{ form.storage_type|add_class:"form-control form-control-sm" }}
+    </div>
   </div>
-  <div class="modal-footer">
-    <button type="button" class="btn btn-outline-dark" data-dismiss="modal">Close</button>
-    <button type="submit" class="btn btn-primary">Add</button>
+  <div class="form-group row hostname">
+    <div class="col-xs-4">
+    <b>Hostname</b>
+    {{ form.hostname|add_class:"form-control form-control-sm" }}
+    </div>
   </div>
+  <div class="form-group row username">
+    <div class="col-xs-4">
+    <b>Username</b>
+    {{ form.username|add_class:"form-control form-control-sm" }}
+    </div>
+  </div>
+  <div class="form-group row password">
+    <div class="col-xs-4">
+    <b>Password</b>
+    {{ form.password|add_class:"form-control form-control-sm" }}
+    </div>
+  </div>
+  <div class="form-group row token">
+    <div class="col-xs-4">
+    <b>Token</b>
+    {{ form.token|add_class:"form-control form-control-sm" }}
+    </div>
+  </div>
+</div>
+  <button type="submit" class="btn btn-primary">Add</button>
 </form>
+<br/>
+{% endblock %}
