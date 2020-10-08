@@ -77,7 +77,7 @@ def create_job(data, data_envvars, data_labels, files, data_artifacts, storage_l
                     job_storage['type'] = 'onedata'
                     job_storage['onedata'] = {}
                     job_storage['onedata']['provider'] = storage.hostname
-                    job_storage['onedata']['token'] = storage.password
+                    job_storage['onedata']['token'] = storage.token
                 job['storage'] = job_storage
 
     labels = {}
