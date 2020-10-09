@@ -9,12 +9,12 @@ Update resource
 {% block contentuser %}
 <h2><a href="/compute"><i class="feather-32" data-feather="arrow-left"></i></a> Update resource</h2>
 <br/>
-<form method="post" action="{% url 'storage_update' id %}">
+<form method="post" action="{% url 'compute_update' id %}">
   {% csrf_token %}
 <div class="container">
   {% include 'compute-form.html' %}
   <button type="submit" class="btn btn-primary">Update</button>
-<a class="btn btn-outline-dark" href="/storage">Cancel</a>
+<a class="btn btn-outline-dark" href="/compute">Cancel</a>
 </div>
 </form>
 <br/>
