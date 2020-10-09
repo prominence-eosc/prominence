@@ -39,44 +39,44 @@ $('select[name="storage_type"]').on('change',function(){
   {% csrf_token %}
 <div class="container">
   <div class="form-group row type">
-    <div class="col-xs-4">
+    <div class="col-lg-4">
     <b>Name</b>
     {{ form.name|add_class:"form-control form-control-sm" }}
     </div>
   </div>
   <div class="form-group row">
-    <div class="col-xs-4">
+    <div class="col-lg-4">
     <b>Type</b>
     {{ form.storage_type|add_class:"form-control form-control-sm" }}
     </div>
   </div>
   <div class="form-group row hostname">
-    <div class="col-xs-4">
+    <div class="col-lg-4">
     <b>Hostname</b>
     {{ form.hostname|add_class:"form-control form-control-sm" }}
     </div>
   </div>
   <div class="form-group row username">
-    <div class="col-xs-4">
+    <div class="col-lg-4">
     <b>Username</b>
     {{ form.username|add_class:"form-control form-control-sm" }}
     </div>
   </div>
   <div class="form-group row password">
-    <div class="col-xs-4">
+    <div class="col-lg-4">
     <b>Password</b>
     {{ form.password|add_class:"form-control form-control-sm" }}
     </div>
   </div>
   <div class="form-group row token">
-    <div class="col-xs-4">
+    <div class="col-lg-4">
     <b>Token</b>
     {{ form.token|add_class:"form-control form-control-sm" }}
     </div>
   </div>
-</div>
   <button type="submit" class="btn btn-primary">Update</button>
 <a class="btn btn-outline-dark" href="/storage">Cancel</a>
+</div>
 </form>
 <br/>
 {% endblock %}
