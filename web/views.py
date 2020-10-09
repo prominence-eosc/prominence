@@ -10,8 +10,8 @@ from django.contrib.auth.decorators import login_required
 from django.contrib.auth import get_user_model
 from rest_framework.authtoken.models import Token
 
-from .forms import StorageForm, JobForm, LabelsFormSet, ArtifactsFormSet, EnvVarsFormSet, InputFilesFormSet
-from .models import Storage
+from .forms import ComputeForm, StorageForm, JobForm, LabelsFormSet, ArtifactsFormSet, EnvVarsFormSet, InputFilesFormSet
+from .models import Compute, Storage
 from server.backend import ProminenceBackend
 from server.validate import validate_job
 import server.settings
@@ -258,7 +258,36 @@ def register_token(request):
 
 @login_required
 def compute(request):
-    return render(request, 'clouds.html')
+    compute_list = request.user.resources.all()
+    return render(request, 'clouds.html', {'resources': compute_list})
+
+@login_required
+def compute_add(request):
+    if request.method == 'POST':
+        form = ComputeForm(request.POST)
+        if form.is_valid():
+            compute = form.save(commit=False)
+            compute.user = request.user
+            compute.save()
+        return redirect('/compute')
+    else:
+        form = ComputeForm()
+
+    return render(request, 'compute-add.html', {'form': form})
+
+@login_required
+def compute_update(request, pk):
+    compute = get_object_or_404(Compute, user=request.user, pk=pk)
+    if request.method == 'POST':
+        form = ComputeForm(request.POST, instance=compute)
+        if form.is_valid():
+            compute = form.save(commit=False)
+            compute.user = request.user
+            compute.save()
+        return redirect('/compute')
+    else:
+        form = ComputeForm(instance=compute)
+    return render(request, 'compute-update.html', {'form': form, 'id': pk})
 
 @login_required
 def job_create(request):

@@ -1,12 +1,40 @@
 from django import forms
 from django.forms.formsets import formset_factory
 
-from .models import Storage
+from .models import Compute, Storage
 
 class StorageForm(forms.ModelForm):
     class Meta:
         model = Storage
-        fields = ('name', 'storage_type', 'hostname', 'space', 'username', 'password', 'token')
+        fields = (
+            'name',
+            'storage_type',
+            'hostname',
+            'space',
+            'username',
+            'password',
+            'token'
+        )
+
+class ComputeForm(forms.ModelForm):
+    class Meta:
+        model = Compute
+        fields = (
+            'name',
+            'resource_type',
+            'ost_host',
+            'ost_username',
+            'ost_password',
+            'ost_tenant',
+            'ost_domain',
+            'ost_auth_version',
+            'ost_service_region',
+            'ost_tenant_domain_id',
+            'gcp_sa_email',
+            'gcp_sa_private_key',
+            'gcp_project',
+            'gcp_regions'
+        )
 
 CONTAINER_RUNTIMES = (
     ('singularity', 'Singularity'),

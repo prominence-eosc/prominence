@@ -3,14 +3,55 @@
 {% load static %}
 
 {% block javascript %}
+<script>
+$(document).ready(function() {
+        $('#compute-table').DataTable({
+order: [[0, 'asc']],
+"columnDefs": [
+    { "orderable": false, "targets": [2] },
+  ],    
+"language": {
+      "emptyTable": "No resources"
+    },  
+"bPaginate": true,
+    "bLengthChange": false,
+    "bFilter": false,
+    "bInfo": true,
+    "bAutoWidth": false
+        });
+} );
+</script>
 {% endblock %}
 
 {% block contentuser %}
 <h2 style="display: inline">Compute</h2>
 &nbsp; &nbsp; &nbsp; &nbsp;
-<h6 style="display: inline"> <a href="#">
+<h6 style="display: inline"> <a href="{% url 'compute_add' %}">
 <span class="fa fa-plus"></span>
 ADD RESOURCE
 </a></h6>
+
+          <br/>
+          <br/>
+
+  <table class="table table-striped" id="compute-table">
+    <thead>
+      <tr>
+        <th>Name</th>
+        <th>Type</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% include 'clouds-list.html' %}
+    </tbody>
+  </table>
+
+  <div class="modal fade" id="modal-compute">
+    <div class="modal-dialog">
+      <div class="modal-content">
+      </div>      
+    </div>
+  </div>
 
 {% endblock %}
