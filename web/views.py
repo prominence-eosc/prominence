@@ -290,6 +290,20 @@ def compute_update(request, pk):
     return render(request, 'compute-update.html', {'form': form, 'id': pk})
 
 @login_required
+def compute_delete(request, pk):
+    compute = get_object_or_404(Compute, user=request.user, pk=pk)
+    data = dict()
+    if request.method == 'POST':
+        compute.delete()
+        data['form_is_valid'] = True
+        resources = request.user.resources.all()
+        data['html_resources_list'] = render_to_string('clouds-list.html', {'resources': resources})
+    else:
+        context = {'resource': compute}
+        data['html_form'] = render_to_string('compute-delete.html', context, request=request)
+    return JsonResponse(data)
+
+@login_required
 def job_create(request):
     if request.method == 'POST':
         form = JobForm(request.POST)

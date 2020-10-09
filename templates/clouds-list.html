@@ -9,7 +9,7 @@
         </button>
         <div class="dropdown-menu" aria-labelledby="dropdownMenuButtonStorage{{ resource.id }}">
           <a class="dropdown-item" href="{% url 'compute_update' resource.id %}">Update</a>
-          <a class="dropdown-item" data-url="#">Delete</a>
+	  <a class="dropdown-item js-delete-compute" data-url="{% url 'compute_delete' resource.id %}">Delete</a>
         </div>
       </div>
     </td>

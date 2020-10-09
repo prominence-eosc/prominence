@@ -13,6 +13,7 @@ urlpatterns = [
     re_path(r'^compute/$', views.compute, name='compute'),
     re_path(r'^compute/add/$', views.compute_add, name='compute_add'),
     re_path(r'^compute/(?P<pk>\d+)/update/$', views.compute_update, name='compute_update'),
+    re_path(r'^compute/(?P<pk>\d+)/delete/$', views.compute_delete, name='compute_delete'),
     path(r'jobs/', views.jobs, name='jobs'),
     re_path(r'^jobs/create/$', views.job_create, name='job_create'),
     re_path(r'^jobs/(?P<pk>\d+)/delete/$', views.job_delete, name='job_delete'),
