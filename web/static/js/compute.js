@@ -2,6 +2,7 @@ window.onload = function () {
 	var select = document.getElementsByName('resource_type')[0];
 	select.dispatchEvent(new Event('change'));
 }
+
 $('select[name="resource_type"]').on('change',function(){
    var selectedVal=$(this).val();
    switch(selectedVal){
@@ -40,4 +41,50 @@ $('select[name="resource_type"]').on('change',function(){
                    $('.password').show();
              break;
    }
+});
+
+$(function () {
+
+  /* Functions */
+
+  var loadForm = function () {
+    var btn = $(this);
+    $.ajax({
+      url: btn.attr("data-url"),
+      type: 'get',
+      dataType: 'json',
+      beforeSend: function () {
+        $("#modal-compute .modal-content").html("");
+        $("#modal-compute").modal("show");
+      },
+      success: function (data) {
+        $("#modal-compute .modal-content").html(data.html_form);
+      }
+    });
+  };
+
+  var saveForm = function () {
+    var form = $(this);
+    $.ajax({
+      url: form.attr("action"),
+      data: form.serialize(),
+      type: form.attr("method"),
+      dataType: 'json',
+      success: function (data) {
+        if (data.form_is_valid) {
+          $("#compute-table tbody").html(data.html_resources_list);
+          $("#modal-compute").modal("hide");
+        }
+        else {
+          $("#modal-compute .modal-content").html(data.html_form);
+        }
+      }
+    });
+    return false;
+  };
+
+  /* Binding */
+  $("#compute-table").on("click", ".js-delete-compute", loadForm);
+  $("#modal-compute").on("submit", ".js-compute-delete-form", saveForm);
+
 });
