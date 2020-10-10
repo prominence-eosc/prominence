@@ -39,7 +39,7 @@ class Compute(models.Model):
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="resources", null=True)
     resource_type = models.PositiveSmallIntegerField(choices=RESOURCE_TYPES, default=1, blank=False)
     name = models.CharField(max_length=120)
-    image_name = models.CharField(max_length=120)
+    image_name = models.CharField(max_length=120, blank=True)
 
     ost_host = models.CharField(max_length=120, blank=True)
     ost_username = models.CharField(max_length=120, blank=True)
