@@ -21,6 +21,7 @@ class ComputeForm(forms.ModelForm):
         model = Compute
         fields = (
             'name',
+            'image_name',
             'resource_type',
             'ost_host',
             'ost_username',
