@@ -1,23 +1,29 @@
 {% extends 'base.html' %}
 
+{% load socialaccount %}
+
 {% block title %}
   Submit Globally, Run Globally
 {% endblock %}
   
 {% block content %}
-<br/><br/>
       <section id="promo">
-         <div style="background:transparent !important" class="jumbotron d-flex align-items-center">
+         <div style="background:transparent !important" class="jumbotron align-items-center">
             <div class="container">
                <div class="row">
                   <div class="col">
-                     <h1 class="display-4 text-center text-md-left text-light" style="font-weight:100">
+                     <div class="display-4 text-center text-md-left text-light" style="font-weight:100">
                         High throughput and high performance computing without servers or clusters
-                     </h1>
+                     </div>
                      <h4 class="text-center text-md-left text-light mb-6 mb-lg-8" style="font-weight:300">
                         Run containerised jobs across many clouds without managing infrastructure.
                      </h4>
+		     <br/>
+		  <h6>
+		  <a class="btn btn-light nav-link w-25" href="{% provider_login_url 'egicheckin' %}">Login with EGI Check-in</a>
+		  </h6>
                   </div>
+
                </div>
             </div>
          </div>
@@ -32,7 +38,7 @@
                   Run jobs from anywhere
                </h4>
                <p class="text-muted">
-                  Manage jobs using a simple batch system style command line interface, or interact programmatically using a RESTful API.
+                  Manage jobs using a web UI, a simple batch system style command line interface or interact programmatically using a RESTful API.
                </p>
             </div>
             <div class="col">
@@ -52,10 +58,11 @@
                   Invisible infrastructure
                </h4>
                <p class="text-muted">
-                  All infrastructure provisioning is handled completely automatically and is totally transparent to the user.
+                  All infrastructure provisioning is handled completely automatically and is totally invisible to the user.
                </p>
             </div>
          </div>
+         <br/>
          <br/>
          <div class="row">
             <div class="col">
@@ -85,7 +92,7 @@
                   Data access
                </h4>
                <p class="text-muted">
-                  Data can be automatically staged-in and staged-out from object storage.
+		  Jobs can access data transparently from OneData, WebDAV or object storage.
                </p>
             </div>
          </div>
@@ -94,14 +101,11 @@
       <br/>
       <br/>
 
-  <footer class="footer mt-auto py-3">
+  <footer class="footer py-3">
   <div class="container-fluid">
-  <div class="row">
-  <div class="col"></div>
-  <div class="col"></div>
-  <div class="col">
+	  <div class="d-flex">
   <span class="text-muted"><a href="/terms-of-use">Terms of use</a> |
-  <a href="/privacy-policy">Privacy policy</a></span></div>
+  <a href="/privacy-policy">Privacy policy</a></span>
   </div>
   </div>
 </footer>

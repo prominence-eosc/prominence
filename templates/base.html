@@ -20,10 +20,8 @@
 
   <body>
     {% include "nav.html" %}
-    <div class="container-fluid pt-5">
-      {% block content %}
-      {% endblock %}
-    </div>
+    {% block content %}
+    {% endblock %}
 
     <script>
       feather.replace()
