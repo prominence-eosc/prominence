@@ -23,12 +23,11 @@ body {
  */
 
 .footer {
-  background-color: #e1e1e1;
-}
-
-.footer > .container {
-  padding-right: 15px;
-  padding-left: 15px;
+  bottom: 0px;
+  width: 100%;
+  height: 60px; /* Set the fixed height of the footer here */
+  line-height: 60px; /* Vertically center the text there */
+  background-color: #818181;
 }
 
 /*
@@ -40,6 +39,8 @@ body {
   height: 100%;
   box-shadow: inset -1px 0 0 rgba(0, 0, 0, .1);
   padding: 1px;
+  overflow-y: hidden;
+  overflow-x: hidden;
 }
 
 .sidebar .feather .active{
@@ -73,6 +74,11 @@ body {
   font-size: .75rem;
   text-transform: uppercase;
 }
+
+.sidenav-footer {
+	  padding: 0.75rem;
+	    flex-shrink: 0;
+    }
 
 /*
  * Navbar
@@ -111,12 +117,15 @@ body {
  */
 
 #promo {
-  background-image: linear-gradient( 109.6deg,  rgba(41,125,182,1) 3.6%, rgba(77,58,151,1) 51%, rgba(103,55,115,1) 92.9% );
+background: #DC2424;  /* fallback for old browsers */
+background: -webkit-linear-gradient(to right, #4A569D, #DC2424);  /* Chrome 10-25, Safari 5.1-6 */
+background: linear-gradient(to right, #4A569D, #DC2424); /* W3C, IE 10+/ Edge, Firefox 16+, Chrome 26+, Opera 12+, Safari 7+ */
 }
 
 .feather-large{
   width: 48px;
   height: 48px;
+  color: #4444ff;
 }
 
 /*
@@ -155,3 +164,6 @@ body {
     color: #000000;
 }
 
+ .jumbotron {
+      margin-bottom:0;
+    }

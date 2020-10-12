@@ -8,14 +8,17 @@
   
 {% block content %}
       <section id="promo">
-         <div style="background:transparent !important" class="jumbotron align-items-center">
+      <nav class="navbar navbar-dark">
+         <a class="navbar-brand mb-0 h1" href="/">prominence</a>
+      </nav>
+         <div style="background:transparent !important" class="jumbotron align-items-center pt-5">
             <div class="container">
                <div class="row">
                   <div class="col">
-                     <div class="display-4 text-center text-md-left text-light" style="font-weight:100">
+                     <div class="display-4 text-center text-md-left text-light" style="font-weight:200">
                         High throughput and high performance computing without servers or clusters
                      </div>
-                     <h4 class="text-center text-md-left text-light mb-6 mb-lg-8" style="font-weight:300">
+                     <h4 class="text-center text-md-left text-light mb-6 mb-lg-8" style="font-weight:100">
                         Run containerised jobs across many clouds without managing infrastructure.
                      </h4>
 		     <br/>
@@ -28,8 +31,29 @@
             </div>
          </div>
       </section>
-      <br/>
+
+      <div class="jumbotron">
+      <h2 class="text-center">Overview</h2>
       <div class="container">
+	      <div class="row justify-content-md-center">
+	      <div class="col-sm-8">
+      <h6 class="text-center">Prominence is a platform which allows users to exploit idle cloud resources for running scientific workloads with a simple batch system style interface.</h6>
+      </div>
+      </div>
+      </div>
+      </div>
+
+      <br/>
+      <br/>
+      <br/>
+
+      <div class="container">
+         <div class="row">
+		 <div class="col">
+		 <h2 class="text-center">Features</h2>
+		 </div>
+	 </div>
+	 <br/>
          <div class="row">
             <div class="col">
                <i class="feather-large" data-feather="user"></i>
@@ -98,15 +122,16 @@
          </div>
       </div>
 
-      <br/>
-      <br/>
+      <br/>       
+      <br/>       
 
-  <footer class="footer py-3">
-  <div class="container-fluid">
-	  <div class="d-flex">
-  <span class="text-muted"><a href="/terms-of-use">Terms of use</a> |
-  <a href="/privacy-policy">Privacy policy</a></span>
-  </div>
-  </div>
-</footer>
+  <footer class="footer">
+    <div class="container">
+      <span class="text-light">
+        <a class="text-light" href="/terms-of-use">Terms of use</a> | <a class="text-light" href="/privacy-policy">Privacy policy</a>
+      </span>     
+    </div>     
+  </footer>
+
+                  
 {% endblock %}
