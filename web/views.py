@@ -102,9 +102,6 @@ def jobs(request):
 
     workflow = None
     jobs = []
-    if 'workflow_id' in request.GET:
-        jobs = [int(request.GET.get('workflow_id'))]
-        workflow = True
 
     limit = -1
     if 'limit' in request.GET:
@@ -124,6 +121,11 @@ def jobs(request):
 
     if not active and not completed:
         active = True
+
+    if 'workflow_id' in request.GET:
+        jobs = [int(request.GET.get('workflow_id'))]
+        workflow = True
+        limit = -1
 
     state_selectors = {}
     state_selectors['active'] = ''
