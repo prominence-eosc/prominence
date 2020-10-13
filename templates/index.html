@@ -8,8 +8,21 @@
   
 {% block content %}
       <section id="promo">
-      <nav class="navbar navbar-dark">
+      <nav class="navbar navbar-dark navbar-expand">
          <a class="navbar-brand mb-0 h1" href="/">prominence</a>
+          <div class="navbar-collapse collapse">
+           <ul class="navbar-nav ml-auto">
+          <li class="nav-item">
+            <a class="nav-link" href="#">About</a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link" href="https://prominence.readthedocs.io">Docs</a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link" href="#">GitHub</a>
+          </li>
+           </ul>
+           </div>
       </nav>
          <div style="background:transparent !important" class="jumbotron align-items-center pt-5">
             <div class="container">
@@ -37,7 +50,7 @@
       <div class="container">
 	      <div class="row justify-content-md-center">
 	      <div class="col-sm-8">
-      <h6 class="text-center">Prominence is a platform which allows users to exploit idle cloud resources for running scientific workloads with a simple batch system style interface.</h6>
+		      <h6 class="text-center">Prominence is a platform which allows users to easily exploit idle cloud resources for running scientific workloads. By default resources from the <a href="https://www.egi.eu/services/cloud-compute/">EGI Cloud Compute</a> service are used.</h6>
       </div>
       </div>
       </div>
@@ -53,7 +66,6 @@
 		 <h2 class="text-center">Features</h2>
 		 </div>
 	 </div>
-	 <br/>
          <div class="row">
             <div class="col">
                <i class="feather-large" data-feather="user"></i>
@@ -124,6 +136,7 @@
 
       <br/>       
       <br/>       
+
 
   <footer class="footer">
     <div class="container">
