@@ -98,22 +98,23 @@ def list_workflows(self, workflow_ids, identity, active, completed, num, detail,
         except IOError:
             pass
 
-        if 'end_time' in dag_metrics:
-            events['endTime'] = int(dag_metrics['end_time'])
+        if int(wf['JobStatus']) > 2:
+            if 'end_time' in dag_metrics:
+                events['endTime'] = int(dag_metrics['end_time'])
         
-            # For rescue DAGs, end_time might already exist, but it's from the original workflow
-            if 'startTime' in events:
-                if events['endTime'] < events['startTime']:
-                    del events['endTime']
+                # For rescue DAGs, end_time might already exist, but it's from the original workflow
+                if 'startTime' in events:
+                    if events['endTime'] < events['startTime']:
+                        del events['endTime']
 
-        elif 'CompletionDate' in wf:
-            events['endTime'] = int(wf['CompletionDate'])
+            elif 'CompletionDate' in wf:
+                events['endTime'] = int(wf['CompletionDate'])
 
         # If necessary convert unix epoch timestamps into nicely formatted date/times
         if display:
+            wfj['elapsedTime'] = elapsed(events)
             if 'createTime' in events:
                 events['createTime'] = datetime_format(events['createTime'])
-            wfj['elapsedTime'] = elapsed(events)
             if 'startTime' in events:
                 events['startTime'] = datetime_format(events['startTime'])
             if 'endTime' in events:
