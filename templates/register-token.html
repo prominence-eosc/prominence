@@ -10,17 +10,18 @@
           </button>
         </div>
         <div class="modal-body">
-          This service requires the following permissions for your EGI Check-in account:
+	  The following permissions for your EGI Check-in account are required:
           <ul>
             <li>log in using your identity</li>
             <li>access your info while not being logged in</li>
             <li>read your email address</li>
             <li>read your basic profile info</li>
           </ul>
-        </div>
+	  You will be required to login to your identity provider again after clicking <b>Authorise</b>.
+	</div>
         <div class="modal-footer">
           <button type="button" class="btn btn-outline-dark" data-dismiss="modal">Close</button>
-          <button type="submit" class="btn btn-primary">Authorise</button>
+	  <a href="{% url 'refresh_authorise' %}" class="btn btn-primary">Authorise</a>
         </div>
       </div>
     </div>
