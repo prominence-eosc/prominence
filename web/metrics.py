@@ -1,4 +1,8 @@
+import logging
 import influxdb_client
+
+# Get an instance of a logger
+logger = logging.getLogger(__name__)
 
 class Metrics:
     """
@@ -23,7 +27,8 @@ class JobMetrics(Metrics):
 
         try:
             results = self.client.query_api().query(org=self.org, query=query)
-        except:
+        except Exception as err:
+            logger.critical('Exception when querying InfluxDB in JobMetrics: %s', err)
             return {'idle': [], 'running': []}
 
         jobs_running = []
@@ -70,7 +75,8 @@ class JobMetricsByCloud(Metrics):
 
         try:
             results = self.client.query_api().query(org=self.org, query=query)
-        except:
+        except Exception as err:
+            logger.critical('Exception when querying InfluxDB in JobMetricsByCloud: %s', err)
             return {}
 
         data = {}
@@ -125,7 +131,8 @@ class JobResourceUsageMetrics(Metrics):
 
         try:
             results = self.client.query_api().query(org=self.org, query=query)
-        except:
+        except Exception as err:
+            logger.critical('Exception when querying InfluxDB in JobResourceUsageMetrics: %s', err)
             return {'memory': []}
 
         memory = []
