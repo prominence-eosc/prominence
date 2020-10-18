@@ -460,6 +460,7 @@ def refresh_callback(request):
                                        server.settings.CONFIG['IMC_SSL_KEY']),
                                  verify=server.settings.CONFIG['IMC_SSL_CERT'])
     except (requests.exceptions.Timeout, requests.exceptions.RequestException) as err:
+        logger.critical('Unable to update refresh token due to: %s', err)
         pass
 
     return redirect('/')
