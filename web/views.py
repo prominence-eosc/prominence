@@ -1,4 +1,5 @@
 from datetime import datetime, timedelta
+import logging
 import uuid
 import requests
 from requests.auth import HTTPBasicAuth
@@ -19,6 +20,9 @@ from server.validate import validate_job
 import server.settings
 from .utilities import create_job
 from .metrics import JobMetrics, JobMetricsByCloud, JobResourceUsageMetrics
+
+# Get an instance of a logger
+logger = logging.getLogger(__name__)
 
 def index(request):
     if request.user.is_authenticated:
@@ -232,33 +236,6 @@ def revoke_token(request):
     user = user_model.objects.get_by_natural_key(user_name)
     Token.objects.filter(user=user).delete()
     return HttpResponse('Your token has been revoked')
-
-@login_required
-def register_token(request):
-    """
-    Register a refresh token to use with EGI FedCloud sites
-    """
-    user = request.user
-    account = user.socialaccount_set.get(provider="egicheckin")
-    refresh_token = account.socialtoken_set.first().token_secret
-
-    data = {}
-    data['username'] = request.user.username
-    data['refresh_token'] = refresh_token
-
-    try:
-        response = requests.post(server.settings.CONFIG['IMC_URL'],
-                                 timeout=5,
-                                 json=data,
-                                 auth=HTTPBasicAuth(server.settings.CONFIG['IMC_USERNAME'], 
-                                 server.settings.CONFIG['IMC_PASSWORD']),
-                                 cert=(server.settings.CONFIG['IMC_SSL_CERT'],
-                                       server.settings.CONFIG['IMC_SSL_KEY']),
-                                 verify=server.settings.CONFIG['IMC_SSL_CERT'])
-    except (requests.exceptions.Timeout, requests.exceptions.RequestException) as err:
-        return HttpResponse('Error: %s', err)
-
-    return HttpResponse('')
 
 @login_required
 def compute(request):
