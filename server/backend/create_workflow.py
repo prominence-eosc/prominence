@@ -1,4 +1,5 @@
 import json
+import logging
 import os
 import re
 import shutil
@@ -6,6 +7,9 @@ import uuid
 
 from .utilities import condor_str, run
 from .write_htcondor_job import write_htcondor_job
+
+# Get an instance of a logger
+logger = logging.getLogger(__name__)
 
 def write_parameter_value(value):
     """
@@ -75,6 +79,7 @@ def create_workflow(self, username, groups, email, uid, jwf):
     # Firstly, create the workflow sandbox
     job_sandbox = self.create_sandbox(uid)
     if job_sandbox is None:
+        logger.critical('Unable to create workflow sandbox for user %s and job uid %s', username, uid)
         return (1, {"error":"Unable to create workflow sandbox"})
 
     # Workflow name
@@ -87,6 +92,7 @@ def create_workflow(self, username, groups, email, uid, jwf):
         with open(job_sandbox + '/workflow.json', 'w') as fd:
             json.dump(jwf, fd)
     except IOError:
+        logger.critical('Unable to write workflow.json for user %s and job uid %s', username, uid)
         return (1, {"error":"Unable to write workflow.json"})
 
     dag = []
@@ -126,6 +132,7 @@ def create_workflow(self, username, groups, email, uid, jwf):
             os.makedirs(job_sandbox + '/' + job['name'])
             os.makedirs(job_sandbox + '/' + job['name'] + '/input')
         except IOError:
+            logger.critical('Unable to create job sandbox directories for user %s and job uid %s', username, uid)
             return (1, {"error":"Unable to create job sandbox directories"})
 
         job_filename = job_sandbox + '/' + job['name'] + '/job.jdl'
@@ -300,6 +307,7 @@ def create_workflow(self, username, groups, email, uid, jwf):
         with open(job_sandbox + '/job.dag', 'w') as fd:
             fd.write('\n'.join(dag))
     except IOError:
+        logger.critical('Unable to write DAG file for job for user %s and job uid %s', username, uid)
         return (1, {"error":"Unable to write DAG file for job"})
 
     # Handle labels
