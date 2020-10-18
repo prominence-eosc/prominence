@@ -27,7 +27,6 @@ urlpatterns = [
     re_path(r'^user/usage/$', views.user_usage, name='user-usage'),
     re_path(r'^user/create-token/$', views.create_token, name='create-token'),
     re_path(r'^user/revoke-token/$', views.revoke_token, name='revoke-token'),
-    re_path(r'^user/register-token/$', views.register_token, name='register-token'),
     re_path(r'^refresh/authorise$', views.refresh_authorise, name='refresh_authorise'),
     re_path(r'^refresh/callback$', views.refresh_callback, name='refresh_callback'),
 ]
