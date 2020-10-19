@@ -307,6 +307,7 @@ def job_create(request):
 
             # Submit job
             (return_code, msg) = backend.create_job(user_name, 'group', 'email', job_uuid, job_desc)
+            logger.info('Job submitted by %s with uid %s', user_name, job_uuid)
             # TODO: if return code not zero, return message to user
 
             return redirect('/jobs')
