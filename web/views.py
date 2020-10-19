@@ -288,7 +288,7 @@ def compute_delete(request, pk):
 @login_required
 def job_create(request):
     if request.method == 'POST':
-        form = JobForm(request.POST)
+        form = JobForm(request.user, request.POST)
         labels_formset = LabelsFormSet(request.POST, prefix='fs1')
         envvars_formset = EnvVarsFormSet(request.POST, prefix='fs2')
         inputs_formset = InputFilesFormSet(request.POST, request.FILES, prefix='fs4')
@@ -320,7 +320,7 @@ def job_create(request):
 
             return redirect('/jobs')
     else:
-        form = JobForm()
+        form = JobForm(request.user)
         labels_formset = LabelsFormSet(prefix='fs1')
         envvars_formset = EnvVarsFormSet(prefix='fs2')
         inputs_formset = InputFilesFormSet(prefix='fs4')

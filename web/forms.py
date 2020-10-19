@@ -78,7 +78,7 @@ class JobForm(forms.Form):
     disk = forms.IntegerField(label='Disk (GB)', initial=10, min_value=10, max_value=512)
     walltime = forms.IntegerField(label='Walltime (hours)', initial=12, min_value=1, max_value=100800)
 
-    storage_name = forms.CharField(label='Name', required=False)
+    storage_name = forms.ModelChoiceField(queryset=Storage.objects.none(), empty_label="", required=False)
     storage_mountpoint = forms.CharField(label='Mount point', required=False)
 
     policy_task_maxretries = forms.IntegerField(label='Task retries', initial=0, min_value=0, max_value=6)
@@ -86,6 +86,10 @@ class JobForm(forms.Form):
     policy_leave_job_in_queue = forms.BooleanField(required=False)
 
     notify_email_job_finished = forms.BooleanField(required=False)
+
+    def __init__(self, user, *args, **kwargs):
+        super(JobForm, self).__init__(*args, **kwargs)
+        self.fields['storage_name'].queryset = Storage.objects.filter(user=user)
 
 LabelsFormSet = formset_factory(LabelForm)
 EnvVarsFormSet = formset_factory(EnvVarForm)
