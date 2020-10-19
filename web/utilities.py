@@ -64,7 +64,7 @@ def create_job(data, data_envvars, data_labels, files, data_artifacts, storage_l
 
     if 'storage_name' in data:
         for storage in storage_list:
-            if data['storage_name'] == storage.name:
+            if str(data['storage_name']) == str(storage.name):
                 job_storage = {}
                 job_storage['mountpoint'] = data['storage_mountpoint']
                 if storage.storage_type == 1:
