@@ -6,7 +6,8 @@ Add storage
 {% endblock %}
 {% block javascript %}
 <script>
-$('.token').hide();
+$('.username').hide();
+$('.password').hide();
 $('select[name="storage_type"]').on('change',function(){
    var selectedVal=$(this).val();
    switch(selectedVal){
@@ -21,9 +22,9 @@ $('select[name="storage_type"]').on('change',function(){
                    $('.token').show();
              break;
        default:
-                   $('.token').hide();
-                   $('.username').show();
-                   $('.password').show();
+                   $('.token').show();
+                   $('.username').hide();
+                   $('.password').hide();
              break;
    }
 });
