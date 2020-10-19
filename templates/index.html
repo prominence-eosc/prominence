@@ -38,11 +38,6 @@ function cookieConsent() {
     }
 }
 
-$('#btnDeny').click(()=>{
-    eraseCookie('allowCookies')
-    $('.toast').toast('hide')
-})
-
 $('#btnAccept').click(()=>{
     setCookie('allowCookies','1',7)
     $('.toast').toast('hide')
@@ -51,12 +46,6 @@ $('#btnAccept').click(()=>{
 // load
 cookieConsent()
 
-// for demo / testing only
-$('#btnReset').click(()=>{
-    // clear cookie to show toast after acceptance
-    eraseCookie('allowCookies')
-    $('.toast').toast('show')
-})
 </script>
 {% endblock %}
   
@@ -123,7 +112,7 @@ $('#btnReset').click(()=>{
          <div class="row">
             <div class="col">
                <i class="feather-large" data-feather="user"></i>
-               <p/>
+	       <br/><br/>
                <h4 class="display-6 text-center text-md-left" style="font-weight:300">
                   Run jobs from anywhere
                </h4>
@@ -133,7 +122,7 @@ $('#btnReset').click(()=>{
             </div>
             <div class="col">
                <i class="feather-large" data-feather="codesandbox"></i>
-               <p/>
+	       <br/><br/>
                <h4 class="display-6 text-center text-md-left" style="font-weight:300">
                   Reliability & reproduceability
                </h4>
@@ -143,7 +132,7 @@ $('#btnReset').click(()=>{
             </div>
             <div class="col">
                <i class="feather-large" data-feather="server"></i>
-               <p/>
+	       <br/><br/>
                <h4 class="display-6 text-center text-md-left" style="font-weight:300">
                   Invisible infrastructure
                </h4>
@@ -157,7 +146,7 @@ $('#btnReset').click(()=>{
          <div class="row">
             <div class="col">
                <i class="feather-large" data-feather="grid"></i>
-               <p/>
+	       <br/><br/>
                <h4 class="display-6 text-center text-md-left" style="font-weight:300">
                   MPI ready
                </h4>
@@ -167,7 +156,7 @@ $('#btnReset').click(()=>{
             </div>
             <div class="col">
                <i class="feather-large" data-feather="copy"></i>
-               <p/>
+	       <br/><br/>
                <h4 class="display-6 text-center text-md-left" style="font-weight:300">
                   Workflows
                </h4>
@@ -177,7 +166,7 @@ $('#btnReset').click(()=>{
             </div>
             <div class="col">
                <i class="feather-large" data-feather="database"></i>
-               <p/>
+	       <br/><br/>
                <h4 class="display-6 text-center text-md-left" style="font-weight:300">
                   Data access
                </h4>
@@ -194,9 +183,7 @@ $('#btnReset').click(()=>{
 
   <footer class="footer">
     <div class="container">
-      <span class="text-light">
         <a class="text-light" href="/terms-of-use">Terms of use</a> | <a class="text-light" href="/privacy-policy">Privacy policy</a>
-      </span>     
     </div>     
   </footer>
 
