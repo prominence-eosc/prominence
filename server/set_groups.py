@@ -8,9 +8,6 @@ def set_groups(request):
             if match.group(1) not in groups:
                 groups.append(match.group(1))
 
-    # TODO: FOR TESTING ONLY
-    groups = ["vo.access.egi.eu"]
-
     # If user not a member of any VOs, assign to a default group
     if not groups:
         groups.append('default')
