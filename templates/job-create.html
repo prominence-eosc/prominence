@@ -215,7 +215,7 @@ $(document).ready(function(){
                        </tr>
                        <tr>
                          <td>
-                           {{ form.storage_name }}
+                           {{ form.storage_name|add_class:"form-control form-control-sm" }}
                          </td>
                          <td>
                            {{ form.storage_mountpoint }}
