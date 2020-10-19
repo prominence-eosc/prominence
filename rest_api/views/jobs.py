@@ -11,6 +11,7 @@ from rest_framework.response import Response
 
 from server.backend import ProminenceBackend
 from server.validate import validate_job
+from server.set_groups import set_groups
 import server.settings
 
 def get_job_ids(job_id, request):
@@ -52,16 +53,7 @@ class JobsView(views.APIView):
             return Response({'error': msg}, status=status.HTTP_400_BAD_REQUEST)
 
         # Set groups
-        groups = []
-        for entitlement in request.user.entitlements.split(','):
-            match = re.match(r'urn:mace:egi.eu:group:(\w+):role=member#aai.egi.eu', entitlement)
-            if match:
-                if match.group(1) not in groups:
-                    groups.append(match.group(1))
-
-        # If user not a member of any VOs, assign to a default group
-        if not groups:
-            groups.append('default')
+        groups = set_groups(request)
 
         # Create job
         (return_code, data) = self._backend.create_job(request.user.username,

@@ -17,6 +17,7 @@ from .forms import ComputeForm, StorageForm, JobForm, LabelsFormSet, ArtifactsFo
 from .models import Compute, Storage
 from server.backend import ProminenceBackend
 from server.validate import validate_job
+from server.set_groups import set_groups
 import server.settings
 from .utilities import create_job
 from .metrics import JobMetrics, JobMetricsByCloud, JobResourceUsageMetrics
@@ -300,14 +301,21 @@ def job_create(request):
             user_name = request.user.username
             backend = ProminenceBackend(server.settings.CONFIG)
 
+            # Set groups
+            groups = set_groups(request)
+
             # Validate job
             (job_status, msg) = validate_job(job_desc)
             #if not job_status:
             # TODO: message that job is invalid
 
             # Submit job
-            (return_code, msg) = backend.create_job(user_name, 'group', 'email', job_uuid, job_desc)
-            logger.info('Job submitted by %s with uid %s', user_name, job_uuid)
+            logger.info('Submitting job for user %s with uid %s', user_name, job_uuid)
+            (return_code, msg) = backend.create_job(user_name,
+                                                    ','.join(groups),
+                                                    request.user.email,
+                                                    job_uuid,
+                                                    job_desc)
             # TODO: if return code not zero, return message to user
 
             return redirect('/jobs')
