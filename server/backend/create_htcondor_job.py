@@ -109,20 +109,18 @@ def _create_htcondor_job(self, username, groups, email, uid, jjob, job_path, wor
     cjob['transfer_executable'] = 'true'
     cjob['executable'] = 'promlet.py'
     cjob['arguments'] = '--job job.mapped.json --id 0'
-
     cjob['Log'] = job_path + '/job.0.log'
     cjob['Output'] = job_path + '/job.0.out'
     cjob['Error'] = job_path +  '/job.0.err'
     cjob['should_transfer_files'] = 'YES'
     cjob['when_to_transfer_output'] = 'ON_EXIT_OR_EVICT'
+    cjob['+SpoolOnEvict']  = 'false'
     cjob['skip_filechecks'] = 'true'
     cjob['transfer_output_files'] = 'promlet.0.log,promlet.0.json'
     cjob['+WantIOProxy'] = 'true'
     cjob['+ProminenceType'] = condor_str('job')
-
     cjob['stream_error'] = 'true'
     cjob['stream_output'] = 'true'
-
     cjob['transfer_input_files'] = str(','.join(input_files))
 
     # Job name
