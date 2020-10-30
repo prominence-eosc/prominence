@@ -38,10 +38,8 @@
       {{ job.elapsedTime }}
     {% endif %}
     </td>
-    {% for task in job.tasks %}
-    <td class="align-middle">{{ task.image }}</td>
-    <td class="align-middle">{{ task.cmd }}</td>
-    {% endfor %}
+    <td class="align-middle">{{ job.tasks.0.image }}</td>
+    <td class="align-middle">{{ job.tasks.0.cmd }}</td>
     <td class="align-middle">
       <div class="dropleft">
 	  <button class="btn btn-outline-secondary" type="button" id="dropdownMenuButtonJob{{ job.id }}" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false" style="border:none;">
@@ -49,7 +47,7 @@
         </button>
 	<div class="dropdown-menu" aria-labelledby="dropdownMenuButtonJob{{ job.id }}">
           <a class="dropdown-item" href="{% url 'job_logs' job.id %}">Logs</a>
-	  <a class="dropdown-item" href="%">Remove from queue</a>
+	  <a class="dropdown-item" href="/">Remove from queue</a>
           <a class="dropdown-item js-delete-job" data-url="{% url 'job_delete' job.id %}">Delete</a>
         </div>
       </div>
