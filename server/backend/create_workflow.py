@@ -122,10 +122,11 @@ def create_workflow(self, username, groups, email, uid, jwf):
 
         # Check if this job has a factory
         job_factory = None
-        for factory in jwf['factories']:
-            for job_in_factory in factory['jobs']:
-                if job['name'] == job_in_factory:
-                    job_factory = factory
+        if 'factories' in jwf:
+            for factory in jwf['factories']:
+                for job_in_factory in factory['jobs']:
+                    if job['name'] == job_in_factory:
+                        job_factory = factory
 
         # Create job sandbox
         try:
