@@ -50,19 +50,28 @@ class JobMetricsByCloud(Metrics):
     Get running jobs by resource for the specified user
     """
     def _create_dataset(self, identifier, label, data):
+        # Colours taken from https://colorbrewer2.org
         colors = []
-        colors.append([0, 0, 0])
-        colors.append([255, 0, 0])
-        colors.append([0, 255, 0])
-        colors.append([0, 0, 255])
+        colors.append([166,206,227])
+        colors.append([31,120,180])
+        colors.append([178,223,138])
+        colors.append([51,160,44])
+        colors.append([251,154,153])
+        colors.append([227,26,28])
+        colors.append([253,191,111])
+        colors.append([255,127,0])
+        colors.append([202,178,214])
+        colors.append([106,61,154])
+        colors.append([255,255,153])
+        colors.append([177,89,40])
 
         return {'label': "%s" % label,
                 'borderColor': "rgb(%d, %d, %d)" % (colors[identifier][0],
                                                     colors[identifier][1],
                                                     colors[identifier][2]),
                 'backgroundColor': "rgb(%d, %d, %d)" % (colors[identifier][0],
-                                                    colors[identifier][1],
-                                                    colors[identifier][2]),
+                                                        colors[identifier][1],
+                                                        colors[identifier][2]),
                 'fill': 'false',
                 'pointRadius': 0,
                 'data': data}
