@@ -34,6 +34,7 @@ def get_matching_s3_objects(url, access_key_id, secret_access_key, bucket, prefi
                       endpoint_url=url,
                       aws_access_key_id=access_key_id,
                       aws_secret_access_key=secret_access_key)
+
     paginator = s3.get_paginator("list_objects_v2")
 
     kwargs = {'Bucket': bucket}
@@ -77,7 +78,10 @@ def list_objects(self, user, groups, path=None):
                                        self._config['S3_BUCKET'],
                                        prefix=prefix)
     except Exception:
-        return objects
+        return None
+
+    if keys is None:
+        return None
 
     for key in keys:
         name = key['Key']
