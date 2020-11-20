@@ -578,7 +578,7 @@ def get_storage_mountpoint():
 
     return None
 
-def download_singularity(image, image_new, location, path):
+def download_singularity(image, image_new, location, path, credential):
     """
     Download a Singularity image from a URL or pull an image from Docker Hub
     """
@@ -642,6 +642,11 @@ def download_singularity(image, image_new, location, path):
         else:
             cmd = 'singularity pull --name "image.simg" docker://%s' % image
 
+        env = dict(os.environ, PATH='/usr/local/bin:/usr/bin:/usr/local/sbin:/usr/sbin')
+        if credential['username'] and credential['token']:
+            env['SINGULARITY_DOCKER_USERNAME'] = credential['username']
+            env['SINGULARITY_DOCKER_PASSWORD'] = credential['token']
+
         count = 0
         success = False
 
@@ -650,8 +655,7 @@ def download_singularity(image, image_new, location, path):
                 process = subprocess.Popen(cmd,
                                            cwd=os.path.dirname(image_new),
                                            shell=True,
-                                           env=dict(os.environ,
-                                                    PATH='/usr/local/bin:/usr/bin:/usr/local/sbin:/usr/sbin'),
+                                           env=env,
                                            stdout=subprocess.PIPE,
                                            stderr=subprocess.PIPE)
                 stdout, stderr = process.communicate()
@@ -735,7 +739,7 @@ def install_udocker(location):
 
     return True
 
-def download_udocker(image, location, label, path):
+def download_udocker(image, location, label, path, credential):
     """
     Download an image from a URL and create a udocker container named 'image'
     """
@@ -1189,6 +1193,11 @@ def run_tasks(job, path, is_batch):
         task_was_run = False
         image_pull_status = 'completed'
 
+        credential = {'username': None, 'token': None}
+        if 'imagePullCredential' in task:
+            if 'username' in task['imagePullCredential'] and 'token' in task['imagePullCredential']:
+                credential = task['imagePullCredential']
+
         # Check if a previous task used the same image: in that case use the previous image if the same container
         # runtime was used
         image_count = 0
@@ -1206,7 +1215,7 @@ def run_tasks(job, path, is_batch):
                 image = 'image%d' % image_count
                 image_pull_status = 'cached'
             elif not FINISH_NOW:
-                metrics_download = monitor(download_udocker, image, location, count, path)
+                metrics_download = monitor(download_udocker, image, location, count, path, credential)
                 if metrics_download.time_wall > 0:
                     total_pull_time += metrics_download.time_wall
                 if metrics_download.exit_code != 0:
@@ -1240,7 +1249,7 @@ def run_tasks(job, path, is_batch):
                 image_pull_status = 'cached'
             elif not FINISH_NOW:
                 image_new = '%s/image.simg' % location
-                metrics_download = monitor(download_singularity, image, image_new, location, path)
+                metrics_download = monitor(download_singularity, image, image_new, location, path, credential)
                 if metrics_download.time_wall > 0:
                     total_pull_time += metrics_download.time_wall
                 if metrics_download.exit_code != 0:
@@ -1427,9 +1436,13 @@ if __name__ == "__main__":
         mount['status'] = 'failed'
     json_mounts.append(mount)
 
-    json_tasks = {}
-    json_stagein = {}
-    json_stageout = {}
+    json_stagein = []
+    json_tasks = []
+    json_stageout = []
+
+    success_stagein = False
+    success_tasks = False
+    success_stageout = False
 
     if success_mount:
         # Download any artifacts
