@@ -34,6 +34,9 @@ def list_objects(username, group, email, path=None):
         return jsonify({'error':'Not authorized to access this path'}), 403
 
     objects = backend.list_objects(username, group, path)
+    if objects is None:
+        return jsonify({'error':'Unable to list objects due to storage system problems'}), 400
+
     return jsonify(objects)
 
 @data.route("/prominence/v1/data/<path:obj>", methods=['DELETE'])
