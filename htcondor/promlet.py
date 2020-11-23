@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/python3
 from __future__ import print_function
 import argparse
 import getpass
@@ -16,6 +16,9 @@ import subprocess
 import sys
 import tarfile
 import time
+from geoip import geolite2
+import geopy.distance
+from nslookup import Nslookup
 from functools import wraps
 from resource import getrusage, RUSAGE_CHILDREN
 from threading import Timer
@@ -94,18 +97,44 @@ fi
 exit $?
 """
 
-def setup_onedata_dir(data):
+def find_nearest_provider(providers):
+    """
+    Given a list of hostnames, find the nearest
+    """
+    # Get my location
+    try:
+        response = requests.get('https://ifconfig.me/all.json')
+    except Exception as err:
+        logging.info('Got exception when trying to get my ip address: %s', err)
+        return None
+
+    my_coords = geolite2.lookup(response.json()['ip_addr']).location
+
+    # Find nearest provider by checking distance to each based on geoip
+    min_distance = -1
+    closest_provider = None
+    for provider in providers:
+        dns_query = Nslookup(dns_servers=['8.8.8.8'])
+        ip_address = dns_query.dns_lookup(provider).answer
+        if ip_address:
+            try:
+                coords = geolite2.lookup(ip_address[0]).location
+            except Exception as err:
+                logging.info('Got exception when trying to get location of IP address: %s', err)
+                distance = 1000000000
+            else:
+                distance = geopy.distance.distance(coords, my_coords).km
+        if (distance < min_distance and min_distance > -1) or min_distance == -1:
+            min_distance = distance
+            closest_provider = provider
+
+    return closest_provider
+
+def setup_onedata_dir(data, provider):
     """
     Determines the oneclient versions supported by the OneData provider,
     and sets up the appropriate oneclient software
     """
-    provider = None
-    if 'storage' in data:
-        if 'type' in data['storage']:
-            if data['storage']['type'] == 'onedata':
-                if 'provider' in data['storage']['onedata']:
-                    provider = data['storage']['onedata']['provider']
-
     provider = 'https://%s/configuration' % provider
 
     data = {}
@@ -877,9 +906,21 @@ def mount_storage(job):
             storage_provider = job['storage']['onedata']['provider']
             storage_token = job['storage']['onedata']['token']
 
+            # If multiple providers are specified, find the nearest
+            if ',' in storage_provider:
+                logging.info('Finding nearest OneData provider...')
+                nearest_storage_provider = find_nearest_provider(storage_provider.split(','))
+                if nearest_storage_provider:
+                    storage_provider = nearest_storage_provider
+                    logging.info('Nearest OneData provider is %s', storage_provider)
+                else:
+                    # In case of any problems, just pick the first provider specified
+                    logging.info('Unable to find nearest OneData provider, using first one in the list')
+                    nearest_storage_provider = storage_provider.split(',')[0]
+
             # Setup OneData client (client needs to have the same version as the provider)
-            logging.info('Setting up the appropriate OneData client version')
-            setup_onedata_dir(job)
+            logging.info('Setting up the appropriate OneData client version for provider: %s', storage_provider)
+            setup_onedata_dir(job, storage_provider)
 
             # Create mount point if necessary
             if not os.path.isdir('/home/user/mounts%s' % storage_mountpoint):
@@ -892,7 +933,7 @@ def mount_storage(job):
                 logging.info('Mounts directory already exists, no need to create it')
 
             try:
-                process = subprocess.Popen('/usr/bin/oneclient -i -t %s -H %s /home/user/mounts%s' % (storage_token,
+                process = subprocess.Popen('/usr/bin/oneclient -t %s -H %s /home/user/mounts%s' % (storage_token,
                                                                                        storage_provider,
                                                                                        storage_mountpoint),
                                            shell=True,
@@ -938,7 +979,7 @@ def unmount_storage(job):
             storage_provider = job['storage']['onedata']['provider']
             storage_token = job['storage']['onedata']['token']
 
-            process = subprocess.Popen('/usr/bin/oneclient -i -t %s -H %s -u /home/user/mounts%s' % (storage_token,
+            process = subprocess.Popen('/usr/bin/oneclient -t %s -H %s -u /home/user/mounts%s' % (storage_token,
                                                                                       storage_provider,
                                                                                       storage_mountpoint),
                                        shell=True,
@@ -956,7 +997,7 @@ def get_storage_mountpoint(job):
 
     return None
 
-def download_singularity(image, image_new, location, path):
+def download_singularity(image, image_new, location, path, credential):
     """
     Download a Singularity image from a URL or pull an image from Docker Hub
     """
@@ -1023,13 +1064,17 @@ def download_singularity(image, image_new, location, path):
         count = 0
         success = False
 
+        env = dict(os.environ, PATH='/usr/local/bin:/usr/bin:/usr/local/sbin:/usr/sbin')
+        if credential['username'] and credential['token']:
+            env['SINGULARITY_DOCKER_USERNAME'] = credential['username']
+            env['SINGULARITY_DOCKER_PASSWORD'] = credential['token']
+
         while count < DOWNLOAD_MAX_RETRIES and not success:
             try:
                 process = subprocess.Popen(cmd,
                                            cwd=os.path.dirname(image_new),
                                            shell=True,
-                                           env=dict(os.environ,
-                                                    PATH='/usr/local/bin:/usr/bin:/usr/local/sbin:/usr/sbin'),
+                                           env=env,
                                            stdout=subprocess.PIPE,
                                            stderr=subprocess.PIPE)
                 stdout, stderr = process.communicate()
@@ -1113,7 +1158,7 @@ def install_udocker(location):
 
     return True
 
-def download_udocker(image, location, label, path):
+def download_udocker(image, location, label, path, credential):
     """
     Download an image from a URL and create a udocker container named 'image'
     """
@@ -1488,6 +1533,11 @@ def run_tasks(job, path, is_batch):
         task_was_run = False
         image_pull_status = 'completed'
 
+        credential = {'username': None, 'token': None}
+        if 'imagePullCredential' in task:
+            if 'username' in task['imagePullCredential'] and 'token' in task['imagePullCredential']:
+                credential = task['imagePullCredential']
+
         # Check if a previous task used the same image: in that case use the previous image if the same container
         # runtime was used
         image_count = 0
@@ -1506,7 +1556,7 @@ def run_tasks(job, path, is_batch):
                 image_pull_status = 'cached'
             elif not FINISH_NOW:
                 logging.info('Pulling image for task')
-                metrics_download = monitor(download_udocker, image, location, count, path)
+                metrics_download = monitor(download_udocker, image, location, count, path, credential)
                 if metrics_download.time_wall > 0:
                     total_pull_time += metrics_download.time_wall
                 if metrics_download.exit_code != 0:
@@ -1543,7 +1593,7 @@ def run_tasks(job, path, is_batch):
             elif not FINISH_NOW:
                 image_new = '%s/image.simg' % location
                 logging.info('Pulling image for task')
-                metrics_download = monitor(download_singularity, image, image_new, location, path)
+                metrics_download = monitor(download_singularity, image, image_new, location, path, credential)
                 if metrics_download.time_wall > 0:
                     total_pull_time += metrics_download.time_wall
                 if metrics_download.exit_code != 0:
