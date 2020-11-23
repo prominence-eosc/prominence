@@ -264,7 +264,8 @@ def validate_job(job):
                    'workdir',
                    'procsPerNode',
                    'type',
-                   'runtime']
+                   'runtime',
+                   'imagePullCredential']
 
     resources_valids = ['nodes',
                         'cpus',
@@ -364,6 +365,10 @@ def validate_job(job):
 
             if 'image' not in task:
                 return (False, 'each task must specify a container image')
+
+            if 'imagePullCredential' in task:
+                if 'username' not in task['imagePullCredential'] or 'token' not in task['imagePullCredential']:
+                    return (False, 'a username and token must be specified in the image pull credential')
 
             if 'runtime' in task:
                 if task['runtime'] != 'udocker' and task['runtime'] != 'singularity':
