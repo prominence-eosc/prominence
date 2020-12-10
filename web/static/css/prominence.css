@@ -101,6 +101,14 @@ body {
   border-radius: 0;
 }
 
+.navbar .navbar-nav .nav-link {
+  color: #fff;
+}
+
+.navbar .navbar-nav .nav-link:hover {
+  color: #f4d03f;
+}
+
 .form-control-dark {
   color: #fff;
   background-color: rgba(255, 255, 255, .1);
@@ -167,3 +175,9 @@ background: linear-gradient(to right, #4A569D, #DC2424); /* W3C, IE 10+/ Edge, F
  .jumbotron {
       margin-bottom:0;
     }
+
+
+#jobs-table td {
+  vertical-align: middle;
+}
+
