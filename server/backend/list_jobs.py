@@ -170,6 +170,10 @@ def list_jobs(self, job_ids, identity, active, completed, workflow, num, detail,
         if 'stagein' in job_u:
             stagein_u = job_u['stagein']
 
+        site_from_promlet = None
+        if 'site' in job_u:
+            site_from_promlet = job_u['site']
+
         # Job parameters
         parameters = {}
         if 'ProminenceFactoryId' in job:
@@ -372,28 +376,33 @@ def list_jobs(self, job_ids, identity, active, completed, workflow, num, detail,
                 jobj['storage'] = redact_storage_creds(job_json_file['storage'])
 
             execution = {}
+
             if 'ProminenceInfrastructureSite' in job:
                 if job['ProminenceInfrastructureSite'] != 'none':
                     execution['site'] = str(job['ProminenceInfrastructureSite'])
-                new_tasks_u = []
-                if tasks_u:
-                    for task_u in tasks_u:
-                        if 'maxMemoryUsageKB' in task_u:
-                            execution['maxMemoryUsageKB'] = task_u['maxMemoryUsageKB']
-                        elif 'error' in task_u:
-                            job_wall_time_limit_exceeded = True
-                        else:
-                            new_tasks_u.append(task_u)
-                    execution['tasks'] = new_tasks_u
+            elif site_from_promlet:
+                execution['site'] = site_from_promlet
 
-                stagein_time = 0
-                if 'stagein' in job_u:
-                    for artifact in job_u['stagein']:
-                        if 'time' in artifact:
-                            stagein_time += artifact['time']
+            new_tasks_u = []
+            if tasks_u:
+                for task_u in tasks_u:
+                    if 'maxMemoryUsageKB' in task_u:
+                        execution['maxMemoryUsageKB'] = task_u['maxMemoryUsageKB']
+                    elif 'error' in task_u:
+                        job_wall_time_limit_exceeded = True
+                    else:
+                        new_tasks_u.append(task_u)
+                execution['tasks'] = new_tasks_u
 
-                    execution['artifactDownloadTime'] = stagein_time
+            stagein_time = 0
+            if 'stagein' in job_u:
+                for artifact in job_u['stagein']:
+                    if 'time' in artifact:
+                        stagein_time += artifact['time']
 
+                execution['artifactDownloadTime'] = stagein_time
+
+            if execution:
                 jobj['execution'] = execution
 
             if 'ProminenceJobUniqueIdentifier' in job:
