@@ -12,12 +12,60 @@
 $(document).ready(function(){
     $('[data-toggle="tooltip"]').tooltip();   
 });
-$(document).ready(function() {
-	$('#jobs-table').DataTable({
+
+$(document).ready(function(){
+	var jobstable = $('#jobs-table').DataTable({
 order: [[0, 'asc']],
 "columnDefs": [
     { "orderable": false, "targets": [4, 5, 6, 7] },
+    { "targets": 0,
+      "data": "id",
+      "render": function ( data, type, row, meta ) {
+        return '<a href="'+data+'">'+data+'</a>';
+      }
+    },
+    { "targets": 2,
+      "data": "status",
+      "render": function ( data, type, row, meta ) {
+          var statuses = {
+            running: '<i class="text-primary fa fa-repeat" aria-hidden="true"></i> Running',
+            pending: '<i class="text-info fa fa-circle" aria-hidden="true"></i> Pending',
+            failed: '<i class="text-danger fa fa-exclamation-circle" aria-hidden="true"></i> Failed',
+            killed: '<i class="text-warning fa fa-exclamation-circle" aria-hidden="true"></i> Killed',
+            completed: '<i class="text-success fa fa-check-circle" aria-hidden="true"></i> Completed'
+          };
+	      return statuses[data] || '<i class="text-danger fa fa-exclamation-circle" aria-hidden="true"></i> Unknown';
+      }
+    },
+    { "targets": 7,
+      "data": "id",
+      "render": function ( data, type, row, meta ) {
+	      var url1 = "{% url 'job_logs' 12345 %}".replace(/12345/, data.toString());
+	      var url2 = "{% url 'job_delete' 12345 %}".replace(/12345/, data.toString());
+	      return '<div class="dropleft"><button class="btn btn-outline-secondary" type="button" id="dropdownMenuButtonJob'+data+'" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false" style="border:none;"><i class="fa fa-ellipsis-v" aria-hidden="true"></i></button><div class="dropdown-menu" aria-labelledby="dropdownMenuButtonJob'+data+'"><a class="dropdown-item" href="'+url1+'">Logs</a><a class="dropdown-item" href="/">Remove from queue</a><a class="dropdown-item js-delete-job" data-url="'+url2+'">Delete</a></div></div>';
+      }
+    }
   ],
+"ajax": {
+  "url": "/jobs/",
+  "data": {
+    "json": 0,
+    "active": "{{ state_active }}",
+    "completed": "{{ state_completed }}",
+    "workflow_id": "{{ workflow_id }}",
+    "limit": 10
+  }
+},
+"columns": [
+  { "data": "id" },
+  { "data": "name" },
+  { "data": "status" },
+  { "data": "createTime" },
+  { "data": "elapsedTime" },
+  { "data": "image" },
+  { "data": "cmd" },
+  { "data": "id" }
+],
 "language": {
       "emptyTable": "No jobs"
     },
@@ -27,7 +75,15 @@ order: [[0, 'asc']],
     "bInfo": true,
     "bAutoWidth": false
 	});
-} );
+
+setInterval( function () {
+	  jobstable.ajax.reload();
+}, 30000 );
+
+});
+
+jobstable.ajax.draw();
+
 </script>
 {% endblock %}
 
@@ -59,9 +115,6 @@ order: [[0, 'asc']],
 			  <input class="form-control" type="search" name="fq" placeholder="&#xF002; Filter jobs" style="font-family:Arial, FontAwesome" aria-label="Search" value="{{ search }}">
     </form>
 	  </div>
-	  <div class="p-2">
-		  <a class="btn" onClick="window.location.reload()"><span class="fa fa-refresh"></span></span></a>
-	  </div>
 
   </div>
 
@@ -78,9 +131,6 @@ order: [[0, 'asc']],
         <th>Actions</th>
       </tr>
     </thead>
-    <tbody>
-      {% include 'jobs-list.html' %}
-    </tbody>
   </table>
 <br/>
   

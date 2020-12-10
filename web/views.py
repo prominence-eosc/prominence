@@ -116,12 +116,12 @@ def jobs(request):
 
     active = False
     if 'active' in request.GET:
-        if request.GET['active'] == 'true':
+        if request.GET['active'].lower() == 'true':
             active = True
 
     completed = False
     if 'completed' in request.GET:
-        if request.GET['completed'] == 'true':
+        if request.GET['completed'].lower() == 'true':
             completed = True
             if limit == -1:
                 limit = 1
@@ -129,10 +129,12 @@ def jobs(request):
     if not active and not completed:
         active = True
 
+    workflow_id = -1
     if 'workflow_id' in request.GET:
-        jobs = [int(request.GET.get('workflow_id'))]
-        workflow = True
-        limit = -1
+        if int(request.GET.get('workflow_id')) > -1:
+            workflow = True
+            workflow_id = int(request.GET.get('workflow_id'))
+            limit = -1
 
     state_selectors = {}
     state_selectors['active'] = ''
@@ -158,8 +160,34 @@ def jobs(request):
         else:
             name_constraint = fq
 
-    jobs_list = backend.list_jobs(jobs, user_name, active, completed, workflow, limit, False, constraint, name_constraint, True)
-    return render(request, 'jobs.html', {'job_list': jobs_list, 'search': search, 'state_selectors': state_selectors})
+    if 'json' in request.GET:
+        if workflow:
+            jobs = [int(request.GET.get('workflow_id'))]
+
+        jobs_list = backend.list_jobs(jobs, user_name, active, completed, workflow, limit, False, constraint, name_constraint, True)
+        jobs_table = []
+        for job in jobs_list:
+            new_job = {}
+            new_job['id'] = job['id']
+            new_job['name'] = job['name']
+            new_job['status'] = job['status']
+            new_job['createTime'] = job['events']['createTime']
+            new_job['elapsedTime'] = job['elapsedTime']
+            new_job['image'] = job['tasks'][0]['image']
+            if 'cmd' in job['tasks'][0]:
+                new_job['cmd'] = job['tasks'][0]['cmd']
+            else:
+                new_job['cmd'] = ''
+            jobs_table.append(new_job)
+        return JsonResponse({'data': jobs_table})
+    else:
+        return render(request,
+                      'jobs.html',
+                      {'search': search,
+                       'state_selectors': state_selectors,
+                       'state_active': active, 
+                       'state_completed': completed,
+                       'workflow_id': workflow_id})
 
 @login_required
 def workflows(request):
