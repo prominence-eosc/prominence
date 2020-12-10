@@ -321,6 +321,7 @@ def create_workflow(self, username, groups, email, uid, jwf):
     # Create command to submit to DAGMan
     dag_appends.append("'+ProminenceType=\"workflow\"'")
     dag_appends.append("'+ProminenceIdentity=\"%s\"'" % username)
+    dag_appends.append("'+ProminenceGroup=\"%s\"'" % groups)
     dag_appends.append("'+ProminenceJobUniqueIdentifier=\"%s\"'" % uid)
 
     if email:
