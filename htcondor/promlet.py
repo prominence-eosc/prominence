@@ -3,6 +3,7 @@ from __future__ import print_function
 import argparse
 import getpass
 import glob
+import hashlib
 import json
 import logging
 import os
@@ -392,10 +393,19 @@ def replace_output_urls(job, outfiles, outdirs):
                     logging.info('Updating URL for dir %s with %s', filename, url)
                     job['outputDirs'][i]['url'] = url
 
-def create_dirs(path):
+def create_dirs(path, path_images):
     """
     Create the empty user home and tmp directories
     """
+    # Create the images directory if necessary
+    logging.info('Creating images directory if necessary')
+    if not os.path.isdir(path_images):
+        try:
+            os.mkdir(path_images)
+        except Exception as exc:
+            logging.error('Unable to create images directory due to: %s', exc)
+            exit(1)
+
     # Create the userhome directory if necessary
     logging.info('Creating userhome directory')
     if not os.path.isdir(path + '/userhome'):
@@ -1407,7 +1417,7 @@ def run_singularity(image, cmd, workdir, env, path, mpi, mpi_processes, mpi_proc
 
     return return_code, timed_out
 
-def run_tasks(job, path, is_batch):
+def run_tasks(job, path, path_images, is_batch):
     """
     Execute sequential tasks
     """
@@ -1468,6 +1478,7 @@ def run_tasks(job, path, is_batch):
     job_start_time = time.time()
     total_pull_time = 0
 
+    # Sequentially execute tasks
     for task in job['tasks']:
         logging.info('Working on task %d', count)
 
@@ -1499,12 +1510,20 @@ def run_tasks(job, path, is_batch):
                 if cmd:
                     cmd = Template(cmd).safe_substitute({key:value})
 
-        location = '%s/images/%d' % (path, count)
-        try:
-            os.makedirs(location)
-        except Exception as err:
-            logging.error('Unable to create directory %s', location)
-            return False, {}
+        location = '%s/%s' % (path_images, hashlib.sha256(image_name(image).encode('utf-8')).hexdigest())
+        logging.info('Image location is: %s', location)
+
+        found_image = False
+        if not os.path.exists(location):
+            logging.info('Creating directory for image')
+            try:
+                os.makedirs(location)
+            except Exception as err:
+                logging.error('Unable to create directory %s', location)
+                return False, {}
+        else:
+            logging.info('Will used cached image from another job')
+            found_image = True
 
         mpi = None
         if 'type' in task:
@@ -1541,7 +1560,6 @@ def run_tasks(job, path, is_batch):
         # Check if a previous task used the same image: in that case use the previous image if the same container
         # runtime was used
         image_count = 0
-        found_image = False
         for task_check in job['tasks']:
             if image_name(image) == image_name(task_check['image']) and image_count < count and task['runtime'] == task_check['runtime']:
                 found_image = True
@@ -1587,11 +1605,10 @@ def run_tasks(job, path, is_batch):
                     retry_count += 1
         else:
             # Pull image if necessary or use a previously pulled image
+            image_new = '%s/image.simg' % location
             if found_image:
-                image_new = '%s/images/%d/image.simg' % (path, image_count)
                 image_pull_status = 'cached'
             elif not FINISH_NOW:
-                image_new = '%s/image.simg' % location
                 logging.info('Pulling image for task')
                 metrics_download = monitor(download_singularity, image, image_new, location, path, credential)
                 if metrics_download.time_wall > 0:
@@ -1709,6 +1726,9 @@ if __name__ == "__main__":
             path = os.environ['PWD']
         is_batch = True
 
+    # Path for cached images
+    path_images = '/home/user/images'
+
     # Setup logging
     logging.basicConfig(filename='%s/promlet.%d.log' % (path, args.id), level=logging.INFO, format='%(asctime)s %(message)s')
     logging.info('Started promlet using path "%s"' % path)
@@ -1755,7 +1775,7 @@ if __name__ == "__main__":
     success_stageout = False
 
     # Create the user home, tmp and mounts directories
-    create_dirs(path)
+    create_dirs(path, path_images)
 
     # Mount user-specified storage if necessary
     (success_mounts, json_mounts) = mount_storage(job)
@@ -1775,7 +1795,7 @@ if __name__ == "__main__":
 
             # Run tasks
             try:
-                (success_tasks, json_tasks) = run_tasks(job, path, is_batch)
+                (success_tasks, json_tasks) = run_tasks(job, path, path_images, is_batch)
             except OSError as exc:
                 logging.critical('Got exception running tasks: %s', exc)
                 success_tasks = False
@@ -1790,6 +1810,11 @@ if __name__ == "__main__":
     json_output['stagein'] = json_stagein
     json_output['tasks'] = json_tasks
     json_output['stageout'] = json_stageout
+
+    # Add site name to json
+    job_info = get_info()
+    if 'site' in job_info:
+        json_output['site'] = job_info['site']
 
     try:
         with open('%s/promlet.%d.json' % (path, args.id), 'w') as file:
