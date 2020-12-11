@@ -200,12 +200,12 @@ def workflows(request):
 
     active = False
     if 'active' in request.GET:
-        if request.GET['active'] == 'true':
+        if request.GET['active'].lower() == 'true':
             active = True
 
     completed = False
     if 'completed' in request.GET:
-        if request.GET['completed'] == 'true':
+        if request.GET['completed'].lower() == 'true':
             completed = True
             if limit == -1:
                 limit = 1
@@ -237,8 +237,31 @@ def workflows(request):
         else:
             name_constraint = fq
 
-    workflows_list = backend.list_workflows([], user_name, active, completed, limit, False, constraint, name_constraint, True)
-    return render(request, 'workflows.html', {'workflow_list': workflows_list, 'search': search, 'state_selectors': state_selectors})
+    if 'json' in request.GET:
+        workflows_list = backend.list_workflows([], user_name, active, completed, limit, False, constraint, name_constraint, True)
+        workflows_table = []
+        for workflow in workflows_list:
+            new_workflow = {}
+            new_workflow['id'] = workflow['id']
+            new_workflow['name'] = workflow['name']
+            new_workflow['status'] = workflow['status']
+            new_workflow['createTime'] = workflow['events']['createTime']
+            new_workflow['elapsedTime'] = workflow['elapsedTime']
+            new_workflow['progress'] = {}
+            new_workflow['progress']['done'] = workflow['progress']['done']
+            new_workflow['progress']['failed'] = workflow['progress']['failed']
+            new_workflow['progress']['total'] = workflow['progress']['total']
+            new_workflow['progress']['donePercentage'] = workflow['progress']['donePercentage']
+            new_workflow['progress']['failedPercentage'] = workflow['progress']['failedPercentage']
+            workflows_table.append(new_workflow)
+        return JsonResponse({'data': workflows_table})
+    else:
+        return render(request,
+                      'workflows.html',
+                      {'search': search,
+                       'state_selectors': state_selectors,
+                       'state_active': active,
+                       'state_completed': completed,})
 
 @login_required
 def create_token(request):

@@ -10,21 +10,99 @@
   <script src="{% static 'js/workflows.js' %}"></script>
 <script>
 $(document).ready(function() {
-        $('#workflows-table').DataTable({
-order: [[0, 'asc']],
-"columnDefs": [
-    { "orderable": false, "targets": [4, 5, 6] },
-  ],
-"language": {
-      "emptyTable": "No worklows"
-    },
-"bPaginate": true,
-    "bLengthChange": false,
-    "bFilter": false,
-    "bInfo": true,
-    "bAutoWidth": false
-        });
-} );
+    var workflowstable = $('#workflows-table').DataTable({
+        order: [
+            [0, 'asc']
+        ],
+        "columnDefs": [{
+                "orderable": false,
+                "targets": [4, 5, 6]
+            },
+            {
+                "targets": 0,
+                "data": "id",
+                "render": function(data, type, row, meta) {
+                    return '<a href="' + data + '">' + data + '</a>';
+                }
+            },
+            {
+                "targets": 2,
+                "data": "status",
+                "render": function(data, type, row, meta) {
+                    var statuses = {
+                        running: '<i class="text-primary fa fa-repeat" aria-hidden="true"></i> Running',
+                        pending: '<i class="text-info fa fa-circle" aria-hidden="true"></i> Pending',
+                        failed: '<i class="text-danger fa fa-exclamation-circle" aria-hidden="true"></i> Failed',
+                        killed: '<i class="text-warning fa fa-exclamation-circle" aria-hidden="true"></i> Killed',
+                        completed: '<i class="text-success fa fa-check-circle" aria-hidden="true"></i> Completed'
+                    };
+                    return statuses[data] || '<i class="text-danger fa fa-question-circle" aria-hidden="true"></i> Unknown';
+                }
+            },
+            {
+                "targets": 5,
+                "data": "id",
+                "render": function(data, type, row, meta) {
+                    return '<div class="progress data-toggle="tooltip" title="done: ' + data['done'] + ',';
+                }
+            },
+            {
+                "targets": 6,
+                "data": "id",
+                "render": function(data, type, row, meta) {
+                    var url1 = "{% url 'jobs' %}";
+                    var url2 = "{% url 'workflow_delete' 12345 %}".replace(/12345/, data.toString());
+                    return '<div class="dropleft"><button class="btn btn-outline-secondary" type="button" id="dropdownMenuButtonWorkflow' + data + '" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false" style="border:none;"> <i class="fa fa-ellipsis-v" aria-hidden="true"></i> </button> <div class="dropdown-menu" aria-labelledby="dropdownMenuButtonWorkflow' + data + '"> <a class="dropdown-item" href="' + url1 + '?workflow_id=' + data + '&completed=true&active=true">Show jobs</a> <a class="dropdown-item" href="%">Remove from queue</a> <a class="dropdown-item js-delete-workflow" data-url="' + url2 + '">Delete</a></div>';
+                }
+            }
+        ],
+        "ajax": {
+            "url": "/workflows/",
+            "data": {
+                "json": 0,
+                "active": "{{ state_active }}",
+                "completed": "{{ state_completed }}",
+                "limit": 10
+            }
+        },
+        "columns": [{
+                "data": "id"
+            },
+            {
+                "data": "name"
+            },
+            {
+                "data": "status"
+            },
+            {
+                "data": "createTime"
+            },
+            {
+                "data": "elapsedTime"
+            },
+            {
+                "data": "id"
+            },
+            {
+                "data": "id"
+            }
+        ],
+        "language": {
+            "emptyTable": "No worklows"
+        },
+        "bPaginate": true,
+        "bLengthChange": false,
+        "bFilter": false,
+        "bInfo": true,
+        "bAutoWidth": false
+    });
+
+    setInterval(function() {
+        workflowstable.ajax.reload();
+    }, 30000);
+});
+
+workflowstable.ajax.draw();
 </script>
 {% endblock %}
 
@@ -76,9 +154,6 @@ order: [[0, 'asc']],
         <th>Actions</th>
       </tr>
     </thead>
-    <tbody>
-      {% include 'workflow-list.html' %}
-    </tbody>
   </table>
 
   <div class="modal fade" id="modal-workflows">
