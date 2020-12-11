@@ -41,9 +41,9 @@ $(document).ready(function() {
             },
             {
                 "targets": 5,
-                "data": "id",
+                "data": "progress",
                 "render": function(data, type, row, meta) {
-                    return '<div class="progress data-toggle="tooltip" title="done: ' + data['done'] + ',';
+                    return '<div class="progress data-toggle="tooltip" title="done: ' + data['done'] + ', failed: ' + data['failed'] + ', total: ' + data['total'] + '"> <div class="progress-bar bg-success" role="progressbar" style="width: '+data['donePercentage']+'%" aria-valuenow="'+data['done']+'" aria-valuemin="0" aria-valuemax="'+data['total']+'"></div><div class="progress-bar bg-danger" role="progressbar" style="width: '+data['failedPercentage']+'%" aria-valuenow="'+data['failed']+'" aria-valuemin="0" aria-valuemax="'+data['total']+'"></div></div></div>';
                 }
             },
             {
@@ -62,6 +62,7 @@ $(document).ready(function() {
                 "json": 0,
                 "active": "{{ state_active }}",
                 "completed": "{{ state_completed }}",
+                "search": "{{ search }}",
                 "limit": 10
             }
         },
@@ -81,7 +82,7 @@ $(document).ready(function() {
                 "data": "elapsedTime"
             },
             {
-                "data": "id"
+                "data": "progress"
             },
             {
                 "data": "id"
