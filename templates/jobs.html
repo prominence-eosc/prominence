@@ -121,13 +121,13 @@ jobstable.ajax.draw();
 	  <div class="ml-auto p-2">
 <div class="btn-group btn-group-toggle" data-toggle="buttons">
   <label class="btn btn-outline-dark">
-	  <input type="radio" name="options" id="option1" autocomplete="off" onclick="javascript:window.location.href='/jobs'; return false;" {{ state_selectors.active }}> Active
+	  <input type="radio" name="options" id="option1" onclick="javascript:window.location.href='/jobs'; return false;" {{ state_selectors.active }}> Active
   </label>
   <label class="btn btn-outline-dark">
-	  <input type="radio" name="options" id="option2" autocomplete="off" onclick="javascript:window.location.href='/jobs?completed=true&limit=10'; return false;" {{ state_selectors.completed }}> Completed
+	  <input type="radio" name="options" id="option2" onclick="javascript:window.location.href='/jobs?completed=true&limit=10'; return false;" {{ state_selectors.completed }}> Completed
   </label>
   <label class="btn btn-outline-dark">
-	  <input type="radio" name="options" id="option3" autocomplete="off" onclick="javascript:window.location.href='/jobs?completed=true&active=true&limit=10'; return false;" {{ state_selectors.all }}> All
+	  <input type="radio" name="options" id="option3" onclick="javascript:window.location.href='/jobs?completed=true&active=true&limit=10'; return false;" {{ state_selectors.all }}> All
   </label>
 </div>
 	  </div>
