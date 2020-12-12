@@ -153,12 +153,13 @@ def jobs(request):
     if 'fq' in request.GET:
         fq = request.GET['fq']
         search = fq
-        if ':' in fq:
-            pieces = fq.split(':')
-            if len(pieces) == 2:
-                constraint = (pieces[0], pieces[1])
-        else:
-            name_constraint = fq
+        if fq != '':
+            if ':' in fq:
+                pieces = fq.split(':')
+                if len(pieces) == 2:
+                    constraint = (pieces[0], pieces[1])
+            else:
+                name_constraint = fq
 
     if 'json' in request.GET:
         if workflow:
@@ -230,12 +231,13 @@ def workflows(request):
     if 'fq' in request.GET:
         fq = request.GET['fq']
         search = fq
-        if ':' in fq:
-            pieces = fq.split(':')
-            if len(pieces) == 2:
-                constraint = (pieces[0], pieces[1])
-        else:
-            name_constraint = fq
+        if fq != '':
+            if ':' in fq:
+                pieces = fq.split(':')
+                if len(pieces) == 2:
+                    constraint = (pieces[0], pieces[1])
+            else:
+                name_constraint = fq
 
     if 'json' in request.GET:
         workflows_list = backend.list_workflows([], user_name, active, completed, limit, False, constraint, name_constraint, True)
