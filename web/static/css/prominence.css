@@ -2,6 +2,14 @@ body {
   font-size: .875rem;
 }
 
+@media (min-width: 768px) {
+.main {
+padding-top: 78px;
+padding-right: 40px;
+padding-left: 220px; /* 180 + 40 */
+}
+}
+
 .feather {
   width: 16px;
   height: 16px;
@@ -35,12 +43,16 @@ body {
  */
 
 .sidebar{ 
-  position:fixed;
+  position: fixed;
+  display: block;
   height: 100%;
   box-shadow: inset -1px 0 0 rgba(0, 0, 0, .1);
   padding: 1px;
   overflow-y: hidden;
   overflow-x: hidden;
+  width: 180px;
+  padding-top: 68px;
+  z-index:9;
 }
 
 .sidebar .feather .active{
@@ -181,3 +193,6 @@ background: linear-gradient(to right, #4A569D, #DC2424); /* W3C, IE 10+/ Edge, F
   vertical-align: middle;
 }
 
+#workflows-table td {
+  vertical-align: middle;
+}
