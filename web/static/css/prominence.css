@@ -1,5 +1,14 @@
 body {
+  font-family: 'Roboto', sans-serif;
   font-size: .875rem;
+}
+
+h1,h2,h3,h4,h5,h6 {
+  font-family: 'Roboto', sans-serif;
+}
+
+p {
+  font-family: 'Roboto', sans-serif;
 }
 
 @media (min-width: 768px) {
@@ -100,6 +109,8 @@ padding-left: 220px; /* 180 + 40 */
   padding-top: .75rem;
   padding-bottom: .75rem;
   font-size: 1rem;
+  background-color: rgba(0, 0, 0, .25);
+  width: 180px;
 }
 
 .navbar .navbar-toggler {
