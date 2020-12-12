@@ -30,13 +30,13 @@ $(document).ready(function() {
                 "data": "status",
                 "render": function(data, type, row, meta) {
                     var statuses = {
-                        running: '<i class="text-primary fa fa-repeat" aria-hidden="true"></i> Running',
-                        pending: '<i class="text-info fa fa-circle" aria-hidden="true"></i> Pending',
-                        failed: '<i class="text-danger fa fa-exclamation-circle" aria-hidden="true"></i> Failed',
-                        killed: '<i class="text-warning fa fa-exclamation-circle" aria-hidden="true"></i> Killed',
-                        completed: '<i class="text-success fa fa-check-circle" aria-hidden="true"></i> Completed'
+                        running: '<i class="text-primary fa fa-repeat" aria-hidden="true"></i><br/>Running',
+                        pending: '<i class="text-info fa fa-circle" aria-hidden="true"></i><br/>Pending',
+                        failed: '<i class="text-danger fa fa-exclamation-circle" aria-hidden="true"></i><br/>Failed',
+                        killed: '<i class="text-warning fa fa-exclamation-circle" aria-hidden="true"></i><br/>Killed',
+                        completed: '<i class="text-success fa fa-check-circle" aria-hidden="true"></i><br/>Completed'
                     };
-                    return statuses[data] || '<i class="text-danger fa fa-question-circle" aria-hidden="true"></i> Unknown';
+                    return statuses[data] || '<i class="text-danger fa fa-question-circle" aria-hidden="true"></i><br/>Unknown';
                 }
             },
             {
