@@ -1,7 +1,7 @@
 {% load socialaccount %}
 
 {% if user.is_authenticated %}
-<nav class="navbar fixed-top navbar-expand-lg navbar-default navbar-dark bg-primary p-0">
+<nav class="navbar fixed-top navbar-expand-lg navbar-default bg-light p-0">
   <a class="navbar-brand text-center" href="/">prominence</a>
   <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarSupportedContent-333"
     aria-controls="navbarSupportedContent-333" aria-expanded="false" aria-label="Toggle navigation">
@@ -12,7 +12,7 @@
       <li class="nav-item dropdown">
         <a class="nav-link dropdown-toggle" id="navbarDropdownMenuLink-333" data-toggle="dropdown"
           aria-haspopup="true" aria-expanded="false">
-          <i data-feather="user"></i>
+	  <span class="fa fa-user"></span>
           {{ user.first_name }} {{ user.last_name }}
         </a>
         <div class="dropdown-menu dropdown-menu-right dropdown-default"
