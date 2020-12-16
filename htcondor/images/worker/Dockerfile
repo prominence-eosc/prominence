@@ -18,6 +18,14 @@ RUN curl http://get.onedata.org/yum/1802/onedata_centos_7x.repo > /etc/yum.repos
 RUN cd /opt && \
     tar czf oneclient-1802.tgz oneclient
 
+# Build oneclient 18.02-rc13
+FROM centos:7 AS oneclient1802rc13
+RUN curl http://get.onedata.org/yum/1802/onedata_centos_7x.repo > /etc/yum.repos.d/onedata.repo && \
+    yum -y install epel-release && \
+    yum -y --enablerepo=onedata install oneclient-18.02.0.rc13
+RUN cd /opt && \
+    tar czf oneclient-1802-rc13.tgz oneclient
+
 # Build the main image
 FROM centos:7
 
@@ -44,14 +52,13 @@ RUN yum -y install singularity \
                    gcc \
                    git \
                    openssl \
-                   openssh-server
+                   openssh-server \
+                   python3 \
+                   python3-pip
 
 # Jobs will be run as this user
 RUN useradd user
 
-# Python requests
-RUN pip install requests
- 
 # Install udocker
 RUN pip install git+https://github.com/indigo-dc/udocker && \
     ln -s /usr/bin/udocker /usr/local/bin/udocker && \
@@ -76,12 +83,16 @@ RUN rm -rf /opt/oneclient && chown user:user /opt
 COPY --from=oneclient2002 /opt/oneclient-2002.tgz /opt/.
 COPY --from=oneclient1902 /opt/oneclient-1902.tgz /opt/.
 COPY --from=oneclient1802 /opt/oneclient-1802.tgz /opt/.
+COPY --from=oneclient1802rc13 /opt/oneclient-1802-rc13.tgz /opt/.
 RUN cd /opt && \
     tar xzf oneclient-2002.tgz && mv oneclient oneclient-20.02 && \
     tar xzf oneclient-1902.tgz && mv oneclient oneclient-19.02 && \
     tar xzf oneclient-1802.tgz && mv oneclient oneclient-18.02 && \
+    tar xzf oneclient-1802-rc13.tgz && mv oneclient oneclient-18.02-rc13 && \
     rm -f oneclient-*.tgz
 
 # Entrypoint
 COPY docker-entrypoint.sh /
 ENTRYPOINT ["/docker-entrypoint.sh"]
+
+RUN pip3 install requests nslookup python-geoip-python3 python-geoip-geolite2 geopy==1.23.0
