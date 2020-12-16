@@ -1,23 +1,23 @@
 {% load socialaccount %}
 
-<nav class="navbar fixed-top navbar-expand-lg navbar-default navbar-dark bg-primary p-0 shadow">
-  <a class="navbar-brand px-3" href="/">prominence</a>
+{% if user.is_authenticated %}
+<nav class="navbar fixed-top navbar-expand-lg navbar-default bg-light border-bottom p-0">
+  <a class="navbar-brand text-center" href="/">prominence</a>
   <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarSupportedContent-333"
     aria-controls="navbarSupportedContent-333" aria-expanded="false" aria-label="Toggle navigation">
     <span class="navbar-toggler-icon"></span>
   </button>
   <div class="collapse navbar-collapse" id="navbarSupportedContent-333">
     <ul class="navbar-nav ml-auto nav-flex-icons">
-    {% if user.is_authenticated %}
       <li class="nav-item dropdown">
         <a class="nav-link dropdown-toggle" id="navbarDropdownMenuLink-333" data-toggle="dropdown"
           aria-haspopup="true" aria-expanded="false">
-          <i data-feather="user"></i>
+	  <span class="fa fa-user"></span>
           {{ user.first_name }} {{ user.last_name }}
         </a>
         <div class="dropdown-menu dropdown-menu-right dropdown-default"
           aria-labelledby="navbarDropdownMenuLink-333">
-          <a class="dropdown-item" data-toggle="modal" data-target="#register-token" href="{% url 'register-token' %}">Register refresh token</a>
+          <a class="dropdown-item" data-toggle="modal" data-target="#register-token">Register refresh token</a>
           <div class="dropdown-divider"></div>
           <a class="dropdown-item" data-toggle="modal" data-target="#create-token" href="{% url 'create-token' %}">Create API token</a>
           <a class="dropdown-item" data-toggle="modal" data-target="#revoke-token" href="{% url 'revoke-token' %}">Revoke API token</a>
@@ -25,11 +25,8 @@
           <a class="dropdown-item" href="#" data-toggle="modal" data-target="#logout">Sign out</a>
         </div>
       </li>
-    {% else %}
-      <li class="nav-item text-nowrap">
-        <a class="nav-link" href="{% provider_login_url 'egicheckin' %}">Login</a>
-      </li>
-    {% endif %}
     </ul>
   </div>
 </nav>
+{% else %}
+{% endif %}

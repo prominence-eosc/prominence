@@ -1,8 +1,9 @@
-#!/usr/bin/python
+#!/usr/bin/python3
 from __future__ import print_function
 import argparse
 import getpass
 import glob
+import hashlib
 import json
 import logging
 import os
@@ -16,6 +17,9 @@ import subprocess
 import sys
 import tarfile
 import time
+from geoip import geolite2
+import geopy.distance
+from nslookup import Nslookup
 from functools import wraps
 from resource import getrusage, RUSAGE_CHILDREN
 from threading import Timer
@@ -94,18 +98,44 @@ fi
 exit $?
 """
 
-def setup_onedata_dir(data):
+def find_nearest_provider(providers):
+    """
+    Given a list of hostnames, find the nearest
+    """
+    # Get my location
+    try:
+        response = requests.get('https://ifconfig.me/all.json')
+    except Exception as err:
+        logging.info('Got exception when trying to get my ip address: %s', err)
+        return None
+
+    my_coords = geolite2.lookup(response.json()['ip_addr']).location
+
+    # Find nearest provider by checking distance to each based on geoip
+    min_distance = -1
+    closest_provider = None
+    for provider in providers:
+        dns_query = Nslookup(dns_servers=['8.8.8.8'])
+        ip_address = dns_query.dns_lookup(provider).answer
+        if ip_address:
+            try:
+                coords = geolite2.lookup(ip_address[0]).location
+            except Exception as err:
+                logging.info('Got exception when trying to get location of IP address: %s', err)
+                distance = 1000000000
+            else:
+                distance = geopy.distance.distance(coords, my_coords).km
+        if (distance < min_distance and min_distance > -1) or min_distance == -1:
+            min_distance = distance
+            closest_provider = provider
+
+    return closest_provider
+
+def setup_onedata_dir(data, provider):
     """
     Determines the oneclient versions supported by the OneData provider,
     and sets up the appropriate oneclient software
     """
-    provider = None
-    if 'storage' in data:
-        if 'type' in data['storage']:
-            if data['storage']['type'] == 'onedata':
-                if 'provider' in data['storage']['onedata']:
-                    provider = data['storage']['onedata']['provider']
-
     provider = 'https://%s/configuration' % provider
 
     data = {}
@@ -363,10 +393,19 @@ def replace_output_urls(job, outfiles, outdirs):
                     logging.info('Updating URL for dir %s with %s', filename, url)
                     job['outputDirs'][i]['url'] = url
 
-def create_dirs(path):
+def create_dirs(path, path_images):
     """
     Create the empty user home and tmp directories
     """
+    # Create the images directory if necessary
+    logging.info('Creating images directory if necessary')
+    if not os.path.isdir(path_images):
+        try:
+            os.mkdir(path_images)
+        except Exception as exc:
+            logging.error('Unable to create images directory due to: %s', exc)
+            exit(1)
+
     # Create the userhome directory if necessary
     logging.info('Creating userhome directory')
     if not os.path.isdir(path + '/userhome'):
@@ -877,9 +916,21 @@ def mount_storage(job):
             storage_provider = job['storage']['onedata']['provider']
             storage_token = job['storage']['onedata']['token']
 
+            # If multiple providers are specified, find the nearest
+            if ',' in storage_provider:
+                logging.info('Finding nearest OneData provider...')
+                nearest_storage_provider = find_nearest_provider(storage_provider.split(','))
+                if nearest_storage_provider:
+                    storage_provider = nearest_storage_provider
+                    logging.info('Nearest OneData provider is %s', storage_provider)
+                else:
+                    # In case of any problems, just pick the first provider specified
+                    logging.info('Unable to find nearest OneData provider, using first one in the list')
+                    nearest_storage_provider = storage_provider.split(',')[0]
+
             # Setup OneData client (client needs to have the same version as the provider)
-            logging.info('Setting up the appropriate OneData client version')
-            setup_onedata_dir(job)
+            logging.info('Setting up the appropriate OneData client version for provider: %s', storage_provider)
+            setup_onedata_dir(job, storage_provider)
 
             # Create mount point if necessary
             if not os.path.isdir('/home/user/mounts%s' % storage_mountpoint):
@@ -956,7 +1007,7 @@ def get_storage_mountpoint(job):
 
     return None
 
-def download_singularity(image, image_new, location, path):
+def download_singularity(image, image_new, location, path, credential):
     """
     Download a Singularity image from a URL or pull an image from Docker Hub
     """
@@ -1023,13 +1074,17 @@ def download_singularity(image, image_new, location, path):
         count = 0
         success = False
 
+        env = dict(os.environ, PATH='/usr/local/bin:/usr/bin:/usr/local/sbin:/usr/sbin')
+        if credential['username'] and credential['token']:
+            env['SINGULARITY_DOCKER_USERNAME'] = credential['username']
+            env['SINGULARITY_DOCKER_PASSWORD'] = credential['token']
+
         while count < DOWNLOAD_MAX_RETRIES and not success:
             try:
                 process = subprocess.Popen(cmd,
                                            cwd=os.path.dirname(image_new),
                                            shell=True,
-                                           env=dict(os.environ,
-                                                    PATH='/usr/local/bin:/usr/bin:/usr/local/sbin:/usr/sbin'),
+                                           env=env,
                                            stdout=subprocess.PIPE,
                                            stderr=subprocess.PIPE)
                 stdout, stderr = process.communicate()
@@ -1113,7 +1168,7 @@ def install_udocker(location):
 
     return True
 
-def download_udocker(image, location, label, path):
+def download_udocker(image, location, label, path, credential):
     """
     Download an image from a URL and create a udocker container named 'image'
     """
@@ -1362,7 +1417,7 @@ def run_singularity(image, cmd, workdir, env, path, mpi, mpi_processes, mpi_proc
 
     return return_code, timed_out
 
-def run_tasks(job, path, is_batch):
+def run_tasks(job, path, path_images, is_batch):
     """
     Execute sequential tasks
     """
@@ -1423,6 +1478,7 @@ def run_tasks(job, path, is_batch):
     job_start_time = time.time()
     total_pull_time = 0
 
+    # Sequentially execute tasks
     for task in job['tasks']:
         logging.info('Working on task %d', count)
 
@@ -1454,12 +1510,20 @@ def run_tasks(job, path, is_batch):
                 if cmd:
                     cmd = Template(cmd).safe_substitute({key:value})
 
-        location = '%s/images/%d' % (path, count)
-        try:
-            os.makedirs(location)
-        except Exception as err:
-            logging.error('Unable to create directory %s', location)
-            return False, {}
+        location = '%s/%s' % (path_images, hashlib.sha256(image_name(image).encode('utf-8')).hexdigest())
+        logging.info('Image location is: %s', location)
+
+        found_image = False
+        if not os.path.exists(location):
+            logging.info('Creating directory for image')
+            try:
+                os.makedirs(location)
+            except Exception as err:
+                logging.error('Unable to create directory %s', location)
+                return False, {}
+        else:
+            logging.info('Will used cached image from another job')
+            found_image = True
 
         mpi = None
         if 'type' in task:
@@ -1488,10 +1552,14 @@ def run_tasks(job, path, is_batch):
         task_was_run = False
         image_pull_status = 'completed'
 
+        credential = {'username': None, 'token': None}
+        if 'imagePullCredential' in task:
+            if 'username' in task['imagePullCredential'] and 'token' in task['imagePullCredential']:
+                credential = task['imagePullCredential']
+
         # Check if a previous task used the same image: in that case use the previous image if the same container
         # runtime was used
         image_count = 0
-        found_image = False
         for task_check in job['tasks']:
             if image_name(image) == image_name(task_check['image']) and image_count < count and task['runtime'] == task_check['runtime']:
                 found_image = True
@@ -1506,7 +1574,7 @@ def run_tasks(job, path, is_batch):
                 image_pull_status = 'cached'
             elif not FINISH_NOW:
                 logging.info('Pulling image for task')
-                metrics_download = monitor(download_udocker, image, location, count, path)
+                metrics_download = monitor(download_udocker, image, location, count, path, credential)
                 if metrics_download.time_wall > 0:
                     total_pull_time += metrics_download.time_wall
                 if metrics_download.exit_code != 0:
@@ -1537,13 +1605,12 @@ def run_tasks(job, path, is_batch):
                     retry_count += 1
         else:
             # Pull image if necessary or use a previously pulled image
+            image_new = '%s/image.simg' % location
             if found_image:
-                image_new = '%s/images/%d/image.simg' % (path, image_count)
                 image_pull_status = 'cached'
             elif not FINISH_NOW:
-                image_new = '%s/image.simg' % location
                 logging.info('Pulling image for task')
-                metrics_download = monitor(download_singularity, image, image_new, location, path)
+                metrics_download = monitor(download_singularity, image, image_new, location, path, credential)
                 if metrics_download.time_wall > 0:
                     total_pull_time += metrics_download.time_wall
                 if metrics_download.exit_code != 0:
@@ -1659,6 +1726,9 @@ if __name__ == "__main__":
             path = os.environ['PWD']
         is_batch = True
 
+    # Path for cached images
+    path_images = '/home/user/images'
+
     # Setup logging
     logging.basicConfig(filename='%s/promlet.%d.log' % (path, args.id), level=logging.INFO, format='%(asctime)s %(message)s')
     logging.info('Started promlet using path "%s"' % path)
@@ -1705,7 +1775,7 @@ if __name__ == "__main__":
     success_stageout = False
 
     # Create the user home, tmp and mounts directories
-    create_dirs(path)
+    create_dirs(path, path_images)
 
     # Mount user-specified storage if necessary
     (success_mounts, json_mounts) = mount_storage(job)
@@ -1725,7 +1795,7 @@ if __name__ == "__main__":
 
             # Run tasks
             try:
-                (success_tasks, json_tasks) = run_tasks(job, path, is_batch)
+                (success_tasks, json_tasks) = run_tasks(job, path, path_images, is_batch)
             except OSError as exc:
                 logging.critical('Got exception running tasks: %s', exc)
                 success_tasks = False
@@ -1740,6 +1810,11 @@ if __name__ == "__main__":
     json_output['stagein'] = json_stagein
     json_output['tasks'] = json_tasks
     json_output['stageout'] = json_stageout
+
+    # Add site name to json
+    job_info = get_info()
+    if 'site' in job_info:
+        json_output['site'] = job_info['site']
 
     try:
         with open('%s/promlet.%d.json' % (path, args.id), 'w') as file:

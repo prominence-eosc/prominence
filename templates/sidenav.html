@@ -1,4 +1,4 @@
-<nav id="sidebarMenu" class="col-md-3 col-lg-2 d-md-block bg-light sidebar collapse pt-3">
+<nav id="sidebarMenu" class="col-md-3 col-lg-2 d-md-block sidebar collapse">
  <div class="sticky-top">
   <ul class="nav flex-column">
    <li class="nav-item">
@@ -20,9 +20,9 @@
     </a>
    </li>
    <li class="nav-item">
-    <a class="nav-link" href="/clouds">
+	   <a class="nav-link {% if request.resolver_match.view_name == 'compute' %}active{% endif %}" href="/compute">
      <span data-feather="cloud"></span>
-     Clouds
+     Compute
     </a>
    </li>   
    <li class="nav-item">

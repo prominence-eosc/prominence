@@ -1,0 +1,17 @@
+{% for resource in resources %}
+  <tr>
+    <td class="align-middle">{{ resource.name }}</td>
+    <td class="align-middle">{{ resource.get_resource_type_display }}</td>
+    <td class="align-middle">
+      <div class="dropleft">
+          <button class="btn btn-outline-secondary" type="button" id="dropdownMenuButtonResource{{ resource.id }}" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false" style="border:none;">
+            <span data-feather="more-vertical"></span>
+        </button>
+        <div class="dropdown-menu" aria-labelledby="dropdownMenuButtonStorage{{ resource.id }}">
+          <a class="dropdown-item" href="{% url 'compute_update' resource.id %}">Update</a>
+	  <a class="dropdown-item js-delete-compute" data-url="{% url 'compute_delete' resource.id %}">Delete</a>
+        </div>
+      </div>
+    </td>
+  </tr>
+{% endfor %}    

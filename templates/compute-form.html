@@ -1,0 +1,94 @@
+{% load widget_tweaks %}
+
+  <div class="form-group row name">
+    <div class="col-lg-4">
+    <b>Name</b>
+    {{ form.name|add_class:"form-control form-control-sm" }}
+    </div>
+  </div>
+  <div class="form-group row type">
+    <div class="col-lg-4">
+    <b>Type</b>
+    {{ form.resource_type|add_class:"form-control form-control-sm" }}
+    </div>
+  </div>
+  <div class="form-group row image">
+    <div class="col-lg-4">
+    <b>Image</b> <span class="text-secondary"><span class="fa fa-question-circle" data-toggle="tooltip" title="Name or id of a Ubuntu VM image."></span></span>
+    {{ form.image_name|add_class:"form-control form-control-sm" }}
+    </div>
+  </div>
+  <!-- OpenStack -->
+  <div class="form-group row ost_host">
+    <div class="col-lg-4">
+    <b>Hostname</b>
+    {{ form.ost_host|add_class:"form-control form-control-sm" }}
+    </div>
+  </div>
+  <div class="form-group row ost_username">
+    <div class="col-lg-4">
+    <b>Username</b>
+    {{ form.ost_username|add_class:"form-control form-control-sm" }}
+    </div>
+  </div>
+  <div class="form-group row ost_password">
+    <div class="col-lg-4">
+    <b>Password</b>
+    {{ form.ost_password|add_class:"form-control form-control-sm" }}
+    </div>
+  </div>
+  <div class="form-group row ost_tenant">
+    <div class="col-lg-4">
+    <b>Tenant</b>
+    {{ form.ost_tenant|add_class:"form-control form-control-sm" }}
+    </div>
+  </div>
+  <div class="form-group row ost_auth_version">
+    <div class="col-lg-4">
+    <b>Auth version</b>
+    {{ form.ost_auth_version|add_class:"form-control form-control-sm" }}
+    </div>
+  </div>
+  <div class="form-group row ost_domain">
+    <div class="col-lg-4">
+    <b>Domain</b><span class="text-secondary"> (Optional)</span>
+    {{ form.ost_domain|add_class:"form-control form-control-sm" }}
+    </div>
+  </div>
+  <div class="form-group row ost_service_region">
+    <div class="col-lg-4">
+    <b>Service region</b><span class="text-secondary"> (Optional)</span>
+    {{ form.ost_service_region|add_class:"form-control form-control-sm" }}
+    </div>
+  </div>
+  <div class="form-group row ost_tenant_domain_id">
+    <div class="col-lg-4">
+    <b>Tenant domain id</b><span class="text-secondary"> (Optional)</span>
+    {{ form.ost_tenant_domain_id|add_class:"form-control form-control-sm" }}
+    </div>
+  </div>
+  <!-- Google Cloud Platform -->
+  <div class="form-group row gcp_sa_email">
+    <div class="col-lg-4">
+    <b>Service account email address</b>
+    {{ form.gcp_sa_email|add_class:"form-control form-control-sm" }}
+    </div>
+  </div>
+  <div class="form-group row gcp_sa_private_key">
+    <div class="col-lg-4">
+    <b>Service account private key</b>
+    {{ form.gcp_sa_private_key|add_class:"form-control form-control-sm" }}
+    </div>
+  </div>
+  <div class="form-group row gcp_project">
+    <div class="col-lg-4">
+    <b>Project</b>
+    {{ form.gcp_project|add_class:"form-control form-control-sm" }}
+    </div>
+  </div>
+  <div class="form-group row gcp_regions">
+    <div class="col-lg-4">
+    <b>Regions</b> <span class="text-secondary"><span class="fa fa-question-circle" data-toggle="tooltip" title="Region and zone, for example 'us-west1-a'. Commas can be used to separate multiple regions."></span></span>
+    {{ form.gcp_regions|add_class:"form-control form-control-sm" }}
+    </div>
+  </div>

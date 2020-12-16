@@ -1,17 +1,15 @@
-# The rules below only apply to original jobs, not routed jobs. Jobs which are removed will be visible to users.
-# set_PeriodicRemove is used in the JobRouter to handle routed jobs.
-
-# Job in the idle but had previously been running (i.e. evicted)
+# Job in the idle but had previously been running, i.e. evicted
 ProminenceJobEvicted = JobStatus == 1 && LastJobStatus == 2 && ProminenceInfrastructureState =?= "configured"
 
 # Infrastructure deployment failed
-ProminenceJobInfraFailed = JobStatus == 1 && ProminenceInfrastructureState =?= "failed"
+ProminenceJobInfraFailed = JobStatus == 1 && (ProminenceInfrastructureState =?= "failed" || \
+                                             (ProminenceInfrastructureState =?= "unable" && ProminenceInfrastructureStateReason =?= "None"))
 
-# Infrastructure deployment unable - fatal
+# Infrastructure deployment unable - this is permanent unless new resources added
 ProminenceJobInfraUnableFatal = JobStatus == 1 && ProminenceInfrastructureState =?= "unable" && ProminenceInfrastructureStateReason =?= "NoMatchingResources"
 
 # Infrastructure deployment unable - temporary
-ProminenceJobInfraUnable = JobStatus == 1 && (ProminenceInfrastructureState =?= "unable" && ProminenceInfrastructureStateReason =?= "NoMatchingResourcesAvailable" || ProminenceInfrastructureState =?= "waiting")
+ProminenceJobInfraUnable = JobStatus == 1 && ProminenceInfrastructureState =?= "unable" && ProminenceInfrastructureStateReason =?= "NoMatchingResourcesAvailable"
 
 # Infrastructure deployed but job is taking too long to start running
 ProminenceJobNotRunning = JobStatus == 1 && ProminenceInfrastructureState =?= "configured" && CurrentTime - ProminenceInfrastructureEnteredCurrentStatus > 600
@@ -19,15 +17,23 @@ ProminenceJobNotRunning = JobStatus == 1 && ProminenceInfrastructureState =?= "c
 # Job has been queued for too long
 ProminenceQueuedTooLong = JobStatus == 1 && ProminenceMaxTimeInQueue > 0 && CurrentTime - QDate > ProminenceMaxTimeInQueue
 
-# Fatal errors
+# Fatal errors - user jobs should be removed
 ProminenceJobFatal = $(ProminenceJobInfraUnableFatal) || $(ProminenceQueuedTooLong)
 
-# Transient errors leading to a fatal error
+# Remove the user jobs if the max time in queue has not been defined
+ProminenceJobTransientFatal = ($(ProminenceJobNotRunning) || $(ProminenceJobEvicted) || \
+                               $(ProminenceJobInfraFailed) || $(ProminenceJobInfraUnable)) && \
+                              ProminenceMaxTimeInQueue == 0
+
+# Remove the routed jobs if the max time in queue has been defined
 ProminenceJobTransient = ($(ProminenceJobNotRunning) || $(ProminenceJobEvicted) || \
                           $(ProminenceJobInfraFailed) || $(ProminenceJobInfraUnable)) && \
-                         ProminenceMaxTimeInQueue == 0
+                         (ProminenceMaxTimeInQueue == -1 || ProminenceMaxTimeInQueue > 0)
 
-SYSTEM_PERIODIC_HOLD = isUndefined(RouteName) && isUndefined(DAGManJobId) && ($(ProminenceJobFatal) || $(ProminenceJobTransient))
+# Set SYSTEM_PERIODIC_HOLD
+SYSTEM_PERIODIC_HOLD = ProminenceType =?= "job" && \
+                       ((isUndefined(RouteName) && ($(ProminenceJobFatal) || $(ProminenceJobTransientFatal))) || \
+                        (isUndefined(RoutedToJobId) && $(ProminenceJobTransient)))
 
 SYSTEM_PERIODIC_HOLD_REASON = ifThenElse($(ProminenceJobEvicted), "Job was evicted", \
                               ifThenElse($(ProminenceJobInfraFailed), "Infrastructure deployment failed", \
@@ -36,7 +42,8 @@ SYSTEM_PERIODIC_HOLD_REASON = ifThenElse($(ProminenceJobEvicted), "Job was evict
                               ifThenElse($(ProminenceJobNotRunning), "Job took too long to start running", \
                               ifThenElse($(ProminenceQueuedTooLong), "Job was queued for too long", \
                                                                      "Infrastructure deployment failed"))))))
-
 SYSTEM_PERIODIC_HOLD_SUBCODE = 11
 
-SYSTEM_PERIODIC_REMOVE = JobStatus == 5 && HoldReasonSubCode == 11
+# Kill jobs held due to the above rules or for other reasons
+SYSTEM_PERIODIC_REMOVE = JobStatus == 5 && (HoldReasonSubCode == 11 || \
+                                            (HoldReasonSubCode != 11 && CurrentTime - EnteredCurrentStatus > 300))

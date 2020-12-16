@@ -9,25 +9,103 @@
 {% block javascript %}
 <script src="{% static 'js/jobs.js' %}"></script>
 <script>
-$(document).ready(function(){
-    $('[data-toggle="tooltip"]').tooltip();   
-});
 $(document).ready(function() {
-	$('#jobs-table').DataTable({
-order: [[0, 'asc']],
-"columnDefs": [
-    { "orderable": false, "targets": [4, 5, 6, 7] },
-  ],
-"language": {
-      "emptyTable": "No jobs"
-    },
-"bPaginate": true,
-    "bLengthChange": false,
-    "bFilter": false,
-    "bInfo": true,
-    "bAutoWidth": false
-	});
-} );
+    $('[data-toggle="tooltip"]').tooltip();
+});
+
+$(document).ready(function() {
+    var jobstable = $('#jobs-table').DataTable({
+        order: [
+            [0, 'asc']
+        ],
+        "columnDefs": [{
+                "orderable": false,
+                "targets": [4, 5, 6, 7]
+            },
+            {
+                "targets": 0,
+                "data": "id",
+                "render": function(data, type, row, meta) {
+                    return '<a href="' + data + '">' + data + '</a>';
+                }
+            },
+            {
+                "targets": 2,
+                "data": "status",
+                "render": function(data, type, row, meta) {
+                    var statuses = {
+                        running: '<i class="text-primary fa fa-repeat" aria-hidden="true"></i><br/>Running',
+                        pending: '<i class="text-info fa fa-circle" aria-hidden="true"></i><br/>Pending',
+                        failed: '<i class="text-danger fa fa-exclamation-circle" aria-hidden="true"></i><br/>Failed',
+                        killed: '<i class="text-warning fa fa-exclamation-circle" aria-hidden="true"></i><br/>Killed',
+                        completed: '<i class="text-success fa fa-check-circle" aria-hidden="true"></i><br/>Completed'
+                    };
+                    return statuses[data] || '<i class="text-danger fa fa-question-circle" aria-hidden="true"></i><br/>Unknown';
+                }
+            },
+            {
+                "targets": 7,
+                "data": "id",
+                "render": function(data, type, row, meta) {
+                    var url1 = "{% url 'job_logs' 12345 %}".replace(/12345/, data.toString());
+                    var url2 = "{% url 'job_delete' 12345 %}".replace(/12345/, data.toString());
+                    return '<div class="dropleft"><button class="btn btn-outline-secondary" type="button" id="dropdownMenuButtonJob' + data + '" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false" style="border:none;"><i class="fa fa-ellipsis-v" aria-hidden="true"></i></button><div class="dropdown-menu" aria-labelledby="dropdownMenuButtonJob' + data + '"><a class="dropdown-item" href="' + url1 + '">Logs</a><a class="dropdown-item" href="/">Remove from queue</a><a class="dropdown-item js-delete-job" data-url="' + url2 + '">Delete</a></div></div>';
+                }
+            }
+        ],
+        "ajax": {
+            "url": "/jobs/",
+            "data": {
+                "json": 0,
+                "active": "{{ state_active }}",
+                "completed": "{{ state_completed }}",
+                "workflow_id": "{{ workflow_id }}",
+                "fq": "{{ search }}",
+                "limit": 10
+            }
+        },
+        "columns": [{
+                "data": "id"
+            },
+            {
+                "data": "name"
+            },
+            {
+                "data": "status"
+            },
+            {
+                "data": "createTime"
+            },
+            {
+                "data": "elapsedTime"
+            },
+            {
+                "data": "image"
+            },
+            {
+                "data": "cmd"
+            },
+            {
+                "data": "id"
+            }
+        ],
+        "language": {
+            "emptyTable": "No jobs"
+        },
+        "bPaginate": true,
+        "bLengthChange": false,
+        "bFilter": false,
+        "bInfo": true,
+        "bAutoWidth": false
+    });
+
+    setInterval(function() {
+        jobstable.ajax.reload();
+    }, 30000);
+
+});
+
+jobstable.ajax.draw();
 </script>
 {% endblock %}
 
@@ -43,24 +121,21 @@ order: [[0, 'asc']],
 	  <div class="ml-auto p-2">
 <div class="btn-group btn-group-toggle" data-toggle="buttons">
   <label class="btn btn-outline-dark">
-	  <input type="radio" name="options" id="option1" autocomplete="off" onclick="javascript:window.location.href='/jobs'; return false;" {{ state_selectors.active }}> Active
+	  <input type="radio" name="options" id="option1" onclick="javascript:window.location.href='/jobs'; return false;" {{ state_selectors.active }}> Active
   </label>
   <label class="btn btn-outline-dark">
-	  <input type="radio" name="options" id="option2" autocomplete="off" onclick="javascript:window.location.href='/jobs?completed=true&limit=10'; return false;" {{ state_selectors.completed }}> Completed
+	  <input type="radio" name="options" id="option2" onclick="javascript:window.location.href='/jobs?completed=true&limit=10'; return false;" {{ state_selectors.completed }}> Completed
   </label>
   <label class="btn btn-outline-dark">
-	  <input type="radio" name="options" id="option3" autocomplete="off" onclick="javascript:window.location.href='/jobs?completed=true&active=true&limit=10'; return false;" {{ state_selectors.all }}> All
+	  <input type="radio" name="options" id="option3" onclick="javascript:window.location.href='/jobs?completed=true&active=true&limit=10'; return false;" {{ state_selectors.all }}> All
   </label>
 </div>
 	  </div>
 
 	  <div class="p-2">
 		  <form class="form-inline" method="GET" action="/jobs">
-			  <input class="form-control" type="search" name="fq" placeholder="&#xF002; Filter jobs" style="font-family:Arial, FontAwesome" aria-label="Search" value={{ search }}>
+			  <input class="form-control" type="search" name="fq" placeholder="&#xF002; Filter jobs" style="font-family:Arial, FontAwesome" aria-label="Search" value="{{ search }}">
     </form>
-	  </div>
-	  <div class="p-2">
-		  <a class="btn" onClick="window.location.reload()"><span class="fa fa-refresh"></span></span></a>
 	  </div>
 
   </div>
@@ -78,9 +153,6 @@ order: [[0, 'asc']],
         <th>Actions</th>
       </tr>
     </thead>
-    <tbody>
-      {% include 'jobs-list.html' %}
-    </tbody>
   </table>
 <br/>
   

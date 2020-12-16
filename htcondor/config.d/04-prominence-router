@@ -13,14 +13,6 @@ JOB_ROUTER_ENTRIES @=jre
     name = "cloud";
     requirements = target.ProminenceWantJobRouter is True;
     set_ProminenceInfrastructureType = "cloud";
-    set_PeriodicRemove = JobStatus == 5 && PeriodicHoldSubCode == 10;
-    set_PeriodicHold = (JobStatus == 1 && ProminenceInfrastructureState =?= "failed") || 
-                       (JobStatus == 1 && ProminenceInfrastructureState =?= "configured" && time() - ProminenceInfrastructureEnteredCurrentStatus > 900) ||
-                       (JobStatus == 1 && LastJobStatus == 2 && ProminenceInfrastructureState =?= "configured");
-    set_PeriodicHoldReason = ifThenElse(JobStatus == 1 && ProminenceInfrastructureState =?= "failed", "Infrastructure status is failed",
-                             ifThenElse(JobStatus == 1 && ProminenceInfrastructureState =?= "configured" && time() - ProminenceInfrastructureEnteredCurrentStatus > 900, "Job took too long to start running", 
-                             ifThenElse(JobStatus == 1 && LastJobStatus == 2 && ProminenceInfrastructureState =?= "configured", "Job was evicted", "Unknown")));
-    set_PeriodicHoldSubCode = 10;
     FailureRateThreshold = 10000;
   ]
   @jre

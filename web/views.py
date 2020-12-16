@@ -1,22 +1,29 @@
 from datetime import datetime, timedelta
+import logging
 import uuid
 import requests
 from requests.auth import HTTPBasicAuth
+from requests_oauthlib import OAuth2Session
 
 from django.shortcuts import render, get_object_or_404, HttpResponse, redirect
 from django.http import JsonResponse, HttpResponseRedirect
 from django.template.loader import render_to_string
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth import get_user_model
+from django.urls import reverse
 from rest_framework.authtoken.models import Token
 
-from .forms import StorageForm, JobForm, LabelsFormSet, ArtifactsFormSet, EnvVarsFormSet, InputFilesFormSet
-from .models import Storage
+from .forms import ComputeForm, StorageForm, JobForm, LabelsFormSet, ArtifactsFormSet, EnvVarsFormSet, InputFilesFormSet
+from .models import Compute, Storage
 from server.backend import ProminenceBackend
 from server.validate import validate_job
+from server.set_groups import set_groups
 import server.settings
 from .utilities import create_job
 from .metrics import JobMetrics, JobMetricsByCloud, JobResourceUsageMetrics
+
+# Get an instance of a logger
+logger = logging.getLogger(__name__)
 
 def index(request):
     if request.user.is_authenticated:
@@ -57,18 +64,29 @@ def save_storage_form(request, form, template_name):
 def storage_add(request):
     if request.method == 'POST':
         form = StorageForm(request.POST)
+        if form.is_valid():
+            storage = form.save(commit=False)
+            storage.user = request.user
+            storage.save()
+        return redirect('/storage')
     else:
         form = StorageForm()
-    return save_storage_form(request, form, 'storage-add.html')
+
+    return render(request, 'storage-add.html', {'form': form})
 
 @login_required
 def storage_update(request, pk):
     storage = get_object_or_404(Storage, user=request.user, pk=pk)
     if request.method == 'POST':
         form = StorageForm(request.POST, instance=storage)
+        if form.is_valid():
+            storage = form.save(commit=False)
+            storage.user = request.user
+            storage.save()
+        return redirect('/storage')
     else:
         form = StorageForm(instance=storage)
-    return save_storage_form(request, form, 'storage-update.html')
+    return render(request, 'storage-update.html', {'form': form, 'id': pk})
 
 @login_required
 def storage_delete(request, pk):
@@ -91,9 +109,6 @@ def jobs(request):
 
     workflow = None
     jobs = []
-    if 'workflow_id' in request.GET:
-        jobs = [int(request.GET.get('workflow_id'))]
-        workflow = True
 
     limit = -1
     if 'limit' in request.GET:
@@ -101,18 +116,25 @@ def jobs(request):
 
     active = False
     if 'active' in request.GET:
-        if request.GET['active'] == 'true':
+        if request.GET['active'].lower() == 'true':
             active = True
 
     completed = False
     if 'completed' in request.GET:
-        if request.GET['completed'] == 'true':
+        if request.GET['completed'].lower() == 'true':
             completed = True
             if limit == -1:
                 limit = 1
 
     if not active and not completed:
         active = True
+
+    workflow_id = -1
+    if 'workflow_id' in request.GET:
+        if int(request.GET.get('workflow_id')) > -1:
+            workflow = True
+            workflow_id = int(request.GET.get('workflow_id'))
+            limit = -1
 
     state_selectors = {}
     state_selectors['active'] = ''
@@ -131,15 +153,42 @@ def jobs(request):
     if 'fq' in request.GET:
         fq = request.GET['fq']
         search = fq
-        if ':' in fq:
-            pieces = fq.split(':')
-            if len(pieces) == 2:
-                constraint = (pieces[0], pieces[1])
-        else:
-            name_constraint = fq
+        if fq != '':
+            if ':' in fq:
+                pieces = fq.split(':')
+                if len(pieces) == 2:
+                    constraint = (pieces[0], pieces[1])
+            else:
+                name_constraint = fq
 
-    jobs_list = backend.list_jobs(jobs, user_name, active, completed, workflow, limit, False, constraint, name_constraint, True)
-    return render(request, 'jobs.html', {'job_list': jobs_list, 'search': search, 'state_selectors': state_selectors})
+    if 'json' in request.GET:
+        if workflow:
+            jobs = [int(request.GET.get('workflow_id'))]
+
+        jobs_list = backend.list_jobs(jobs, user_name, active, completed, workflow, limit, False, constraint, name_constraint, True)
+        jobs_table = []
+        for job in jobs_list:
+            new_job = {}
+            new_job['id'] = job['id']
+            new_job['name'] = job['name']
+            new_job['status'] = job['status']
+            new_job['createTime'] = job['events']['createTime']
+            new_job['elapsedTime'] = job['elapsedTime']
+            new_job['image'] = job['tasks'][0]['image']
+            if 'cmd' in job['tasks'][0]:
+                new_job['cmd'] = job['tasks'][0]['cmd']
+            else:
+                new_job['cmd'] = ''
+            jobs_table.append(new_job)
+        return JsonResponse({'data': jobs_table})
+    else:
+        return render(request,
+                      'jobs.html',
+                      {'search': search,
+                       'state_selectors': state_selectors,
+                       'state_active': active, 
+                       'state_completed': completed,
+                       'workflow_id': workflow_id})
 
 @login_required
 def workflows(request):
@@ -152,12 +201,12 @@ def workflows(request):
 
     active = False
     if 'active' in request.GET:
-        if request.GET['active'] == 'true':
+        if request.GET['active'].lower() == 'true':
             active = True
 
     completed = False
     if 'completed' in request.GET:
-        if request.GET['completed'] == 'true':
+        if request.GET['completed'].lower() == 'true':
             completed = True
             if limit == -1:
                 limit = 1
@@ -182,15 +231,39 @@ def workflows(request):
     if 'fq' in request.GET:
         fq = request.GET['fq']
         search = fq
-        if ':' in fq:
-            pieces = fq.split(':')
-            if len(pieces) == 2:
-                constraint = (pieces[0], pieces[1])
-        else:
-            name_constraint = fq
+        if fq != '':
+            if ':' in fq:
+                pieces = fq.split(':')
+                if len(pieces) == 2:
+                    constraint = (pieces[0], pieces[1])
+            else:
+                name_constraint = fq
 
-    workflows_list = backend.list_workflows([], user_name, active, completed, limit, False, constraint, name_constraint, True)
-    return render(request, 'workflows.html', {'workflow_list': workflows_list, 'search': search, 'state_selectors': state_selectors})
+    if 'json' in request.GET:
+        workflows_list = backend.list_workflows([], user_name, active, completed, limit, False, constraint, name_constraint, True)
+        workflows_table = []
+        for workflow in workflows_list:
+            new_workflow = {}
+            new_workflow['id'] = workflow['id']
+            new_workflow['name'] = workflow['name']
+            new_workflow['status'] = workflow['status']
+            new_workflow['createTime'] = workflow['events']['createTime']
+            new_workflow['elapsedTime'] = workflow['elapsedTime']
+            new_workflow['progress'] = {}
+            new_workflow['progress']['done'] = workflow['progress']['done']
+            new_workflow['progress']['failed'] = workflow['progress']['failed']
+            new_workflow['progress']['total'] = workflow['progress']['total']
+            new_workflow['progress']['donePercentage'] = workflow['progress']['donePercentage']
+            new_workflow['progress']['failedPercentage'] = workflow['progress']['failedPercentage']
+            workflows_table.append(new_workflow)
+        return JsonResponse({'data': workflows_table})
+    else:
+        return render(request,
+                      'workflows.html',
+                      {'search': search,
+                       'state_selectors': state_selectors,
+                       'state_active': active,
+                       'state_completed': completed,})
 
 @login_required
 def create_token(request):
@@ -219,40 +292,56 @@ def revoke_token(request):
     return HttpResponse('Your token has been revoked')
 
 @login_required
-def register_token(request):
-    """
-    Register a refresh token to use with EGI FedCloud sites
-    """
-    user = request.user
-    account = user.socialaccount_set.get(provider="egicheckin")
-    refresh_token = account.socialtoken_set.first().token_secret
-
-    data = {}
-    data['username'] = request.user.username
-    data['refresh_token'] = refresh_token
-
-    try:
-        response = requests.post(server.settings.CONFIG['IMC_URL'],
-                                 timeout=5,
-                                 json=data,
-                                 auth=HTTPBasicAuth(server.settings.CONFIG['IMC_USERNAME'], 
-                                 server.settings.CONFIG['IMC_PASSWORD']),
-                                 cert=(server.settings.CONFIG['IMC_SSL_CERT'],
-                                       server.settings.CONFIG['IMC_SSL_KEY']),
-                                 verify=server.settings.CONFIG['IMC_SSL_CERT'])
-    except (requests.exceptions.Timeout, requests.exceptions.RequestException) as err:
-        return HttpResponse('Error: %s', err)
-
-    return HttpResponse('')
+def compute(request):
+    compute_list = request.user.resources.all()
+    return render(request, 'clouds.html', {'resources': compute_list})
 
 @login_required
-def clouds(request):
-    return render(request, 'clouds.html')
+def compute_add(request):
+    if request.method == 'POST':
+        form = ComputeForm(request.POST)
+        if form.is_valid():
+            compute = form.save(commit=False)
+            compute.user = request.user
+            compute.save()
+        return redirect('/compute')
+    else:
+        form = ComputeForm()
+
+    return render(request, 'compute-add.html', {'form': form})
+
+@login_required
+def compute_update(request, pk):
+    compute = get_object_or_404(Compute, user=request.user, pk=pk)
+    if request.method == 'POST':
+        form = ComputeForm(request.POST, instance=compute)
+        if form.is_valid():
+            compute = form.save(commit=False)
+            compute.user = request.user
+            compute.save()
+        return redirect('/compute')
+    else:
+        form = ComputeForm(instance=compute)
+    return render(request, 'compute-update.html', {'form': form, 'id': pk})
+
+@login_required
+def compute_delete(request, pk):
+    compute = get_object_or_404(Compute, user=request.user, pk=pk)
+    data = dict()
+    if request.method == 'POST':
+        compute.delete()
+        data['form_is_valid'] = True
+        resources = request.user.resources.all()
+        data['html_resources_list'] = render_to_string('clouds-list.html', {'resources': resources})
+    else:
+        context = {'resource': compute}
+        data['html_form'] = render_to_string('compute-delete.html', context, request=request)
+    return JsonResponse(data)
 
 @login_required
 def job_create(request):
     if request.method == 'POST':
-        form = JobForm(request.POST)
+        form = JobForm(request.user, request.POST)
         labels_formset = LabelsFormSet(request.POST, prefix='fs1')
         envvars_formset = EnvVarsFormSet(request.POST, prefix='fs2')
         inputs_formset = InputFilesFormSet(request.POST, request.FILES, prefix='fs4')
@@ -265,18 +354,26 @@ def job_create(request):
             user_name = request.user.username
             backend = ProminenceBackend(server.settings.CONFIG)
 
+            # Set groups
+            groups = set_groups(request)
+
             # Validate job
             (job_status, msg) = validate_job(job_desc)
             #if not job_status:
             # TODO: message that job is invalid
 
             # Submit job
-            (return_code, msg) = backend.create_job(user_name, 'group', 'email', job_uuid, job_desc)
+            logger.info('Submitting job for user %s with uid %s', user_name, job_uuid)
+            (return_code, msg) = backend.create_job(user_name,
+                                                    ','.join(groups),
+                                                    request.user.email,
+                                                    job_uuid,
+                                                    job_desc)
             # TODO: if return code not zero, return message to user
 
             return redirect('/jobs')
     else:
-        form = JobForm()
+        form = JobForm(request.user)
         labels_formset = LabelsFormSet(prefix='fs1')
         envvars_formset = EnvVarsFormSet(prefix='fs2')
         inputs_formset = InputFilesFormSet(prefix='fs4')
@@ -387,3 +484,45 @@ def workflow_delete(request, pk):
         context = {'workflow': workflow}
         data['html_form'] = render_to_string('workflow-delete.html', context, request=request)
     return JsonResponse(data)
+
+@login_required
+def refresh_authorise(request):
+    identity = OAuth2Session(server.settings.CONFIG['CLIENT_ID'],
+                             scope=server.settings.CONFIG['SCOPES'],
+                             redirect_uri=request.build_absolute_uri(reverse('refresh_callback')))
+    authorization_url, state = identity.authorization_url(server.settings.CONFIG['AUTHORISATION_BASE_URL'],
+                                                          access_type="offline",
+                                                          prompt="select_account")
+    request.session['refresh_oauth_state'] = state
+    return redirect(authorization_url)
+
+@login_required
+def refresh_callback(request):
+    identity = OAuth2Session(server.settings.CONFIG['CLIENT_ID'],
+                             redirect_uri=request.build_absolute_uri(reverse('refresh_callback')),
+                             state=request.session['refresh_oauth_state'])
+    token = identity.fetch_token(server.settings.CONFIG['TOKEN_URL'],
+                                 client_secret=server.settings.CONFIG['CLIENT_SECRET'],
+                                 authorization_response=request.build_absolute_uri())
+
+    identity = OAuth2Session(server.settings.CONFIG['CLIENT_ID'], token=token)
+    #userinfo = identity.get(server.settings.CONFIG['OIDC_BASE_URL'] + 'userinfo').json()
+
+    data = {}
+    data['username'] = request.user.username
+    data['refresh_token'] = token['refresh_token']
+        
+    try:
+        response = requests.post(server.settings.CONFIG['IMC_URL'],
+                                 timeout=5,
+                                 json=data,
+                                 auth=HTTPBasicAuth(server.settings.CONFIG['IMC_USERNAME'],
+                                 server.settings.CONFIG['IMC_PASSWORD']),
+                                 cert=(server.settings.CONFIG['IMC_SSL_CERT'],
+                                       server.settings.CONFIG['IMC_SSL_KEY']),
+                                 verify=server.settings.CONFIG['IMC_SSL_CERT'])
+    except (requests.exceptions.Timeout, requests.exceptions.RequestException) as err:
+        logger.critical('Unable to update refresh token due to: %s', err)
+        pass
+
+    return redirect('/')

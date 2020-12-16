@@ -13,3 +13,6 @@ SUBMIT_ATTRS = $(SUBMIT_ATTRS), JobLeaseDuration
 
 # Per job history files
 PER_JOB_HISTORY_DIR = /var/spool/prominence/completed_jobs
+
+# Don't display jobs in batches in condor_q
+CONDOR_Q_DASH_BATCH_IS_DEFAULT = False

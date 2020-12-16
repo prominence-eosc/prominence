@@ -145,7 +145,7 @@ $(document).ready(function(){
                      <div class="form-group row">
                      <div class="col-xs-4">
                      <b>CPUs per node</b>
-                     {{ form.cpus|add_class:"form-control form-control-sm" }}</td>
+                     {{ form.cpus|add_class:"form-control form-control-sm" }}
                      </div>
                      </div>
                      <div class="form-group row">
@@ -163,7 +163,7 @@ $(document).ready(function(){
                      <div class="form-group row">
                      <div class="col-xs-4">
                      <b>Maximum wall time</b> (hours)
-                     {{ form.walltime|add_class:"form-control form-control-sm" }}</td>
+                     {{ form.walltime|add_class:"form-control form-control-sm" }}
                      </div>
                      </div>
                   </div>
@@ -183,7 +183,7 @@ $(document).ready(function(){
                      <br/>
                      <br/>
 		     <b>Artifacts</b><br/>
-                     Additional input files which can be obtained from a URL or from object storage.
+                     Additional input files which can be obtained from a URL.
                      <br/>
                      <br/>
                      {{ artifacts_formset.management_form }}
@@ -215,7 +215,7 @@ $(document).ready(function(){
                        </tr>
                        <tr>
                          <td>
-                           {{ form.storage_name }}
+                           {{ form.storage_name|add_class:"form-control form-control-sm" }}
                          </td>
                          <td>
                            {{ form.storage_mountpoint }}
@@ -225,7 +225,7 @@ $(document).ready(function(){
                   </div>
                   <div id="policies" class="tab-pane fade">
                      <br/>
-                     Policies can influence the way failures are handled and how resources are placed.
+                     Optional policies can influence the way failures are handled and how resources are placed.
                      <br/>
                      <br/>
                      <div class="container">
@@ -241,6 +241,19 @@ $(document).ready(function(){
                      {{ form.policy_task_maxretries|add_class:"form-control form-control-sm" }}
                      </div>
                      </div>
+		     <div class="form-group row">
+			     <div class="col-xs-4">
+			     <b>Required sites</b><span class="text-secondary"> <span class="fa fa-question-circle" data-toggle="tooltip" title="Specify a custom list of site names to run the job. Use commas to separate multiple sites if necessary."></span></span>
+                          {{ form.policy_sites|add_class:"form-control form-control-sm" }}
+			                       </div>
+					                            </div>
+		  <div class="form-group row">
+			  <div class="col-xs-4">
+				  <b>Required regions</b><span class="text-secondary"> <span class="fa fa-question-circle" data-toggle="tooltip" title="Specify a custom list of regions to run the job. Use commas to separate multiple regions if necessary."></span></span>
+				                            {{ form.policy_regions|add_class:"form-control form-control-sm" }}
+							                                                   </div>
+													                                                                       </div>
+
 		     <div class="row">
 		     <b>Queues</b>
 		     </div>
@@ -250,8 +263,8 @@ $(document).ready(function(){
                      Leave in job queue<span class="text-secondary"> <span class="fa fa-question-circle" data-toggle="tooltip" title="By default jobs in a terminal state disappear from the queue. Setting this option causes the job to remain in the queue until it is explicitly removed."></span></span>
                      </div>
                      </div>
-                  </div>
-                  </div>
+		     </div>
+		     </div>
 		  <div id="notifications" class="tab-pane fade">
                      <br/>
                      Notifications can be sent for transitions between different job states.
@@ -276,6 +289,7 @@ $(document).ready(function(){
    <br/>
    <br/>
    <button type="submit" class="btn btn-primary">Create</button>
+   <a class="btn btn-outline-dark" href="#" onclick="history.go(-1)">Cancel</a>
 </form>
 <br/>
 {% endblock %}

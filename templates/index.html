@@ -1,43 +1,128 @@
 {% extends 'base.html' %}
+{% load static %}
+{% load socialaccount %}
 
 {% block title %}
   Submit Globally, Run Globally
 {% endblock %}
+
+{% block javascript %}
+<script>
+function setCookie(name,value,days) {
+    var expires = "";
+    if (days) {
+        var date = new Date();
+        date.setTime(date.getTime() + (days*24*60*60*1000));
+        expires = "; expires=" + date.toUTCString();
+    }
+    document.cookie = name + "=" + (value || "")  + expires + "; path=/";
+}
+function getCookie(name) {
+    var nameEQ = name + "=";
+    var ca = document.cookie.split(';');
+    for(var i=0;i < ca.length;i++) {
+        var c = ca[i];
+        while (c.charAt(0)==' ') c = c.substring(1,c.length);
+        if (c.indexOf(nameEQ) == 0) return c.substring(nameEQ.length,c.length);
+    }
+    return null;
+}
+
+function eraseCookie(name) {   
+    document.cookie = name +'=; Path=/; Expires=Thu, 01 Jan 1970 00:00:01 GMT;';
+}
+
+function cookieConsent() {
+    if (!getCookie('allowCookies')) {
+        $('.toast').toast('show')
+    }
+}
+
+$('#btnAccept').click(()=>{
+    setCookie('allowCookies','1',7)
+    $('.toast').toast('hide')
+})
+
+// load
+cookieConsent()
+
+</script>
+{% endblock %}
   
 {% block content %}
-<br/><br/>
       <section id="promo">
-         <div style="background:transparent !important" class="jumbotron d-flex align-items-center">
+      <nav class="navbar navbar-dark navbar-expand">
+         <a class="navbar-brand mb-0 h1" href="/">prominence</a>
+          <div class="navbar-collapse collapse">
+           <ul class="navbar-nav ml-auto">
+          <li class="nav-item">
+            <a class="nav-link" href="#">About</a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link" href="https://prominence.readthedocs.io">Docs</a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link" href="https://github.com/prominence-eosc/">GitHub</a>
+          </li>
+           </ul>
+           </div>
+      </nav>
+         <div style="background:transparent !important" class="jumbotron align-items-center pt-5">
             <div class="container">
                <div class="row">
                   <div class="col">
-                     <h1 class="display-4 text-center text-md-left text-light" style="font-weight:100">
+                     <div class="display-4 text-center text-md-left text-light" style="font-weight:200">
                         High throughput and high performance computing without servers or clusters
-                     </h1>
-                     <h4 class="text-center text-md-left text-light mb-6 mb-lg-8" style="font-weight:300">
+                     </div>
+                     <h4 class="text-center text-md-left text-light mb-6 mb-lg-8" style="font-weight:100">
                         Run containerised jobs across many clouds without managing infrastructure.
                      </h4>
+		     <br/>
+		  <h6>
+		  <a class="btn btn-light nav-link w-25" href="{% provider_login_url 'egicheckin' %}">Login with EGI Check-in</a>
+		  </h6>
                   </div>
+
                </div>
             </div>
          </div>
       </section>
-      <br/>
+
+      <div class="jumbotron">
+      <h2 class="text-center">Overview</h2>
       <div class="container">
+	      <div class="row justify-content-md-center">
+	      <div class="col-sm-8">
+		      <h6 class="text-center">Prominence is a platform which allows users to easily exploit idle cloud resources for running scientific workloads. By default resources from the <a href="https://www.egi.eu/services/cloud-compute/">EGI Cloud Compute</a> service are used.</h6>
+      </div>
+      </div>
+      </div>
+      </div>
+
+      <br/>
+      <br/>
+      <br/>
+
+      <div class="container">
+         <div class="row">
+		 <div class="col">
+		 <h2 class="text-center">Features</h2>
+		 </div>
+	 </div>
          <div class="row">
             <div class="col">
                <i class="feather-large" data-feather="user"></i>
-               <p/>
+	       <br/><br/>
                <h4 class="display-6 text-center text-md-left" style="font-weight:300">
                   Run jobs from anywhere
                </h4>
                <p class="text-muted">
-                  Manage jobs using a simple batch system style command line interface, or interact programmatically using a RESTful API.
+                  Manage jobs using a web UI, a simple batch system style command line interface or interact programmatically using a RESTful API.
                </p>
             </div>
             <div class="col">
                <i class="feather-large" data-feather="codesandbox"></i>
-               <p/>
+	       <br/><br/>
                <h4 class="display-6 text-center text-md-left" style="font-weight:300">
                   Reliability & reproduceability
                </h4>
@@ -47,20 +132,21 @@
             </div>
             <div class="col">
                <i class="feather-large" data-feather="server"></i>
-               <p/>
+	       <br/><br/>
                <h4 class="display-6 text-center text-md-left" style="font-weight:300">
                   Invisible infrastructure
                </h4>
                <p class="text-muted">
-                  All infrastructure provisioning is handled completely automatically and is totally transparent to the user.
+                  All infrastructure provisioning is handled completely automatically and is totally invisible to the user.
                </p>
             </div>
          </div>
          <br/>
+         <br/>
          <div class="row">
             <div class="col">
                <i class="feather-large" data-feather="grid"></i>
-               <p/>
+	       <br/><br/>
                <h4 class="display-6 text-center text-md-left" style="font-weight:300">
                   MPI ready
                </h4>
@@ -70,7 +156,7 @@
             </div>
             <div class="col">
                <i class="feather-large" data-feather="copy"></i>
-               <p/>
+	       <br/><br/>
                <h4 class="display-6 text-center text-md-left" style="font-weight:300">
                   Workflows
                </h4>
@@ -80,12 +166,12 @@
             </div>
             <div class="col">
                <i class="feather-large" data-feather="database"></i>
-               <p/>
+	       <br/><br/>
                <h4 class="display-6 text-center text-md-left" style="font-weight:300">
                   Data access
                </h4>
                <p class="text-muted">
-                  Data can be automatically staged-in and staged-out from object storage.
+		  Jobs can access data transparently from OneData, WebDAV or object storage.
                </p>
             </div>
          </div>
@@ -93,16 +179,59 @@
 
       <br/>
       <br/>
+      <br/>
 
-  <footer class="footer mt-auto py-3">
-  <div class="container-fluid">
-  <div class="row">
-  <div class="col"></div>
-  <div class="col"></div>
-  <div class="col">
-  <span class="text-muted"><a href="/terms-of-use">Terms of use</a> |
-  <a href="/privacy-policy">Privacy policy</a></span></div>
-  </div>
-  </div>
-</footer>
+      <div class="jumbotron" style="background-color:#666666">
+      <h2 class="text-center text-white">Scale from zero and back again</h2>
+      <div class="container">
+              <div class="row justify-content-md-center">
+              <div class="col-sm-8">
+                      <h6 class="text-center text-white">Resources are only used when they are needed to run workloads.</h6>
+      </div>
+      </div>
+      </div>
+      </div>
+
+      <br/>
+      <br/>
+      <br/>    
+
+
+      <div class="container">
+	      <h2 class="text-center">Submit globally, run globally</h2>
+	      <h6 class="text-center">Submit from anywhere, run on any cloud.</h6>
+	      <br/>
+              <div class="row justify-content-md-center">
+		      <img src="{% static 'images/prominence.png' %}"</img>
+      </div>
+      </div>
+
+
+
+      <br/>       
+      <br/>       
+
+
+  <footer class="footer">
+    <div class="container">
+        <a class="text-light" href="/terms-of-use">Terms of use</a> | <a class="text-light" href="/privacy-policy">Privacy policy</a>
+    </div>     
+  </footer>
+
+<div class="fixed-bottom p-4">
+    <div class="toast bg-dark text-white w-100 mw-100" role="alert" data-autohide="false">
+        <div class="toast-body p-4 d-flex flex-column">
+            <h4>This site uses cookies</h4>
+            <p>
+	    We use cookies to ensure you get the best experience on our website. <a href="https://www.cookiesandyou.com">Learn more</a>
+            </p>
+            <div class="ml-auto">
+                <button type="button" class="btn btn-light" id="btnAccept">
+                    Accept
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
 {% endblock %}

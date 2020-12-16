@@ -30,6 +30,16 @@ def create_job(data, data_envvars, data_labels, files, data_artifacts, storage_l
         if data['policy_leave_job_in_queue']:
             policies['leaveInQueue'] = True
 
+    if 'policy_sites' in data:
+        if data['policy_sites'] != "":
+            policies['placement'] = {}
+            policies['placement']['requirements'] = {}
+            policies['placement']['requirements']['sites'] = data['policy_sites'].split(',')
+
+            if ',' in data['policy_sites']:
+                policies['placement']['preferences'] = {}
+                policies['placement']['preferences']['sites'] = data['policy_sites'].split(',')
+
     if policies:
         job['policies'] = policies
 
@@ -64,7 +74,7 @@ def create_job(data, data_envvars, data_labels, files, data_artifacts, storage_l
 
     if 'storage_name' in data:
         for storage in storage_list:
-            if data['storage_name'] == storage.name:
+            if str(data['storage_name']) == str(storage.name):
                 job_storage = {}
                 job_storage['mountpoint'] = data['storage_mountpoint']
                 if storage.storage_type == 1:
@@ -77,7 +87,7 @@ def create_job(data, data_envvars, data_labels, files, data_artifacts, storage_l
                     job_storage['type'] = 'onedata'
                     job_storage['onedata'] = {}
                     job_storage['onedata']['provider'] = storage.hostname
-                    job_storage['onedata']['token'] = storage.password
+                    job_storage['onedata']['token'] = storage.token
                 job['storage'] = job_storage
 
     labels = {}
