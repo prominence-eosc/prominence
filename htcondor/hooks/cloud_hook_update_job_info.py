@@ -60,12 +60,12 @@ def get_infrastructure_status(infra_id):
                                 verify=CONFIG.get('imc', 'ssl-cert'),
                                 timeout=int(CONFIG.get('imc', 'timeout')))
     except requests.exceptions.Timeout:
-        return (None, None)
+        return (None, None, None)
     except requests.exceptions.RequestException:
-        return (None, None)
+        return (None, None, None)
     if response.status_code == 200:
         return (response.json()['status'], response.json()['status_reason'], response.json()['cloud'])
-    return (None, None)
+    return (None, None, None)
 
 def update_classad():
     """
@@ -87,6 +87,7 @@ def update_classad():
     remote_host = get_from_classad('RemoteHost', job_ad)
     iwd = get_from_classad('Iwd', job_ad)
     args = get_from_classad('Args', job_ad)
+    job_type = get_from_classad('ProminenceType', job_ad)
 
     state = None
     job_id = '%s.%s' % (cluster_id, proc_id)
@@ -127,6 +128,8 @@ def update_classad():
             print('ProminenceInfrastructureEnteredCurrentStatus = %d' % int(time.time()))
     elif str(infra_type) == 'batch':
         logger.info('[%s] Batch job', job_id)
+    elif job_type == 'workflow':
+        logger.info('[%s] Updates for workflow', job_id)
     elif infra_id is not None and str(infra_type) == 'cloud' and infra_state == 'configured':
         logger.info('[%s] Infrastructure already known to be configured, no longer checking infrastructure state', job_id)
 

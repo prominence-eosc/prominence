@@ -12,6 +12,7 @@ from requests.auth import HTTPBasicAuth
 import classad
 
 import send_email
+from workflow_handler import cleanup_jobs
 
 def get_job_json_output(iwd, job_id):
     try:
@@ -198,6 +199,7 @@ def cleanup_infrastructure():
     infra_type = get_from_classad('ProminenceInfrastructureType', job_ad)
     email = get_from_classad('ProminenceEmail', job_ad)
     identity = get_from_classad('ProminenceIdentity', job_ad)
+    job_type = get_from_classad('ProminenceType', job_ad)
 
     job_id = '%s.%s' % (cluster_id, proc_id)
     exit_code = -1
@@ -215,6 +217,10 @@ def cleanup_infrastructure():
 
     if str(infra_type) == 'batch':
         logger.info('[%s] Batch infrastructure, so no need to do anything', job_id)
+        exit_code = 0
+    elif job_type == 'workflow':
+        logger.info('[%s] Triggering deletion of dependent jobs', job_id)
+        cleanup_jobs(iwd)
         exit_code = 0
     elif infra_id is not None:
         logger.info('[%s] Will destroy infrastructure with id %s on site %s which has state %s', job_id, infra_id, infra_site, infra_state)
