@@ -1,6 +1,7 @@
 #!/usr/bin/python
 import json
 import math
+import sys
 
 cpus = 0
 with open('/proc/cpuinfo') as f:
@@ -16,6 +17,6 @@ with open('/proc/meminfo') as f:
 memory = int(meminfo['MemTotal'].split(' ')[0])/1000
 memory = int(math.floor(memory / 1000.0))
 
-info = {'cpus':cpus, 'memory':memory}
+info = {'cpus':cpus, 'memory':memory, 'site':sys.argv[1]}
 with open('/etc/prominence.json', 'w') as file:
     json.dump(info, file)
