@@ -42,9 +42,11 @@ PROMINENCE_ATTRS_TO_COPY = ProminenceInfrastructureType, \
                            ProminenceOutputLocationsUser, \
                            ProminenceOutputDirLocationsUser, \
                            ProminenceImagePullTime, \
+                           ProminenceImagePullSuccess, \
                            ProminenceExecuteTime, \
                            ProminenceExitCode, \
                            JobCurrentStartExecutingDate, \
                            LastVacateTime, \
                            EnteredCurrentStatus, \
-                           JobFinishedHookDone
+                           JobFinishedHookDone, \
+                           MachineAttrPROMINENCE_CLOUD0
