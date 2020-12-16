@@ -9,6 +9,11 @@ SHADOW_QUEUE_UPDATE_INTERVAL = 300
 
 # Job lease duration (default is 40 mins)
 JobLeaseDuration = 600
+
+# Add site name to job classad
+SYSTEM_JOB_MACHINE_ATTRS = $(SYSTEM_JOB_MACHINE_ATTRS), PROMINENCE_CLOUD
+
+# Add additional attributes
 SUBMIT_ATTRS = $(SUBMIT_ATTRS), JobLeaseDuration
 
 # Per job history files
