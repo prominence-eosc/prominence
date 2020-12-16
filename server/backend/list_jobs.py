@@ -41,6 +41,7 @@ def list_jobs(self, job_ids, identity, active, completed, workflow, num, detail,
                       'ProminenceWorkflowName',
                       'ProminenceExitCode',
                       'ProminencePreemptible',
+                      'MachineAttrPROMINENCE_CLOUD0',
                       'Iwd',
                       'Args']
     jobs_state_map = {1:'idle',
@@ -382,6 +383,8 @@ def list_jobs(self, job_ids, identity, active, completed, workflow, num, detail,
                     execution['site'] = str(job['ProminenceInfrastructureSite'])
             elif site_from_promlet:
                 execution['site'] = site_from_promlet
+            elif 'MachineAttrPROMINENCE_CLOUD0' in job:
+                execution['site'] = str(job['MachineAttrPROMINENCE_CLOUD0'])
 
             new_tasks_u = []
             if tasks_u:
