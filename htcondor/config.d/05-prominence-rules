@@ -1,5 +1,5 @@
 # Job in the idle but had previously been running, i.e. evicted
-ProminenceJobEvicted = JobStatus == 1 && LastJobStatus == 2 && ProminenceInfrastructureState =?= "configured"
+ProminenceJobEvicted = JobStatus == 1 && LastJobStatus =?= 2 && ProminenceInfrastructureState =?= "configured"
 
 # Infrastructure deployment failed
 ProminenceJobInfraFailed = JobStatus == 1 && (ProminenceInfrastructureState =?= "failed" || \
@@ -12,7 +12,7 @@ ProminenceJobInfraUnableFatal = JobStatus == 1 && ProminenceInfrastructureState 
 ProminenceJobInfraUnable = JobStatus == 1 && ProminenceInfrastructureState =?= "unable" && ProminenceInfrastructureStateReason =?= "NoMatchingResourcesAvailable"
 
 # Infrastructure deployed but job is taking too long to start running
-ProminenceJobNotRunning = JobStatus == 1 && ProminenceInfrastructureState =?= "configured" && CurrentTime - ProminenceInfrastructureEnteredCurrentStatus > 600
+ProminenceJobNotRunning = JobStatus == 1 && ProminenceInfrastructureState =?= "configured" && CurrentTime - ProminenceInfrastructureEnteredCurrentStatus > 2400
 
 # Job has been queued for too long
 ProminenceQueuedTooLong = JobStatus == 1 && ProminenceMaxTimeInQueue > 0 && CurrentTime - QDate > ProminenceMaxTimeInQueue
@@ -32,7 +32,7 @@ ProminenceJobTransient = ($(ProminenceJobNotRunning) || $(ProminenceJobEvicted) 
 
 # Set SYSTEM_PERIODIC_HOLD
 SYSTEM_PERIODIC_HOLD = ProminenceType =?= "job" && \
-                       ((isUndefined(RouteName) && ($(ProminenceJobFatal) || $(ProminenceJobTransientFatal))) || \
+                       ((isUndefined(RouteName) && isUndefined(DAGManJobId) && ($(ProminenceJobFatal) || $(ProminenceJobTransientFatal))) || \
                         (isUndefined(RoutedToJobId) && $(ProminenceJobTransient)))
 
 SYSTEM_PERIODIC_HOLD_REASON = ifThenElse($(ProminenceJobEvicted), "Job was evicted", \
@@ -42,8 +42,8 @@ SYSTEM_PERIODIC_HOLD_REASON = ifThenElse($(ProminenceJobEvicted), "Job was evict
                               ifThenElse($(ProminenceJobNotRunning), "Job took too long to start running", \
                               ifThenElse($(ProminenceQueuedTooLong), "Job was queued for too long", \
                                                                      "Infrastructure deployment failed"))))))
-SYSTEM_PERIODIC_HOLD_SUBCODE = 11
+SYSTEM_PERIODIC_HOLD_SUBCODE = 100
 
 # Kill jobs held due to the above rules or for other reasons
-SYSTEM_PERIODIC_REMOVE = JobStatus == 5 && (HoldReasonSubCode == 11 || \
-                                            (HoldReasonSubCode != 11 && CurrentTime - EnteredCurrentStatus > 300))
+SYSTEM_PERIODIC_REMOVE = JobStatus == 5 && (HoldReasonSubCode == 100 || \
+                                            (HoldReasonSubCode != 100 && CurrentTime - EnteredCurrentStatus > 300))
