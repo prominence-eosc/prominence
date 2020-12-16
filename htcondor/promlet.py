@@ -1105,7 +1105,11 @@ def download_singularity(image, image_new, location, path, credential):
             return 1, False
 
     if os.path.exists(image_new):
-        logging.info('Image file %s exists', image_new)
+        logging.info('Image file %s exists, writing done lock file', image_new)
+        try:
+            open('%s/image.done' % location, 'a').close()
+        except Exception as err:
+            logging.error('Unable to write image done lock file')
     else:
         logging.info('Image file %s does not exist', image_new)
 
@@ -1261,6 +1265,11 @@ def download_udocker(image, location, label, path, credential):
 
     if return_code != 0:
         return 1, False
+
+    try:
+        open('%s/image.done' % location, 'a').close()
+    except Exception as err:
+        logging.error('Unable to write image done lock file')
 
     return 0, False
 
@@ -1522,8 +1531,15 @@ def run_tasks(job, path, path_images, is_batch):
                 logging.error('Unable to create directory %s', location)
                 return False, {}
         else:
-            logging.info('Will used cached image from another job')
+            logging.info('Will used cached image from another job - if image does not currently exist will wait...')
             found_image = True
+            my_current_time = time.time()
+            while time.time() - my_current_time < 600 and not os.path.isfile('%s/image.done' % location):
+                time.sleep(10)
+
+            if not os.path.isfile('%s/image.done' % location):
+                logger.error('Image lock file was not found')
+                return False, {}
 
         mpi = None
         if 'type' in task:
