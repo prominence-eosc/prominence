@@ -6,6 +6,14 @@ CCB_HEARTBEAT_INTERVAL = 120
 # Run all jobs as user user
 STARTER_ALLOW_RUNAS_OWNER = FALSE
 SLOT1_USER = user
+SLOT1_1_USER = user
+SLOT1_2_USER = user
+SLOT1_3_USER = user
+SLOT1_4_USER = user
+SLOT1_5_USER = user
+SLOT1_6_USER = user
+SLOT1_7_USER = user
+SLOT1_8_USER = user
 DEDICATED_EXECUTE_ACCOUNT_REGEXP = user
 
 TRUST_UID_DOMAIN = True
@@ -14,10 +22,10 @@ TRUST_UID_DOMAIN = True
 STARTD_NOCLAIM_SHUTDOWN = 1200
 
 # Go back to Unclaimed/Idle after running a job which runs for > 1 second
-CLAIM_WORKLIFE = 1
+#CLAIM_WORKLIFE = 1
 
 # Shutdown startd if idle after running a job
-STARTD.DAEMON_SHUTDOWN = Activity == "Idle" && (CurrentTime - EnteredCurrentActivity > 30) && (TotalTimeClaimedBusy =!= UNDEFINED && TotalTimeClaimedBusy > 0)
+#STARTD.DAEMON_SHUTDOWN = Activity == "Idle" && (CurrentTime - EnteredCurrentActivity > 1200) && (TotalTimeClaimedBusy =!= UNDEFINED && TotalTimeClaimedBusy > 0)
 
 # Shutdown the master if the startd exits
 # - MonitorSelfAge shouldn't be needed, but once I experienced the master
@@ -25,11 +33,14 @@ STARTD.DAEMON_SHUTDOWN = Activity == "Idle" && (CurrentTime - EnteredCurrentActi
 #   being zero
 MASTER.DAEMON_SHUTDOWN = STARTD_StartTime =?= 0 && MonitorSelfAge > 1200
 
-# We want only a single slot
+# We want only a single partitionable slot
 NUM_SLOTS = 1
+NUM_SLOTS_TYPE_1 = 1
+SLOT_TYPE_1 = cpus=100%,mem=100%,auto
+SLOT_TYPE_1_PARTITIONABLE = TRUE
 
 # Advertise cores & machines
-STARTD_ATTRS = $(STARTD_ATTRS), PROM_NODES, PROM_CORES_TOTAL, PROM_CLOUD, PROMINENCE_LOCATION
+STARTD_ATTRS = $(STARTD_ATTRS), PROMINENCE_NODES, PROMINENCE_CORES_TOTAL, PROMINENCE_CLOUD, PROMINENCE_LOCATION, PROMINENCE_DAG_JOB_ID
 
 # TCP keepalive fix for Azure
 #TCP_KEEPALIVE_INTERVAL = 60
@@ -49,7 +60,7 @@ DOCKER_DROP_ALL_CAPABILITIES = False
 CONTAINER_HOOK_PREPARE_JOB = /usr/local/bin/job-prepare-hook
 
 # File transfer plugin
-FILETRANSFER_PLUGINS = /usr/local/libexec/condor_url_fetch
+#FILETRANSFER_PLUGINS = /usr/local/libexec/condor_url_fetch
 
 # Disable MOUNT_UNDER_SCRATCH (temporarily)
 MOUNT_UNDER_SCRATCH = ""
@@ -57,3 +68,6 @@ MOUNT_UNDER_SCRATCH = ""
 # How often the collector should be updated
 UPDATE_OFFSET = $RANDOM_INTEGER(0, 20)
 UPDATE_INTERVAL = 200
+
+# Quantize memory available
+MEMORY = quantize( $(DETECTED_MEMORY), 1000 )
