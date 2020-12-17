@@ -29,6 +29,7 @@ $(function () {
         if (data.form_is_valid) {
           $("#workflows-table tbody").html(data.html_workflows_list);
           $("#modal-workflows").modal("hide");
+          $('#workflows-table').DataTable().ajax.reload();
         }
         else {
           $("#modal-workflows .modal-content").html(data.html_form);
