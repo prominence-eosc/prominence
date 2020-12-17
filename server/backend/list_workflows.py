@@ -4,7 +4,28 @@ import os
 import classad
 import htcondor
 
-from .utilities import redact_storage_creds, datetime_format, elapsed
+from .utilities import redact_storage_creds, datetime_format, elapsed, run
+
+def condor_history(constraint, attributes, num):
+    """
+    schedd.history doesn't return as many results as the condor_history command, so using
+    the condor_history command directly as a workaround
+    """
+    cmd = "condor_history -m %d -const '%s' -af:g, %s" % (num, constraint, ' '.join(attributes))
+    (_, out, _, _) = run(cmd, '/tmp', 30)
+    data = []
+    for line in out.decode().split('\n\n'):
+        job = {}
+        for i in range(0, len(attributes)):
+            value = line.split(',')[i].replace('\n', '')
+            try:
+                value = int(value)
+            except ValueError:
+                pass
+            if value != 'undefined':
+                job[attributes[i]] = value
+        data.append(job)
+    return data
 
 def list_workflows(self, workflow_ids, identity, active, completed, num, detail, constraint, name_constraint, display=False):
     """
@@ -53,7 +74,8 @@ def list_workflows(self, workflow_ids, identity, active, completed, num, detail,
 
     # Get completed workflows if necessary
     if completed:
-        wfs_completed = schedd.history('RoutedBy =?= undefined && ProminenceType == "workflow" && %s' % constraintc, required_attrs, int(num))
+        #wfs_completed = schedd.history('RoutedBy =?= undefined && ProminenceType == "workflow" && %s' % constraintc, required_attrs, int(num))
+        wfs_completed = condor_history('RoutedBy =?= undefined && ProminenceType == "workflow" && %s' % constraintc, required_attrs, int(num))
         wfs_condor.extend(wfs_completed)
 
     # Get active workflows if necessary
