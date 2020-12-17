@@ -34,6 +34,7 @@ $(document).ready(function() {
                         pending: '<i class="text-info fa fa-circle" aria-hidden="true"></i><br/>Pending',
                         failed: '<i class="text-danger fa fa-exclamation-circle" aria-hidden="true"></i><br/>Failed',
                         killed: '<i class="text-warning fa fa-exclamation-circle" aria-hidden="true"></i><br/>Killed',
+			deleted: '<i class="text-secondary fa fa-minus-circle" aria-hidden="true"></i><br/>Deleted',
                         completed: '<i class="text-success fa fa-check-circle" aria-hidden="true"></i><br/>Completed'
                     };
                     return statuses[data] || '<i class="text-danger fa fa-question-circle" aria-hidden="true"></i><br/>Unknown';
