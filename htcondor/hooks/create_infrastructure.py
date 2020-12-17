@@ -3,6 +3,7 @@ from __future__ import print_function
 import base64
 import configparser
 import json
+import re
 from string import Template
 import subprocess
 import time
@@ -18,6 +19,15 @@ requests.packages.urllib3.disable_warnings()
 
 CONFIG = configparser.ConfigParser()
 CONFIG.read('/etc/prominence/prominence.ini')
+
+def get_job_json(filename, sandbox_dir):
+    """
+    """
+    filename_str = filename.replace(sandbox_dir, '')
+    match = re.search(r'/([\w\-]+)/([\w\-\_]+)/\d\d/\d\d/\d\d/\d\d/\d\d/job.json', filename_str)
+    if match:
+        return '%s/%s/%s/job.json' % (sandbox_dir, match.group(1), match.group(2))
+    return filename
 
 def create_ssh_keypair():
     """
@@ -137,6 +147,7 @@ def deploy(identity, my_groups, iwd, cluster_id, dag_node_name, dag_job_id, uid,
         filename = '%s/%s/job.json' % (iwd, subdir)
     else:
         filename = '%s/job.json' % iwd
+    filename = get_job_json(filename, '/var/spool/prominence/sandboxes')
     with open(filename, 'r') as json_file:
         job_json = json.load(json_file)
 

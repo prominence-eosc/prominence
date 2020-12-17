@@ -18,6 +18,24 @@ CONFIG.read('/etc/prominence/prominence.ini')
 # Logging
 logger = logging.getLogger('workflows.handler')
 
+def get_group_from_dir(dir_name):
+    """
+    """
+    group = dir_name
+    match = re.search(r'(.*)/\d\d/\d\d/\d\d/\d\d/\d\d', dir_name)
+    if match:
+        group = match.group(1)
+    return group
+
+def get_job_json(filename, sandbox_dir):
+    """
+    """
+    filename_str = filename.replace(sandbox_dir, '')
+    match = re.search(r'/([\w\-]+)/([\w\-\_]+)/\d\d/\d\d/\d\d/\d\d/\d\d/job.json', filename_str)
+    if match:
+        return '%s/%s/%s/job.json' % (sandbox_dir, match.group(1), match.group(2))
+    return filename
+
 def get_num_cpus(job_cpus, num_idle_jobs):
     cpus_select = job_cpus
     scaling = 1
@@ -432,12 +450,15 @@ def manage_jobs(dag_job_id, iwd, identity, groups, uid):
     # Unique set of directories, i.e. same resource requirements
     resources_groups = {}
     for job in submitted:
-        filename = '%s/%s/job.json' % (iwd, job['dir'])
-        if job['dir'] not in resources_groups:
+        filename = get_job_json('%s/%s/job.json' % (iwd, job['dir']), '/var/spool/prominence/sandboxes')
+
+        group = get_group_from_dir(job['dir'])
+
+        if group not in resources_groups:
             try:
                 with open(filename, 'r') as json_file:
                     job_json = json.load(json_file)
-                    resources_groups[job['dir']] = job_json['resources']
+                    resources_groups[group] = job_json['resources']
             except Exception as err:
                 logger.info('Unable to open json file %s', filename)
                 return
@@ -456,13 +477,13 @@ def manage_jobs(dag_job_id, iwd, identity, groups, uid):
         num_exited = 0
 
         for job in submitted:
-            if job['dir'] == group:
+            if get_group_from_dir(job['dir']) == group:
                 num_submitted = num_submitted + 1
         for job in executing:
-            if job['dir'] == group:
+            if get_group_from_dir(job['dir']) == group:
                 num_running = num_running + 1
         for job in exited:
-            if job['dir'] == group:
+            if get_group_from_dir(job['dir']) == group:
                 num_exited = num_exited + 1
 
         (cpu_scaling, cpus_total) = get_num_cpus(cpus, num_submitted)
@@ -520,14 +541,14 @@ def manage_jobs(dag_job_id, iwd, identity, groups, uid):
 
                 job_id = None
                 for job in submitted:
-                    if job['dir'] == group:
+                    if get_group_from_dir(job['dir']) == group:
                         job_id = job['id']
 
                 # Deploy infrastructure
                 count = db.num_infras()
                 infra_id = None
                 try:
-                    (_, infra_id) = deploy(identity, groups, iwd, job['id'], job['name'], dag_job_id, uid, count, job['dir'], cpu_scaling)
+                    (_, infra_id) = deploy(identity, groups, iwd, job['id'], job['name'], dag_job_id, uid, count, get_group_from_dir(job['dir']), cpu_scaling)
                 except Exception as exc:
                     logger.critical('Got exception deploying infrastructure for job with id %d: %s', job['id'], exc)
 
@@ -588,6 +609,7 @@ def cleanup_jobs(iwd):
 
 def update_workflows():
     """
+    Manage infrastructure as necessary for all running workflows
     """
     db = DatabaseGlobal('/var/spool/prominence/db.dat')
     workflows = db.get_workflows_by_status('created')
@@ -601,6 +623,7 @@ def update_workflows():
                     dag_status = class_ad['DagStatus']
         except Exception as exc:
             logger.info('Got exception opening workflow.dag.status file for workflow %d: %s', int(workflow['id']), exc)
+            continue
 
         if dag_status and dag_status != 3:
             # If workflow has finished for whatever reason, delete it
