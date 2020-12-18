@@ -11,7 +11,7 @@ def get_job_json(filename, sandbox_dir):
     """
     """
     filename_str = filename.replace(sandbox_dir, '')
-    match = re.search(r'/([\w\-]+)/([\w\-\_]+)/\d\d/\d\d/\d\d/\d\d/\d\d/job.json', filename_str)
+    match = re.search(r'/([\w\-]+)/([\w\-\_]+)/\d\d/job.json', filename_str)
     if match:
         return '%s/%s/%s/job.json' % (sandbox_dir, match.group(1), match.group(2))
     return filename
