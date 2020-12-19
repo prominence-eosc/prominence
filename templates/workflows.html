@@ -53,7 +53,7 @@ $(document).ready(function() {
                 "render": function(data, type, row, meta) {
                     var url1 = "{% url 'jobs' %}";
                     var url2 = "{% url 'workflow_delete' 12345 %}".replace(/12345/, data.toString());
-                    return '<div class="dropleft"><button class="btn btn-outline-secondary" type="button" id="dropdownMenuButtonWorkflow' + data + '" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false" style="border:none;"> <i class="fa fa-ellipsis-v" aria-hidden="true"></i> </button> <div class="dropdown-menu" aria-labelledby="dropdownMenuButtonWorkflow' + data + '"> <a class="dropdown-item" href="' + url1 + '?workflow_id=' + data + '&completed=true&active=true">Show jobs</a> <a class="dropdown-item" href="%">Remove from queue</a> <a class="dropdown-item js-delete-workflow" data-url="' + url2 + '">Delete</a></div>';
+			return '<div class="dropleft"><button class="btn btn-outline-secondary" type="button" id="dropdownMenuButtonWorkflow' + data + '" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false" style="border:none;"> <i class="fa fa-ellipsis-v" aria-hidden="true"></i> </button> <div class="dropdown-menu" aria-labelledby="dropdownMenuButtonWorkflow' + data + '"> <a class="dropdown-item" href="' + url1 + '?workflow_id=' + data + '&completed=true&active=true">Show jobs</a> <a class="dropdown-item" href="%">Re-run failed jobs</a> <a class="dropdown-item js-delete-workflow" data-url="' + url2 + '">Delete</a></div>';
                 }
             }
         ],
