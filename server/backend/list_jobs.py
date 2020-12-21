@@ -7,6 +7,15 @@ import htcondor
 
 from .utilities import redact_storage_creds, datetime_format, elapsed
 
+def get_job_json(filename, sandbox_dir):
+    """
+    """
+    filename_str = filename.replace(sandbox_dir, '')
+    match = re.search(r'/([\w\-]+)/([\w\-\_]+)/\d\d/job.json', filename_str)
+    if match:
+        return '%s/%s/%s/job.json' % (sandbox_dir, match.group(1), match.group(2))
+    return filename
+
 def list_jobs(self, job_ids, identity, active, completed, workflow, num, detail, constraint, name_constraint, display=False):
     """
     List jobs or describe a specified job
@@ -41,6 +50,7 @@ def list_jobs(self, job_ids, identity, active, completed, workflow, num, detail,
                       'ProminenceWorkflowName',
                       'ProminenceExitCode',
                       'ProminencePreemptible',
+                      'MachineAttrPROMINENCE_CLOUD0',
                       'Iwd',
                       'Args']
     jobs_state_map = {1:'idle',
@@ -84,8 +94,9 @@ def list_jobs(self, job_ids, identity, active, completed, workflow, num, detail,
 
     for job in jobs_condor:
         # Get json from file
+        json_filename = get_job_json(job['Iwd'] + '/job.json', '/var/spool/prominence/sandboxes')
         try:
-            with open(job['Iwd'] + '/job.json') as json_file:
+            with open(json_filename) as json_file:
                 job_json_file = json.load(json_file)
         except:
             continue
@@ -382,6 +393,8 @@ def list_jobs(self, job_ids, identity, active, completed, workflow, num, detail,
                     execution['site'] = str(job['ProminenceInfrastructureSite'])
             elif site_from_promlet:
                 execution['site'] = site_from_promlet
+            elif 'MachineAttrPROMINENCE_CLOUD0' in job:
+                execution['site'] = str(job['MachineAttrPROMINENCE_CLOUD0'])
 
             new_tasks_u = []
             if tasks_u:

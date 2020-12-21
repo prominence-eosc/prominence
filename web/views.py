@@ -394,8 +394,6 @@ def job_delete(request, pk):
         backend = ProminenceBackend(server.settings.CONFIG)
         (return_code, msg) = backend.delete_job(request.user.username, [pk])
         # TODO: message if unsuccessful deletion?
-        jobs_list = backend.list_jobs([], user_name, True, False, None, -1, False, [], None, True)
-        data['html_jobs_list'] = render_to_string('jobs-list.html', {'job_list': jobs_list})
     else:
         job = {}
         job['id'] = pk
@@ -476,8 +474,6 @@ def workflow_delete(request, pk):
         backend = ProminenceBackend(server.settings.CONFIG)
         (return_code, msg) = backend.delete_workflow(request.user.username, [pk])
         # TODO: message if unsuccessful deletion?
-        workflows_list = backend.list_workflows([], user_name, True, False, -1, False, [], None, True)
-        data['html_workflows_list'] = render_to_string('workflow-list.html', {'workflow_list': workflows_list})
     else:
         workflow = {}
         workflow['id'] = pk

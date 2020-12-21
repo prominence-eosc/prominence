@@ -24,6 +24,7 @@ for result in results:
     jobs = schedd.query('RoutedBy =!= "jobrouter" && Cmd != "/usr/bin/condor_dagman"',
                         ["JobStatus",
                          "ProminenceInfrastructureSite",
+                         "MachineAttrPROMINENCE_CLOUD0",
                          "ProminenceIdentity",
                          "RequestCpus"])
     for job in jobs:
@@ -36,6 +37,8 @@ for result in results:
             site = None
             if "ProminenceInfrastructureSite" in job:
                 site = job["ProminenceInfrastructureSite"]
+            elif "MachineAttrPROMINENCE_CLOUD0" in job:
+                site = job["MachineAttrPROMINENCE_CLOUD0"]
 
             if identity not in jobs_by_identity_i:
                 jobs_by_identity_i[identity] = 0

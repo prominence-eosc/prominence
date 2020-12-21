@@ -29,6 +29,7 @@ $(function () {
         if (data.form_is_valid) {
           $("#jobs-table tbody").html(data.html_jobs_list);
           $("#modal-jobs").modal("hide");
+          $('#jobs-table').DataTable().ajax.reload();
         }
         else {
           $("#modal-jobs .modal-content").html(data.html_form);
