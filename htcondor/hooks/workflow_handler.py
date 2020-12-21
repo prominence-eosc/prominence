@@ -1,8 +1,10 @@
 import configparser
 import json
 import re
+import os
 import time
 import logging
+import pickle
 import sqlite3
 import uuid
 import requests
@@ -22,7 +24,7 @@ def get_group_from_dir(dir_name):
     """
     """
     group = dir_name
-    match = re.search(r'(.*)/\d\d/\d\d/\d\d/\d\d/\d\d', dir_name)
+    match = re.search(r'(.*)/\d\d', dir_name)
     if match:
         group = match.group(1)
     return group
@@ -31,7 +33,7 @@ def get_job_json(filename, sandbox_dir):
     """
     """
     filename_str = filename.replace(sandbox_dir, '')
-    match = re.search(r'/([\w\-]+)/([\w\-\_]+)/\d\d/\d\d/\d\d/\d\d/\d\d/job.json', filename_str)
+    match = re.search(r'/([\w\-]+)/([\w\-\_]+)/\d\d/job.json', filename_str)
     if match:
         return '%s/%s/%s/job.json' % (sandbox_dir, match.group(1), match.group(2))
     return filename
@@ -49,10 +51,6 @@ def get_num_cpus(job_cpus, num_idle_jobs):
                     scaling = i
 
     return (scaling, cpus_select)
-
-def get_worker_node_status():
-    # Get status of worker nodes
-    logger.info('Getting status of existing worker nodes...')
 
 def get_infrastructure_status_with_retries(infra_id):
     """
@@ -144,11 +142,46 @@ class DatabaseGlobal():
                                         uid TEXT
                           )''')
 
+            # Create lock
+            cursor.execute('''CREATE TABLE IF NOT EXISTS
+                              lock(status INT PRIMARY KEY,
+                                   updated INT
+                          )''')
+
             db.commit()
             db.close()
         except Exception as err:
             logger.info('Unable to connect to DB due to: %s', err)
             exit(1)
+
+    def acquire_lock(self):
+        """
+        """
+        try:
+            db = sqlite3.connect(self._db_file)
+            cursor = db.cursor()
+            cursor.execute('INSERT INTO lock (status, updated) VALUES (42, %d)' % time.time())
+            db.commit()
+            db.close()
+        except Exception as err:
+            if 'UNIQUE constraint failed' in str(err):
+                return False
+            else:
+                return None
+        return True
+
+    def release_lock(self):
+        """
+        """
+        try:
+            db = sqlite3.connect(self._db_file)
+            cursor = db.cursor()
+            cursor.execute('DELETE FROM lock')
+            db.commit()
+            db.close()
+        except Exception as err:
+            return None
+        return True
 
     def add_workflow(self, workflow_id, iwd, identity, groups, uid):
         """
@@ -375,21 +408,11 @@ class Database():
 
         return rows[0][0]
 
-#db = Database(DB_FILE)
-#db.add_infra('a001', 2, 4, 10, 1)
-#db.add_infra('a002', 2, 4, 10, 1)
-#print(db.get_matching_infras(2, 4, 10, 1))
-#db.add_job(1023)
-#db.add_job(1023)
-#print(db.is_job(1023))
-#print(db.is_job(1024))
-#print(db.set_infra_status('a001', 'running'))
-#print(db.get_infras_by_status('running'))
-#print(db.get_infras_by_status('created'))
-
 def get_jobs_by_state(iwd):
     """
-    Read the DAGMan log files to generate list of individual jobs by current state
+    Read the DAGMan log files to generate list of individual jobs by current state. We use the file
+    job.dag.dagman.out to recreate the current status of jobs, making sure we only read new events
+    from it each time as it can grow very large for large workflows.
     """
     details = {}
     with open('%s/job.dag' % iwd, 'r') as job:
@@ -401,9 +424,33 @@ def get_jobs_by_state(iwd):
     jobs_submitted = []
     jobs_executing = []
     jobs_exited = []
+    position = 0
 
+    # Get existing data if it exists
+    pickled_file = '%s/job.dag.dagman.out.pickle' % iwd
+    if os.path.isfile(pickled_file):
+        logger.info('Reading cached job status info from pickle')
+        with open(pickled_file, 'rb') as fd:
+            try:
+                jobs = pickle.load(fd)
+            except Exception as err:
+                logger.error('Got exception reading from pickle: %s', err)
+            else:
+                jobs_submitted = jobs['submitted']
+                jobs_executing = jobs['executing']
+                position = jobs['position']
+                logger.info('Will start reading from line %d', position)
+
+    line_no = 0
     with open('%s/job.dag.dagman.out' % iwd, 'r') as dagman:
         for line in dagman:
+            # If we have already read part of the file, skip these lines
+            if line_no < position:
+                line_no = line_no + 1
+                continue
+            else:
+                line_no = line_no + 1
+
             match = re.search(r'.*\sEvent:\sULOG_([\w\_]+)\sfor\sHTCondor\sNode\s(.*)\s\(([\d]+)\.[\d]+\.[\d]+\).*', line)
             if match:
                 job = {}
@@ -427,6 +474,14 @@ def get_jobs_by_state(iwd):
                     jobs_executing.remove(job)
                 if job in jobs_submitted and job in jobs_exited:
                     jobs_submitted.remove(job)
+
+    try:
+        with open(pickled_file, 'wb') as fd:
+            pickle.dump({'position': line_no,
+                         'submitted': jobs_submitted,
+                         'executing': jobs_executing}, fd)
+    except Exception as err:
+        logger.critical('Unable to write pickle to disk due to: %s', err)
 
     return (jobs_submitted, jobs_executing, jobs_exited)
 
@@ -518,6 +573,20 @@ def manage_jobs(dag_job_id, iwd, identity, groups, uid):
             logger.info('Job resource group "%s" has no infrastructure, so creating', group)
             deploy_new_infra_now = True
 
+        # Check status of existing infrastructures
+        logger.info('Checking status of any existing infastructures...')
+        # TODO: handle situation where existing infrastructures not yet working
+        for infra in ids:
+            (status, reason, cloud) = get_infrastructure_status_with_retries(infra['id'])
+            logger.info('Got status for infra: %s : %s, %s, %s', infra['id'], status, reason, cloud)
+
+            # Delete infrastructure in unable state
+            if status == 'unable':
+                logger.info('Deleting infrastructure %s due to status %s', infra['id'], status)
+                status = delete_infrastructure_with_retries(infra['id'])
+                if status == 0:
+                    db.set_infra_status(infra['id'], 'deleted')
+
         if num_submitted > 0 and int(100.0*num_submitted/cpu_scaling) > 40.0 and num_running > 0:
             logger.info('Job resource group "%s" may need more infrastructure', group)
             # Check status of any existing infrastructure
@@ -582,31 +651,6 @@ def cleanup_all_jobs(iwd):
 
     return True
 
-def cleanup_jobs(iwd):
-    """
-    """
-    db = Database('%s/db.dat' % iwd)
-
-    # Get jobs by status
-    (_, _, exited) = get_jobs_by_state(iwd)
-
-    # Cleanup infrastructures for individual jobs
-    for job in exited:
-        # TODO: check if infra is ONLY for this job
-        (status, infra_id) = db.get_infra_status_from_job(int(job['id']))
-        if status and infra_id:
-            if status != 'deleted':
-                logger.info('Deleting infrastructure %s for job %d as it finished', infra_id, int(job['id']))
-                status = delete_infrastructure_with_retries(infra_id)
-                if status != 0:
-                    return False
-                else:
-                    db.set_infra_status(infra_id, 'deleted')
-
-    # Cleanup infrastructure for groups of jobs which have all finished
-
-    return True
-
 def update_workflows():
     """
     Manage infrastructure as necessary for all running workflows
@@ -635,4 +679,12 @@ def update_workflows():
             # If a workflow is still running, deploy any jobs if necessary and cleanup any jobs if necessary
             logger.info('Workflow %d is running', int(workflow['id']))
             manage_jobs(int(workflow['id']), workflow['iwd'], workflow['identity'], workflow['groups'], workflow['uid'])
-            #cleanup_jobs(workflow['iwd'])
+
+def acquire_lock():
+    db = DatabaseGlobal('/var/spool/prominence/db.dat')
+    return db.acquire_lock()
+
+def release_lock():
+    db = DatabaseGlobal('/var/spool/prominence/db.dat')
+    return db.release_lock()
+

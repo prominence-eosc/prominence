@@ -3,9 +3,8 @@ import configparser
 import logging
 from logging.handlers import RotatingFileHandler
 import htcondor
-import fasteners
 
-from workflow_handler import update_workflows, add_workflow
+from workflow_handler import update_workflows, add_workflow, acquire_lock, release_lock
 
 def trigger():
     coll = htcondor.Collector()
@@ -50,6 +49,10 @@ if __name__ == "__main__":
     trigger()
 
     # Update workflows
-    lock = fasteners.InterProcessLock('/var/spool/prominence/wftrigger.lock')
-    with lock:
-        update_workflows()
+    if acquire_lock():
+        try:
+            update_workflows()
+        except Exception as err:
+            logger.critical('Got exception running update_workflows: %s', err)
+        release_lock()
+    # TODO: handle stuck lock due to process dying for some reason
