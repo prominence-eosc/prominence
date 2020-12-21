@@ -4,7 +4,6 @@ import json
 import logging
 from logging.handlers import RotatingFileHandler
 import os
-import socket
 import sys
 import time
 import requests
@@ -12,7 +11,6 @@ from requests.auth import HTTPBasicAuth
 import classad
 
 import send_email
-from workflow_handler import cleanup_jobs
 
 def get_job_json_output(iwd, job_id):
     try:
@@ -23,30 +21,6 @@ def get_job_json_output(iwd, job_id):
         logger.error('[%d] Unable to open JSON promlet due to: %s', job_id, err)
 
     return {}
-
-def send_to_socket(job_id, identity, infra_site, promlet_json):
-    """
-    Sends InfluxDB formatted accounting record to Telegraf socket
-    """
-    telegraf_socket = "/tmp/telegraf.sock"
-    sock = socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM)
-    sock.connect(telegraf_socket)
-
-    cputime = 0
-    walltime = 0
-    if 'tasks' in promlet_json:
-        for task in promlet_json['tasks']:
-            if 'cpuTimeUsage' in task:
-                cputime += task['cpuTimeUsage']
-            if 'wallTimeUsage' in task:
-                walltime += task['wallTimeUsage']
-
-    message = "accounting,identity=%s,infra_site=%s job_id=%d,walltime=%d,cputime=%d\n" % (identity, infra_site, job_id, walltime, cputime)
-
-    try:
-        sock.send(message.encode('utf8'))
-    except Exception as exc:
-        logger.error('[%d] Unable to write accounting record to Telegraf socket due to: %s', job_id, exc)
 
 def format_duration(tis):
     """
@@ -208,19 +182,12 @@ def cleanup_infrastructure():
 
     promlet_json = get_job_json_output(iwd, cluster_id)
 
-    # Send accounting record to Telegraf
-    send_to_socket(cluster_id_user, identity, infra_site, promlet_json)
-
     # Send any notifications if necessary, currently we only consider completed jobs
     if job_status == 4:
         handle_notifications(iwd, cluster_id_user, cluster_id, identity, email, infra_site)
 
     if str(infra_type) == 'batch':
         logger.info('[%s] Batch infrastructure, so no need to do anything', job_id)
-        exit_code = 0
-    elif job_type == 'workflow':
-        logger.info('[%s] Triggering deletion of dependent jobs', job_id)
-        cleanup_jobs(iwd)
         exit_code = 0
     elif infra_id is not None:
         logger.info('[%s] Will destroy infrastructure with id %s on site %s which has state %s', job_id, infra_id, infra_site, infra_state)
