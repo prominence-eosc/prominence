@@ -4,10 +4,11 @@ echo "CONDOR_HOST = $CONDOR_HOST" > /etc/condor/config.d/docker
 echo "COLLECTOR_HOST = $CONDOR_HOST:9618" >> /etc/condor/config.d/docker
 echo "CCB_ADDRESS = $CONDOR_HOST:9618" >> /etc/condor/config.d/docker
 echo "START = ProminenceWantCluster =?= \"$CONDOR_CLUSTER\" || (DAGNodeName =?= \"$DAG_NODE_NAME\" && DAGManJobId =?= $DAG_JOB_ID) || (DAGManJobId =?= $DAG_JOB_ID && RequestCpus =?= $WORKFLOW_CPUS && RequestMemory =?= $WORKFLOW_MEMORY)" >> /etc/condor/config.d/docker
-echo "PROMINENCE_CLOUD = \"$CONDOR_CLOUD\"" >> /etc/condor/config.d/docker
-echo "PROMINENCE_NODES = $CONDOR_NODES" >> /etc/condor/config.d/docker
-echo "PROMINENCE_CORES_TOTAL = $CONDOR_CORES" >> /etc/condor/config.d/docker
-echo "PROMINENCE_DAG_JOB_ID = $DAG_JOB_ID" >> /etc/condor/config.d/docker
+echo "ProminenceCloud = \"$CONDOR_CLOUD\"" >> /etc/condor/config.d/docker
+echo "ProminenceNodes = $CONDOR_NODES" >> /etc/condor/config.d/docker
+echo "ProminenceCoresTotal = $CONDOR_CORES" >> /etc/condor/config.d/docker
+echo "ProminenceDagJobId = $DAG_JOB_ID" >> /etc/condor/config.d/docker
+echo "ProminenceInfrastructureId = \"$PROMINENCE_INFRASTRUCTURE_ID\"" >> /etc/condor/config.d/docker
 /usr/local/bin/get-location >> /etc/condor/config.d/docker
 
 # Set ownership of token

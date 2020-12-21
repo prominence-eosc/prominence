@@ -14,6 +14,30 @@ SLOT1_5_USER = user
 SLOT1_6_USER = user
 SLOT1_7_USER = user
 SLOT1_8_USER = user
+SLOT1_9_USER = user
+SLOT1_10_USER = user
+SLOT1_11_USER = user
+SLOT1_12_USER = user
+SLOT1_13_USER = user
+SLOT1_14_USER = user
+SLOT1_15_USER = user
+SLOT1_16_USER = user
+SLOT1_17_USER = user
+SLOT1_18_USER = user
+SLOT1_19_USER = user
+SLOT1_20_USER = user
+SLOT1_21_USER = user
+SLOT1_22_USER = user
+SLOT1_23_USER = user
+SLOT1_24_USER = user
+SLOT1_25_USER = user
+SLOT1_26_USER = user
+SLOT1_27_USER = user
+SLOT1_28_USER = user
+SLOT1_29_USER = user
+SLOT1_30_USER = user
+SLOT1_31_USER = user
+SLOT1_32_USER = user
 DEDICATED_EXECUTE_ACCOUNT_REGEXP = user
 
 TRUST_UID_DOMAIN = True
@@ -40,7 +64,7 @@ SLOT_TYPE_1 = cpus=100%,mem=100%,auto
 SLOT_TYPE_1_PARTITIONABLE = TRUE
 
 # Advertise cores & machines
-STARTD_ATTRS = $(STARTD_ATTRS), PROMINENCE_NODES, PROMINENCE_CORES_TOTAL, PROMINENCE_CLOUD, PROMINENCE_LOCATION, PROMINENCE_DAG_JOB_ID
+STARTD_ATTRS = $(STARTD_ATTRS), ProminenceCloud, ProminenceNodes, ProminenceCoresTotal, ProminenceDagJobId, ProminenceInfrastructureId, ProminenceLocation
 
 # TCP keepalive fix for Azure
 #TCP_KEEPALIVE_INTERVAL = 60
