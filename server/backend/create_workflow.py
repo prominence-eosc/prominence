@@ -356,7 +356,7 @@ def create_workflow(self, username, groups, email, uid, jwf):
     if email:
         dag_appends.append("'+ProminenceEmail=\"%s\"'" % email)
 
-    cmd = "condor_submit_dag -maxidle %d -batch-name %s " % (int(self._config['WORKFLOW_MAX_IDLE']), wf_name)
+    cmd = "condor_submit_dag -batch-name %s " % wf_name
     for dag_append in dag_appends:
         cmd += " -append %s " % dag_append
     cmd += " job.dag "
