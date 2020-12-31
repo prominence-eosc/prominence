@@ -87,6 +87,27 @@ def get_infrastructure_status(infra_id):
         return (response.json()['status'], response.json()['status_reason'], response.json()['cloud'])
     return (None, None, None)
 
+def get_infrastructure_in_status(status):
+    """
+    Get list of infrastructures in specified status
+    """
+    try:
+        response = requests.get('%s' % CONFIG.get('imc', 'url'),
+                                params={'status': status},
+                                auth=HTTPBasicAuth(CONFIG.get('imc', 'username'),
+                                                   CONFIG.get('imc', 'password')),
+                                cert=(CONFIG.get('imc', 'ssl-cert'),
+                                      CONFIG.get('imc', 'ssl-key')),
+                                verify=CONFIG.get('imc', 'ssl-cert'),
+                                timeout=int(CONFIG.get('imc', 'timeout')))
+    except requests.exceptions.Timeout:
+        return []
+    except requests.exceptions.RequestException:
+        return []
+    if response.status_code == 200:
+        return response.json()
+    return []
+
 def delete_infrastructure_with_retries(infra_id):
     """
     Delete infrastructure with retries & backoff
