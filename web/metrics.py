@@ -15,13 +15,30 @@ class Metrics:
         self.bucket = config['INFLUXDB_BUCKET']
         self.org = config['INFLUXDB_ORG']
 
+class ResourceUsage(Metrics):
+    """
+    Get resource usage info
+    """
+    def get(self, identity, group, start_date, end_date, show_users, show_all_users, show_groups):
+        if not show_all_users:
+            query = (' from(bucket:"' + self.bucket + '")'
+                    '|> range(start: -' + str(since) + 'm)'
+                    '|> filter(fn:(r) => r._measurement == "accounting")')
+        else:
+            query = (' from(bucket:"' + self.bucket + '")'
+                    '|> range(start: -' + str(since) + 'm)'
+                    '|> filter(fn:(r) => r._measurement == "accounting")'
+                    '|> filter(fn:(r) => r.identity == "' + identity + '")')
+
+        return None
+
 class JobMetrics(Metrics):
     """
     Get idle and running jobs for the specified user
     """
     def get_jobs(self, identity, since):
         query = (' from(bucket:"' + self.bucket + '")'
-                 '|> range(start: -' + str(since) + 'm)'
+                 '|> range(start: -' + str("test") + 'm)'
                  '|> filter(fn:(r) => r._measurement == "jobs_by_identity")'
                  '|> filter(fn:(r) => r.identity == "' + identity + '")')
 
