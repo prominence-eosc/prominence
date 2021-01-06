@@ -1,13 +1,15 @@
 import boto3
 
+from .. import settings
+
 def create_presigned_url(self, method, bucket_name, object_name, duration_in_seconds=600):
     """
     Create presigned S3 URL
     """
     s3_client = boto3.client('s3',
-                             endpoint_url=self._config['S3_URL'],
-                             aws_access_key_id=self._config['S3_ACCESS_KEY_ID'],
-                             aws_secret_access_key=self._config['S3_SECRET_ACCESS_KEY'])
+                             endpoint_url=settings.CONFIG['S3_URL'],
+                             aws_access_key_id=settings.CONFIG['S3_ACCESS_KEY_ID'],
+                             aws_secret_access_key=settings.CONFIG['S3_SECRET_ACCESS_KEY'])
     if method == 'get':
         try:
             response = s3_client.generate_presigned_url('get_object',
@@ -57,7 +59,7 @@ def get_matching_s3_objects(url, access_key_id, secret_access_key, bucket, prefi
                 if key.endswith(suffix):
                     yield obj
 
-def list_objects(self, user, groups, path=None):
+def list_objects(self, user, path=None):
     """
     List objects in S3 storage
     """
@@ -71,10 +73,10 @@ def list_objects(self, user, groups, path=None):
     objects = []
 
     try:
-        keys = get_matching_s3_objects(self._config['S3_URL'],
-                                       self._config['S3_ACCESS_KEY_ID'],
-                                       self._config['S3_SECRET_ACCESS_KEY'],
-                                       self._config['S3_BUCKET'],
+        keys = get_matching_s3_objects(settings.CONFIG['S3_URL'],
+                                       settings.CONFIG['S3_ACCESS_KEY_ID'],
+                                       settings.CONFIG['S3_SECRET_ACCESS_KEY'],
+                                       settings.CONFIG['S3_BUCKET'],
                                        prefix=prefix)
     except Exception:
         return objects
@@ -92,7 +94,7 @@ def list_objects(self, user, groups, path=None):
 
     return objects
 
-def delete_object(self, username, group, obj):
+def delete_object(self, username, obj):
     """
     Delete object from object storage
     """
@@ -103,10 +105,10 @@ def delete_object(self, username, group, obj):
 
     try:
         s3_client = boto3.client('s3',
-                                 endpoint_url=self._config['S3_URL'],
-                                 aws_access_key_id=self._config['S3_ACCESS_KEY_ID'],
-                                 aws_secret_access_key=self._config['S3_SECRET_ACCESS_KEY'])
-        response = s3_client.delete_object(Bucket=self._config['S3_BUCKET'], Key=key)
+                                 endpoint_url=settings.CONFIG['S3_URL'],
+                                 aws_access_key_id=settings.CONFIG['S3_ACCESS_KEY_ID'],
+                                 aws_secret_access_key=settings.CONFIG['S3_SECRET_ACCESS_KEY'])
+        response = s3_client.delete_object(Bucket=settings.CONFIG['S3_BUCKET'], Key=key)
     except Exception:
         return False
 
