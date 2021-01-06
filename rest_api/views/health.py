@@ -11,7 +11,6 @@ class HealthView(views.APIView):
     """
     API view for getting health status information
     """
-
     def __init__(self, *args, **kwargs):
         self._backend = ProminenceBackend(server.settings.CONFIG)
         super().__init__(*args, **kwargs)
