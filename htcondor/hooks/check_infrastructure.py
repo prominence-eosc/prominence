@@ -34,7 +34,7 @@ def check_configured_infrastructure(infras, startds):
                 found = True
 
         if not found and time.time() - infra['updated'] > 30*60:
-            logger.error('Found infrastructure with id %s in configured state with no startd', infra['id'])
+            logger.error('Found infrastructure with id %s in configured state for too long with no startd', infra['id'])
 
 def find_idle_workers(infras, startds):
     """
@@ -59,7 +59,10 @@ if __name__ == "__main__":
     logger.addHandler(handler)
     logger.setLevel(logging.INFO)
 
+    # Get list of current configured infrastructures
     infras = get_infrastructure_in_status('configured')
+
+    # Get list of current startds
     startds = get_startds()
 
     # Compare configured infrastructure with startds known to the collector
