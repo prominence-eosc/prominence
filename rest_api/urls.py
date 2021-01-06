@@ -12,4 +12,5 @@ urlpatterns = [
     path('v1/workflows/<int:workflow_id>', views.WorkflowsView.as_view(), name='workflow'),
     path('v1/workflows/<int:workflow_id>/<str:job>/stdout', views.WorkflowStdOutView.as_view(), name='workflow_get_stdout'),
     path('v1/workflows/<int:workflow_id>/<str:job>/stderr', views.WorkflowStdErrView.as_view(), name='workflow_get_stderr'),
+    path('v1/usage', views.UsageView.as_view(), name='usage')
 ]
