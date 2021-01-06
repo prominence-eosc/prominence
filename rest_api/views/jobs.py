@@ -151,7 +151,7 @@ class JobsView(views.APIView):
         if return_code != 0:
             return Response(data, status=status.HTTP_400_BAD_REQUEST)
 
-        return Response(data, status=status.HTTP_200_OK)
+        return Response(data, status=status.HTTP_204_NO_CONTENT)
 
 class JobStdOutView(views.APIView):
     """
@@ -248,3 +248,76 @@ class JobRemoveFromQueue(views.APIView):
                             status=status.HTTP_400_BAD_REQUEST)
 
         return Response({}, status=status.HTTP_200_OK)
+
+class JobSnapshot(views.APIView):
+    """
+    API view for creating and getting snapshots
+    """
+    authentication_classes = [TokenAuthentication]
+    permission_classes = [permissions.IsAuthenticated]
+
+    def __init__(self, *args, **kwargs):
+        self._backend = ProminenceBackend(server.settings.CONFIG)
+        super().__init__(*args, **kwargs)
+
+    def put(self, request, job_id=None):
+        """
+        Create a snapshot
+        """
+        if not server.settings.CONFIG['ENABLE_SNAPSHOTS']:
+            return Response({'error': 'Functionality disabled by admin'},
+                            status=status.HTTP_400_BAD_REQUEST)
+
+        (uid, identity, iwd, _, _, _, status) = self._backend.get_job_unique_id(job_id)
+
+        if not identity:
+            return Response({'error': 'Job does not exist'},
+                            status=status.HTTP_400_BAD_REQUEST)
+
+        if request.user.username != identity:
+            return Response({'error': 'Not authorized to access this job'},
+                            status=status.HTTP_403_FORBIDDEN)
+
+        if status != 2:
+            return Response({'error': 'Job is not running'},
+                            status=status.HTTP_400_BAD_REQUEST)
+
+        if 'path' in request.query_params:
+            path = request.query_params.get('path')
+        else:
+            return Response({'error': 'Path for snapshot not specified'},
+                            status=status.HTTP_400_BAD_REQUEST)
+
+        path = self._backend.validate_snapshot_path(iwd, path)
+        if not path:
+            return Response({'error': 'Invalid path for shapshot'},
+                            status=status.HTTP_400_BAD_REQUEST)
+
+        self._backend.create_snapshot(uid, job_id, path)
+        return Response({}, status=status.HTTP_200_OK)
+        
+    def get(self, request, job_id=None):
+        """
+        Get a snapshot
+        """
+        if not server.settings.CONFIG['ENABLE_SNAPSHOTS']:
+            return Response({'error': 'Functionality disabled by admin'},
+                            status=status.HTTP_400_BAD_REQUEST)
+
+        (uid, identity, _, _, _, _, status) = self._backend.get_job_unique_id(job_id)
+
+        if not identity:
+            return Response({'error': 'Job does not exist'},
+                            status=status.HTTP_400_BAD_REQUEST)
+
+        if request.user.username != identity:
+            return Response({'error': 'Not authorized to access this job'},
+                            status=status.HTTP_403_FORBIDDEN)
+
+        if status != 2:
+            return Response({'error': 'Job is not running'},
+                            status=status.HTTP_400_BAD_REQUEST)
+
+        url = self._backend.get_snapshot_url(uid)
+        return Response({'url': url}, status=status.HTTP_200_OK)
+
