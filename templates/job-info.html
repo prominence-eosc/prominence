@@ -156,6 +156,26 @@ None
 
 <br/>
 <br/>
+<b>Output files</b>
+<br/>
+{% for output in job.outputFiles %}
+<a href="{{ output.url }}">{{ output.name }}</a>
+{% empty %}
+None
+{% endfor %}
+
+<br/>
+<br/>
+<b>Output directories</b>
+<br/>
+{% for output in job.outputDirs %}
+<a href="{{ output.url }}">{{ output.name }}</a>
+{% empty %}
+None
+{% endfor %}
+
+<br/>
+<br/>
 <b>Artifacts</b>
 <br/>
 {% for artifact in job.artifacts %}
