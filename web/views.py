@@ -457,13 +457,17 @@ def job_logs(request, pk):
     return render(request, 'job-logs.html', {'job_id': pk, 'stdout': stdout, 'stderr': stderr})
 
 @login_required
-def workflow_describe(request, pk):
-    user_name = request.user.username
+def workflow(request, pk):
     backend = ProminenceBackend(server.settings.CONFIG)
-    workflows_list = backend.list_workflows([pk], user_name, True, True, -1, True, [], None, True)
-    if len(workflows_list) == 1:
-        return render(request, 'workflow-info.html', {'workflow': workflows_list[0]})
-    return JsonResponse({})
+
+    if request.method == 'GET':
+        workflows_list = backend.list_workflows([pk], request.user.username, True, True, -1, True, [], None, True)
+        if len(workflows_list) == 1:
+            return render(request, 'workflow-info.html', {'workflow': workflows_list[0]})
+        return JsonResponse({})
+    elif request.method == 'POST':
+        (return_code, data) = backend.rerun_workflow(request.user.username, request.user.email, pk)
+        # TODO: message if unsuccessful
 
 @login_required
 def workflow_delete(request, pk):
