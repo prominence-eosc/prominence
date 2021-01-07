@@ -13,14 +13,14 @@ from django.contrib.auth import get_user_model
 from django.urls import reverse
 from rest_framework.authtoken.models import Token
 
-from .forms import ComputeForm, StorageForm, JobForm, LabelsFormSet, ArtifactsFormSet, EnvVarsFormSet, InputFilesFormSet
-from .models import Compute, Storage
+from frontend.forms import ComputeForm, StorageForm, JobForm, LabelsFormSet, ArtifactsFormSet, EnvVarsFormSet, InputFilesFormSet
+from frontend.models import Compute, Storage
 from server.backend import ProminenceBackend
 from server.validate import validate_job
 from server.set_groups import set_groups
 import server.settings
-from .utilities import create_job
-from .metrics import JobMetrics, JobMetricsByCloud, JobResourceUsageMetrics
+from frontend.utilities import create_job
+from frontend.metrics import JobMetrics, JobMetricsByCloud, JobResourceUsageMetrics
 
 # Get an instance of a logger
 logger = logging.getLogger(__name__)
