@@ -7,4 +7,5 @@ gunicorn
 boto3
 htcondor
 pillow
+psycopg2-binary
 influxdb-client
