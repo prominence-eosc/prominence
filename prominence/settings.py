@@ -48,8 +48,7 @@ INSTALLED_APPS = [
     'widget_tweaks',
     'crispy_forms',
     'custom_user',
-    'web',
-    'rest_api'
+    'frontend',
 ]
 
 MIDDLEWARE = [
