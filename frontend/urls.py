@@ -29,5 +29,5 @@ urlpatterns = [
     path('user/revoke-token/', views.revoke_token, name='revoke-token'),
     path('refresh/authorise', views.refresh_authorise, name='refresh_authorise'),
     path('refresh/callback', views.refresh_callback, name='refresh_callback'),
-    path('api/', include('frontend.api_urls')),
+    path('api/', include('frontend.api.urls')),
 ]
