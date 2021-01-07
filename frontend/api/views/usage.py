@@ -8,7 +8,7 @@ from rest_framework.renderers import JSONRenderer
 from rest_framework import status, permissions, views
 
 import server.settings
-from web.metrics import ResourceUsage
+from frontend.metrics import ResourceUsage
 
 class UsageView(views.APIView):
     """

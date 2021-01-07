@@ -14,6 +14,5 @@ urlpatterns = [
     path('accounts/egicheckin/', include('egicheckin.urls')),
     path('accounts/', include('allauth.urls')),
     path('admin/', admin.site.urls),
-    re_path(r'^api/', include('rest_api.urls')),
     path('', include('frontend.urls')),
 ]
