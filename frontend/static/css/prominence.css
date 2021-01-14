@@ -1,0 +1,218 @@
+body {
+  font-family: 'Roboto', sans-serif;
+  font-size: .875rem;
+}
+
+h1,h2,h3,h4,h5,h6 {
+  font-family: 'Roboto', sans-serif;
+}
+
+p {
+  font-family: 'Roboto', sans-serif;
+}
+
+@media (min-width: 768px) {
+.main {
+padding-top: 78px;
+padding-right: 40px;
+padding-left: 240px; /* 180 + 40 */
+}
+}
+
+.feather {
+  width: 16px;
+  height: 16px;
+  vertical-align: text-bottom;
+}
+
+.feather-32{
+  width: 32px;
+  height: 32px;
+  vertical-align: middle;
+}
+
+.largetext {
+  font-size: 1.2rem;
+}
+
+/*
+ * Footer
+ */
+
+.footer {
+  bottom: 0px;
+  width: 100%;
+  height: 60px; /* Set the fixed height of the footer here */
+  line-height: 60px; /* Vertically center the text there */
+  background-color: #818181;
+}
+
+/*
+ * Sidebar
+ */
+
+.sidebar{ 
+  position: fixed;
+  display: block;
+  height: 100%;
+  padding: 1px;
+  box-shadow: inset -1px 0 0 rgba(0, 0, 0, .1);
+  overflow-y: hidden;
+  overflow-x: hidden;
+  width: 200px;
+  padding-top: 68px;
+  z-index:9;
+  background-color: #3E4D62;
+}
+
+.sidebar .feather .active{
+  color: #4675d8;
+  color: #ffffff;
+}
+
+.sidebar .nav-item:hover{
+  background-color: #4F5E73;
+ }
+
+.sidebar .nav-link {
+  color: #cccccc;
+}
+
+.sidebar .nav-link .feather {
+  margin-right: 4px;
+  color: #cccccc;
+}
+
+.sidebar .nav-link.active {
+  color: #4675d8;
+  color: #ffffff;
+  background-color: #5F6F84;
+}
+
+.sidebar .nav-link:hover .feather,
+.sidebar .nav-link.active .feather {
+  color: inherit;
+}
+
+.sidebar-heading {
+  font-size: .75rem;
+  text-transform: uppercase;
+}
+
+.sidenav-footer {
+	  padding: 0.75rem;
+	    flex-shrink: 0;
+    }
+
+/*
+ * Navbar
+ */
+
+.navbar-brand {
+  padding-top: .75rem;
+  padding-bottom: .75rem;
+  font-size: 1rem;
+  width: 200px;
+  background-color: #313D52;
+  color: #ff9900;
+  font-family: 'Comfortaa', 'Roboto', sans-serif;
+}
+
+.navbar-brand a:hover {
+  color: #fff;
+}
+
+.navbar .navbar-toggler {
+  top: .25rem;
+  right: 1rem;
+}
+
+.navbar .form-control {
+  padding: .75rem 1rem;
+  border-width: 0;
+  border-radius: 0;
+}
+
+.navbar .navbar-nav .nav-link {
+  color: #000;
+}
+
+.navbar .navbar-nav .nav-link:hover {
+  color: #888888;
+}
+
+.form-control-dark {
+  color: #fff;
+  background-color: rgba(255, 255, 255, .1);
+  border-color: rgba(255, 255, 255, .1);
+}
+
+.form-control-dark:focus {
+  border-color: transparent;
+  box-shadow: 0 0 0 3px rgba(255, 255, 255, .25);
+}
+
+/*
+ * Public home page
+ */
+
+#promo {
+background: #DC2424;  /* fallback for old browsers */
+background: -webkit-linear-gradient(to right, #4A569D, #DC2424);  /* Chrome 10-25, Safari 5.1-6 */
+background: linear-gradient(to right, #4A569D, #DC2424); /* W3C, IE 10+/ Edge, Firefox 16+, Chrome 26+, Opera 12+, Safari 7+ */
+}
+
+.feather-large{
+  width: 48px;
+  height: 48px;
+  color: #4444ff;
+}
+
+/*
+ * Custom tabs
+ */
+
+.project-tab #tabs{
+    background: #007b5e;
+    color: #eee;
+    border: 1px solid transparent;
+}
+.project-tab #tabs h6.section-title{
+    color: #eee;
+}
+.project-tab #tabs .nav-tabs .nav-item.show .nav-link, .nav-tabs .nav-link.active {
+    color: #0062cc;
+    background-color: transparent;
+    border-color: transparent transparent #f3f3f3;
+    border-bottom: 3px solid !important;
+    font-size: 16px;
+}
+.project-tab .nav-link {
+    border: 1px solid transparent;
+    border-top-left-radius: .25rem;
+    border-top-right-radius: .25rem;
+    color: #000000;
+    font-size: 16px;
+}
+.project-tab .nav-link:hover {
+   border: 1px solid transparent;
+   color: #0062cc;
+   font-size: 16px;
+}
+.project-tab a{
+    text-decoration: none;
+    color: #000000;
+}
+
+ .jumbotron {
+      margin-bottom:0;
+    }
+
+
+#jobs-table td {
+  vertical-align: middle;
+}
+
+#workflows-table td {
+  vertical-align: middle;
+}
