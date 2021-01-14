@@ -174,7 +174,7 @@ def list_jobs(self, job_ids, identity, active, completed, workflow, num, detail,
         # Job parameters
         parameters = {}
         if 'ProminenceFactoryId' in job:
-            matches = re.findall('--param ([\w]+)=([\w\.]+)', job['Args'])
+            matches = re.findall('--param ([\w]+)=([\w\.\/]+)', job['Args'])
             if matches:
                 for match in matches:
                     parameters[match[0]] = match[1]
