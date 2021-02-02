@@ -78,6 +78,11 @@ padding-left: 240px; /* 180 + 40 */
   color: #cccccc;
 }
 
+.navbar .nav-link-public {
+  color: #ffffff;
+  margin-right: 12px;
+}
+
 .sidebar .nav-link .feather {
   margin-right: 4px;
   color: #cccccc;
@@ -116,6 +121,19 @@ padding-left: 240px; /* 180 + 40 */
   background-color: #313D52;
   color: #ff9900;
   font-family: 'Comfortaa', 'Roboto', sans-serif;
+}
+
+.navbar-brand-public {
+  padding-top: .75rem;
+  padding-bottom: .75rem;
+  font-size: 1rem;
+  width: 200px;
+  color: #ff9900;
+  font-family: 'Comfortaa', 'Roboto', sans-serif;
+}
+
+.navbar-brand-public a:hover {
+  color: #fff;
 }
 
 .navbar-brand a:hover {
@@ -215,4 +233,30 @@ background: linear-gradient(to right, #4A569D, #DC2424); /* W3C, IE 10+/ Edge, F
 
 #workflows-table td {
   vertical-align: middle;
+}
+
+table.dataTable.table-striped tbody tr.selected:nth-of-type(odd) {
+    background-color: #F3F3F3; !important;
+}
+table.dataTable.table-striped tbody tr.selected:nth-of-type(even) {
+    background-color: white; !important;
+}
+
+table.dataTable.table tbody td.select-checkbox:before: {
+  vertical-align: middle; !important;
+}
+
+table.dataTable tbody th.select-checkbox {
+  position:relative;
+}
+table.dataTable tbody td.select-checkbox:before,
+table.dataTable tbody td.select-checkbox:after,
+table.dataTable tbody th.select-checkbox:before,
+table.dataTable tbody th.select-checkbox:after{
+  display:block;
+  top:50%;
+  left:50%;
+  width:12px;
+  height:12px;
+  box-sizing:border-box;
 }
