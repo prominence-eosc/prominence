@@ -87,8 +87,12 @@ WSGI_APPLICATION = 'prominence.wsgi.application'
 
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': os.path.join(BASE_DIR, 'db.sqlite3'),
+        'ENGINE': 'django.db.backends.postgresql_psycopg2',
+        'NAME': 'prominence',
+        'USER': 'prominenceuser',
+        'PASSWORD': 'pcworld',
+        'HOST': 'localhost',
+        'PORT': '',
     }
 }
 
@@ -190,24 +194,58 @@ SECURE_HSTS_SECONDS = 30
 SECURE_HSTS_INCLUDE_SUBDOMAINS = True
 SECURE_HSTS_PRELOAD = True
 
+# Logging
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'formatters': {
+        'file': {
+            'format': '%(asctime)s %(name)-12s %(levelname)-8s %(message)s'
+        },
+    },
+    'handlers': {
+        'file': {
+            'level': 'INFO',
+            'class': 'logging.handlers.RotatingFileHandler',
+            'filename': '/var/log/prominence/prominence.log',
+            'maxBytes': 1024*1024*20,
+            'backupCount': 5,
+            'formatter': 'file',
+        },
+    },
+    'loggers': {
+        '': {
+            'handlers': ['file'],
+            'level': 'INFO'
+        }
+    },
+}
+
 # Prominence settings
 PROMINENCE_SANDBOX_PATH = '/var/spool/prominence/sandboxes'
 PROMINENCE_DEFAULT_MAX_RUNTIME = 43200
 PROMINENCE_DEFAULT_DISK_GB = 10
-PROMINENCE_WORKFLOW_MAX_IDLE = 20
+PROMINENCE_WORKFLOW_MAX_IDLE = 400
 PROMINENCE_EXEC_TIMEOUT = 10
 PROMINENCE_ENABLE_EXEC = False
-PROMINENCE_ENABLE_SNAPSHOTS = False
-PROMINENCE_ENABLE_DATA = False
-PROMINENCE_IMC_URL = ''
+PROMINENCE_ENABLE_SNAPSHOTS = True
+PROMINENCE_ENABLE_DATA = True
+PROMINENCE_REQUIRED_ENTITLEMENTS = []
+PROMINENCE_IMC_URL = 'http://localhost:5000/credentials'
 PROMINENCE_IMC_USERNAME = ''
 PROMINENCE_IMC_PASSWORD = ''
-PROMINENCE_IMC_SSL_CERT = ''
-PROMINENCE_IMC_SSL_KEY = ''
-PROMINENCE_INFLUXDB_URL = ''
+PROMINENCE_IMC_SSL_CERT = '/etc/prominence/credentials/hostcert.pem'
+PROMINENCE_IMC_SSL_KEY = '/etc/prominence/credentials/hostkey.pem'
+PROMINENCE_INFLUXDB_URL = 'http://localhost:9999'
 PROMINENCE_INFLUXDB_TOKEN = ''
-PROMINENCE_INFLUXDB_ORG = ''
-PROMINENCE_INFLUXDB_BUCKET = ''
+PROMINENCE_INFLUXDB_ORG = 'prominence'
+PROMINENCE_INFLUXDB_BUCKET = 'data'
+PROMINENCE_CLIENT_ID = ''
+PROMINENCE_CLIENT_SECRET = ''
+PROMINENCE_SCOPES = ["openid", "profile", "email", "offline_access"]
+PROMINENCE_OIDC_BASE_URL = 'https://aai-dev.egi.eu/oidc/'
+PROMINENCE_AUTHORISATION_BASE_URL = 'https://aai-dev.egi.eu/oidc/authorize'
+PROMINENCE_TOKEN_URL = 'https://aai-dev.egi.eu/oidc/token'
 PROMINENCE_S3_URL = ''
 PROMINENCE_S3_BUCKET = ''
 PROMINENCE_S3_ACCESS_KEY_ID = ''
