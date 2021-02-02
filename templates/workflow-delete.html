@@ -10,11 +10,13 @@
   {% if workflow %}
   Are you sure you want to delete workflow <strong>{{ workflow }}</strong>?
   <input type="hidden" name="ids[]" value="{{ workflow }}">
-  {% else %}
+  {% elif workflows %}
   {% for id in workflows %}
   <input type="hidden" name="ids[]" value="{{ id }}">
   {% endfor %}
   Are you sure you want to delete the following workflows: {{ workflows_display }}?
+  {% else %}
+  No workflows selected.
   {% endif %}
   </div>
   <div class="modal-footer">

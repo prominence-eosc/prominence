@@ -10,11 +10,13 @@
   {% if job %}
   Are you sure you want to delete job <strong>{{ job }}</strong>?
   <input type="hidden" name="ids[]" value="{{ job }}">
-  {% else %}
+  {% elif jobs %}
   {% for id in jobs %}
   <input type="hidden" name="ids[]" value="{{ id }}">
   {% endfor %}
   Are you sure you want to delete the following jobs: {{ jobs_display }}?
+  {% else %}
+  No jobs selected.
   {% endif %}
   </div>
   <div class="modal-footer">
