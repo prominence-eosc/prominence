@@ -1,4 +1,5 @@
 import configparser
+from datetime import datetime
 import json
 import re
 import os
@@ -12,6 +13,7 @@ from requests.auth import HTTPBasicAuth
 import classad
 
 from create_infrastructure import deploy
+from update_db import update_workflow_db, add_job_to_workflow_db, update_job_in_db, find_incomplete_jobs, get_workflow_from_db, get_job, create_jobs, create_job
 
 # Read config file
 CONFIG = configparser.ConfigParser()
@@ -19,6 +21,28 @@ CONFIG.read('/etc/prominence/prominence.ini')
 
 # Logging
 logger = logging.getLogger('workflows.handler')
+
+def get_dag_start_time(iwd):
+    try:
+        with open('%s/job.dag.dagman.out' % iwd, 'r') as dagman:
+            line = dagman.readline()
+    except Exception:
+        return None
+
+    match = re.match(r'(\d\d\/\d\d\/\d\d\s\d\d:\d\d:\d\d).*', line)
+    if match:
+        timestamp = match.group(1)
+        return condor_datetime_to_epoch(timestamp)
+
+    return None
+
+def datetime_to_epoch(string):
+    utc_time = datetime.strptime(string, "%Y-%m-%d %H:%M:%S")
+    return int((utc_time - datetime(1970, 1, 1)).total_seconds())
+
+def condor_datetime_to_epoch(string):
+    utc_time = datetime.strptime(string, "%m/%d/%y %H:%M:%S")
+    return int((utc_time - datetime(1970, 1, 1)).total_seconds())
 
 def get_group_from_dir(dir_name):
     """
@@ -203,6 +227,25 @@ class DatabaseGlobal():
         except Exception as err:
             return None
         return True
+
+    def get_lock_time(self):
+        """
+        Check the time a lock was set
+        """
+        try:
+            db = sqlite3.connect(self._db_file)
+            cursor = db.cursor()
+            cursor.execute('SELECT updated FROM lock WHERE status=42')
+            rows = cursor.fetchall()
+            db.close()
+        except Exception as err:
+            logger.info('Got exception in get_lock_time: %s', err)
+            return 0
+
+        if len(rows) > 0:
+            return rows[0][0]
+
+        return 0
 
     def add_workflow(self, workflow_id, iwd, identity, groups, uid):
         """
@@ -429,26 +472,69 @@ class Database():
 
         return rows[0][0]
 
-def get_jobs_by_state(iwd):
+def get_jobs_by_state(iwd, workflow_id):
     """
     Read the DAGMan log files to generate list of individual jobs by current state. We use the file
     job.dag.dagman.out to recreate the current status of jobs, making sure we only read new events
     from it each time as it can grow very large for large workflows.
     """
     details = {}
+    dirs = []
     with open('%s/job.dag' % iwd, 'r') as job:
         for line in job:
             match = re.search(r'JOB\s(.*)\s(.*)\sDIR\s(.*)', line)
             if match:
                 details[match.group(1)] = match.group(3)
+                if match.group(3) not in dirs:
+                    dirs.append(match.group(3))
+
+    jobs_per_dir = {}
+    for directory in dirs:
+        count = 0
+        for detail in details:
+            if details[detail] == directory:
+                count += 1
+        jobs_per_dir[directory] = count
 
     jobs_submitted = []
     jobs_executing = []
     jobs_exited = []
+    jobs_name_map = {}
     position = 0
 
+    # Get workflow from DB
+    workflow = get_workflow_from_db(workflow_id)
+
+    # Get job json for each job
+    job_jsons = {}
+    for directory in dirs:
+        directory_name = directory
+        if '/' in directory:
+            directory_name = directory.split('/')[0]
+
+        try:
+            filename = '%s/%s/job.json' % (iwd, directory_name)
+            with open(filename, 'r') as json_file:
+                job_jsons[directory] = json.load(json_file)
+        except Exception as err:
+            logger.info('Unable to open job json file %s due to: %s', filename, err)
+            return
+
+    # Get workflow name
+    try:
+        filename = '%s/workflow.json' % iwd
+        with open(filename, 'r') as json_file:
+            workflow_json = json.load(json_file)
+    except Exception as err:
+        logger.info('Unable to open workflow json file %s due to %s', filename, err)
+        return
+
+    workflow_name = None
+    if 'name' in workflow_json:
+        workflow_name = workflow_json['name']
+
     # Get existing data if it exists
-    pickled_file = '%s/job.dag.dagman.out.pickle' % iwd
+    pickled_file = '%s/job.dag.nodes.log.pickle' % iwd
     if os.path.isfile(pickled_file):
         logger.info('Reading cached job status info from pickle')
         with open(pickled_file, 'rb') as fd:
@@ -460,10 +546,17 @@ def get_jobs_by_state(iwd):
                 jobs_submitted = jobs['submitted']
                 jobs_executing = jobs['executing']
                 position = jobs['position']
+                jobs_name_map = jobs['map']
                 logger.info('Will start reading from line %d', position)
 
     line_no = 0
-    with open('%s/job.dag.dagman.out' % iwd, 'r') as dagman:
+    jobs_new_added = 0
+    jobs_updated = 0
+
+    data_jobs_added = {}
+    data_jobs_removed = []
+
+    with open('%s/job.dag.nodes.log' % iwd, 'r') as dagman:
         for line in dagman:
             # If we have already read part of the file, skip these lines
             if line_no < position:
@@ -472,23 +565,108 @@ def get_jobs_by_state(iwd):
             else:
                 line_no = line_no + 1
 
-            match = re.search(r'.*\sEvent:\sULOG_([\w\_]+)\sfor\sHTCondor\sNode\s(.*)\s\(([\d]+)\.[\d]+\.[\d]+\).*', line)
-            if match:
-                job = {}
-                job['id'] = int(match.group(3))
-                job['name'] = match.group(2)
-                if job['name'] in details:
-                    job['dir'] = details[job['name']]
-                event_type = match.group(1)
-                if event_type == 'SUBMIT':
-                    jobs_submitted.append(job)
-                elif event_type == 'EXECUTE':
-                    jobs_executing.append(job)
-                elif event_type in ('JOB_TERMINATED', 'JOB_HELD', 'JOB_ABORTED', 'JOB_EVICTED'):
-                    jobs_exited.append(job)
+            job = {}
 
-                # A running or exited job will also appear in an earlier state, so ensure only
-                # the most recent state is used
+            # Look for job starts
+            match = re.search(r'000\s\(([\d]+)\.000\.000\)\s(\d\d\d\d-\d\d-\d\d\s\d\d:\d\d:\d\d)\sJob\ssubmitted\sfrom\shost', line)
+            if match:
+                condor_job_id = int(match.group(1))
+                condor_job_time = match.group(2)
+
+            # Look for executing jobs
+            match = re.search(r'001\s\(([\d]+)\.000\.000\)\s(\d\d\d\d-\d\d-\d\d\s\d\d:\d\d:\d\d)\sJob\sexecuting\son\shost', line)
+            if match:
+                condor_job_id = int(match.group(1))
+                condor_job_time = match.group(2)
+                condor_job_name = None
+
+                if condor_job_id in jobs_name_map:
+                    condor_job_name = jobs_name_map[condor_job_id]
+
+                #logger.info('Job executing with id %d at %s with name %s', condor_job_id, condor_job_time, condor_job_name)
+
+                job = {'id': condor_job_id, 'name': condor_job_name}
+                if condor_job_name in details:
+                    job['dir'] = details[job['name']]
+
+                jobs_executing.append(job)
+                jobs_updated = jobs_updated + 1
+
+                if job['id'] in data_jobs_added:
+                    data_jobs_removed.append(job['id'])
+                    create_job(data_jobs_added[job['id']])
+                update_job_in_db(job['id'], 2, start_date=datetime_to_epoch(condor_job_time))
+
+                condor_job_id = -1
+
+            # Look for failed jobs
+            match = re.search(r'\d\d\d\s\(([\d]+)\.000\.000\)\s(\d\d\d\d-\d\d-\d\d\s\d\d:\d\d:\d\d)\sJob\swas', line)
+            if match:
+                condor_job_id = int(match.group(1))
+                condor_job_time = match.group(2)
+                condor_job_name = None
+
+                if condor_job_id in jobs_name_map:
+                    condor_job_name = jobs_name_map[condor_job_id]
+
+                #logger.info('Job terminated with id %d at %s with name %s', condor_job_id, condor_job_time, condor_job_name)
+
+                job = {'id': condor_job_id, 'name': condor_job_name}
+                if condor_job_name in details:
+                    job['dir'] = details[job['name']]
+                jobs_exited.append(job)
+
+                condor_job_id = -1
+
+            # Look for finished jobs
+            match = re.search(r'\d\d\d\s\(([\d]+)\.000\.000\)\s(\d\d\d\d-\d\d-\d\d\s\d\d:\d\d:\d\d)\sJob\sterm', line)
+            if match:
+                condor_job_id = int(match.group(1))
+                condor_job_time = match.group(2)
+                condor_job_name = None
+
+                if condor_job_id in jobs_name_map:
+                    condor_job_name = jobs_name_map[condor_job_id]
+
+                #logger.info('Job finished with id %d at %s with name %s', condor_job_id, condor_job_time, condor_job_name)
+
+                job = {'id': condor_job_id, 'name': condor_job_name}
+                if condor_job_name in details:
+                    job['dir'] = details[job['name']]
+                jobs_exited.append(job)
+
+                condor_job_id = -1
+
+            # Handle submitted jobs when the "DAG Node" line appears
+            match = re.search(r'\s\s\s\sDAG\sNode:\s([\w\-\_]+)', line)
+            if match:
+                condor_job_name = match.group(1)
+                if condor_job_id != -1:
+                    #logger.info('Job submitted with id %d at %s with name %s', condor_job_id, condor_job_time, condor_job_name)
+                    jobs_name_map[condor_job_id] = condor_job_name
+
+                    job = {'id': condor_job_id, 'name': condor_job_name}
+                    if condor_job_name in details:
+                        job['dir'] = details[job['name']]
+
+                    jobs_submitted.append(job)
+                    jobs_new_added = jobs_new_added + 1
+
+                    data_jobs_added[job['id']] = get_job(workflow,
+                                                         workflow_id,
+                                                         job['id'],
+                                                         job['name'],
+                                                         job['dir'],
+                                                         iwd,
+                                                         datetime_to_epoch(condor_job_time),
+                                                         workflow_name,
+                                                         job_jsons[job['dir']])
+
+                    condor_job_id = -1
+
+            # A running or exited job will also appear in an earlier state, so ensure only
+            # the most recent state is used
+            if job:
                 if job in jobs_submitted and job in jobs_executing:
                     jobs_submitted.remove(job)
                 if job in jobs_executing and job in jobs_exited:
@@ -496,11 +674,24 @@ def get_jobs_by_state(iwd):
                 if job in jobs_submitted and job in jobs_exited:
                     jobs_submitted.remove(job)
 
+    # Create all new jobs as necessary
+    jobs_list = []
+    for job_id in data_jobs_added:
+        if job_id not in data_jobs_removed:
+            jobs_list.append(data_jobs_added[job_id])
+
+    if len(jobs_list) > 0:
+        logger.info('Doing a bulk create of %d new jobs', len(jobs_list))
+        create_jobs(jobs_list)
+
+    logger.info('Jobs updated in DB: %d, jobs added to DB: %d', jobs_updated, jobs_new_added)
+
     try:
         with open(pickled_file, 'wb') as fd:
             pickle.dump({'position': line_no,
                          'submitted': jobs_submitted,
-                         'executing': jobs_executing}, fd)
+                         'executing': jobs_executing,
+                         'map': jobs_name_map}, fd)
     except Exception as err:
         logger.critical('Unable to write pickle to disk due to: %s', err)
 
@@ -520,7 +711,7 @@ def manage_jobs(dag_job_id, iwd, identity, groups, uid):
     Deploy infrastructure if necessary for running jobs from this workflow
     """
     # Get jobs by status
-    (submitted, executing, exited) = get_jobs_by_state(iwd)
+    (submitted, executing, exited) = get_jobs_by_state(iwd, dag_job_id)
     logger.info('Jobs by state in workflow %d, submitted: %d, executing: %d, exited: %d', dag_job_id, len(submitted), len(executing), len(exited))
 
     # Unique set of directories, i.e. same resource requirements
@@ -679,33 +870,65 @@ def update_workflows():
     db = DatabaseGlobal('/var/spool/prominence/db.dat')
     workflows = db.get_workflows_by_status('created')
     for workflow in workflows:
+        logger.info('Working on workflow %d', int(workflow['id']))
+
         # Check status of workflow
         dag_status = None
+        nodes_total = 0
+        nodes_done = 0
+        nodes_failed = 0
+
         try:
             class_ads = classad.parseAds(open('%s/workflow.dag.status' % workflow['iwd'], 'r'))
             for class_ad in class_ads:
                 if class_ad['Type'] == 'DagStatus':
                     dag_status = class_ad['DagStatus']
+                    nodes_total = class_ad['NodesTotal']
+                    nodes_done = class_ad['NodesDone']
+                    nodes_failed = class_ad['NodesFailed']
+                    break
         except Exception as exc:
             logger.info('Got exception opening workflow.dag.status file for workflow %d: %s', int(workflow['id']), exc)
             continue
 
+        if dag_status:
+            logger.info('Updating workflow in DB')
+            update_workflow_db(int(workflow['id']), dag_status, nodes_total, nodes_done, nodes_failed)
+
+        if not os.path.isfile('%s/first.lock' % workflow['iwd']):
+            start_time = get_dag_start_time(workflow['iwd'])
+            logger.info('Got dag start time %d', start_time)
+            if start_time:
+                update_workflow_db(int(workflow['id']), time_start=start_time)
+                try:
+                    open('%s/first.lock' % workflow['iwd'], 'w+').close()
+                except Exception as err:
+                    logger.error('Got exception when creating lock file after first run: %s', err)
+
         if dag_status and dag_status != 3:
             # If workflow has finished for whatever reason, delete it
             logger.info('Workflow %d has completed because dag status is %d', int(workflow['id']), int(dag_status))
+            (submitted, executing, exited) = get_jobs_by_state(workflow['iwd'], int(workflow['id']))
             status = cleanup_all_jobs(workflow['iwd'])
+
+            try:
+                os.remove('%s/job.dag.nodes.log.pickle' % workflow['iwd'])
+            except Exception as err:
+                logger.error('Unable to remove pickle in %s', workflow['iwd'])
+
             if status:
                 db.set_workflow_status(workflow['id'], 'deleted')
+            #find_incomplete_jobs(int(workflow['id']))
         elif dag_status and dag_status == 3:
             # If a workflow is still running, deploy any jobs if necessary and cleanup any jobs if necessary
             logger.info('Workflow %d is running', int(workflow['id']))
             manage_jobs(int(workflow['id']), workflow['iwd'], workflow['identity'], workflow['groups'], workflow['uid'])
 
-def acquire_lock():
+def acquire_lock(pid):
     db = DatabaseGlobal('/var/spool/prominence/db.dat')
     return db.acquire_lock()
 
-def release_lock():
+def release_lock(pid):
     db = DatabaseGlobal('/var/spool/prominence/db.dat')
     return db.release_lock()
 

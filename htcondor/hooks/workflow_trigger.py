@@ -2,6 +2,8 @@
 import configparser
 import logging
 from logging.handlers import RotatingFileHandler
+import os
+import time
 import htcondor
 
 from workflow_handler import update_workflows, add_workflow, acquire_lock, release_lock
@@ -39,7 +41,7 @@ if __name__ == "__main__":
     handler = RotatingFileHandler('/var/log/prominence/workflow_trigger.log',
                                   maxBytes=int(CONFIG.get('logs', 'max_bytes')),
                                   backupCount=int(CONFIG.get('logs', 'num')))
-    formatter = logging.Formatter('%(asctime)s %(levelname)s [%(name)s] %(message)s')
+    formatter = logging.Formatter('%(asctime)s %(levelname)s %(process)d [%(name)s] %(message)s')
     handler.setFormatter(formatter)
     logger = logging.getLogger('workflows')
     logger.addHandler(handler)
@@ -49,10 +51,17 @@ if __name__ == "__main__":
     trigger()
 
     # Update workflows
-    if acquire_lock():
+    start_time = time.time()
+    my_pid = os.getpid()
+    if acquire_lock(my_pid):
         try:
             update_workflows()
         except Exception as err:
             logger.critical('Got exception running update_workflows: %s', err)
-        release_lock()
+        release_lock(my_pid)
     # TODO: handle stuck lock due to process dying for some reason
+    else:
+        logger.error('Cannot get lock')
+    end_time = time.time()
+
+    logger.info('Time to update workflows: %d secs', int(end_time - start_time))

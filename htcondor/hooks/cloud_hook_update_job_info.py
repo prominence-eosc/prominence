@@ -4,6 +4,7 @@ import configparser
 import logging
 from logging.handlers import RotatingFileHandler
 import os
+import subprocess
 import sys
 import time
 import requests
@@ -88,9 +89,26 @@ def update_classad():
     iwd = get_from_classad('Iwd', job_ad)
     args = get_from_classad('Args', job_ad)
     job_type = get_from_classad('ProminenceType', job_ad)
+    start_time = get_from_classad('JobStartDate', job_ad, 0)
+    original_job = get_from_classad('RoutedFromJobId', job_ad)
+    original_job = int(original_job.split('.')[0])
+
+    if start_time:
+        start_time = int(start_time)
+
+    job_id = '%s.%s' % (cluster_id, proc_id)
+
+    logger.info('[%s] Job status is %d', job_id, job_status)
+
+    if job_status == 2:
+        logger.info('[%s] Updating DB with jobid=%d, starttime=%d, site=%s', job_id, original_job, start_time, infra_site)
+        try:
+            run = subprocess.run(["/usr/local/bin/update_job_status.sh %d %d %s 0" % (original_job, start_time, infra_site)],
+                                  stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
+        except Exception as err:
+            logger.info('[%s] Got exception: %s', job_id, err)
 
     state = None
-    job_id = '%s.%s' % (cluster_id, proc_id)
 
     # Update any presigned URLs as necessary
     if job_status == 1:
@@ -101,6 +119,29 @@ def update_classad():
     if infra_id is not None and str(infra_type) == 'cloud' and infra_state != 'configured':
         (state, reason, cloud) = get_infrastructure_status_with_retries(infra_id)
         logger.info('[%s] Infrastructure with id %s is in state %s with reason %s on cloud %s', job_id, infra_id, state, reason, cloud)
+
+        reason_id = None
+        if reason:
+            if reason == 'DeploymentFailed_ImageNotFound':
+                reason_id = 18
+            elif reason == 'DeploymentFailed_QuotaExceeded':
+                reason_id = 17
+
+        if job_status == 1 and cloud:
+            if not reason_id:
+                logger.info('[%s] Updating DB for idle job with jobid=%d, starttime=%d, site=%s', job_id, original_job, start_time, cloud)
+                try:
+                    run = subprocess.run(["/usr/local/bin/update_job_status.sh %d %d %s 0" % (original_job, start_time, cloud)],
+                                          stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
+                except Exception as err:
+                    logger.info('[%s] Got exception: %s', job_id, err)
+            else:
+                logger.info('[%s] Updating DB for idle job with jobid=%d, starttime=%d, site=%s, reason=%d', job_id, original_job, start_time, cloud, reason_id)
+                try:
+                    run = subprocess.run(["/usr/local/bin/update_job_status.sh %d %d %s %d" % (original_job, start_time, cloud, reason_id)],
+                                          stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
+                except Exception as err:
+                    logger.info('[%s] Got exception: %s', job_id, err)
 
         if (infra_site is None and cloud is not None) or infra_site != cloud:
             print('ProminenceInfrastructureSite = "%s"' % cloud)
@@ -133,20 +174,20 @@ def update_classad():
     elif infra_id is not None and str(infra_type) == 'cloud' and infra_state == 'configured':
         logger.info('[%s] Infrastructure already known to be configured, no longer checking infrastructure state', job_id)
 
-        if remote_host is not None and job_status == 2:
-            run_check = False
-            if not os.path.isfile(lock_file):
-                run_check = True
-            else:
-                last_update = os.path.getmtime(lock_file)
-                if time.time() - last_update > 600:
-                    run_check = True
-            if run_check:
-                startd_status = check_startd(remote_host)
-                if not startd_status:
-                    logger.critical('[%s] Consistency check failed: running job has no startd known to the collector', job_id)
-                #else:
-                #    logger.info('[%s] Consistency check success: running job has a startd known to the collector', job_id)
+        #if remote_host is not None and job_status == 2:
+        #    run_check = False
+        #    if not os.path.isfile(lock_file):
+        #        run_check = True
+        #    else:
+        #        last_update = os.path.getmtime(lock_file)
+        #        if time.time() - last_update > 600:
+        #            run_check = True
+        #    if run_check:
+        #        startd_status = check_startd(remote_host)
+        #        if not startd_status:
+        #            logger.critical('[%s] Consistency check failed: running job has no startd known to the collector', job_id)
+        #        #else:
+        #        #    logger.info('[%s] Consistency check success: running job has a startd known to the collector', job_id)
     else:
         logger.info('[%s] No infrastructure id, creation must have failed', job_id)
 
