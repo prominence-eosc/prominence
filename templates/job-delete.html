@@ -1,4 +1,4 @@
-<form method="post" action="{% url 'job_delete' job.id %}" class="js-job-delete-form">
+<form method="post" action="{% url 'jobs_delete' %}" class="js-job-delete-form">
   {% csrf_token %}
   <div class="modal-header">
     <h5 class="modal-title">Confirm job deletion</h5>
@@ -7,7 +7,15 @@
     </button>
   </div>
   <div class="modal-body">
-    Are you sure you want to delete job <strong>{{ job.id }}</strong>?
+  {% if job %}
+  Are you sure you want to delete job <strong>{{ job }}</strong>?
+  <input type="hidden" name="ids[]" value="{{ job }}">
+  {% else %}
+  {% for id in jobs %}
+  <input type="hidden" name="ids[]" value="{{ id }}">
+  {% endfor %}
+  Are you sure you want to delete the following jobs: {{ jobs_display }}?
+  {% endif %}
   </div>
   <div class="modal-footer">
     <button type="button" class="btn btn-outline-dark" data-dismiss="modal">Close</button>

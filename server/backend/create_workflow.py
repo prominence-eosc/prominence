@@ -156,7 +156,8 @@ def create_workflow(self, username, groups, email, uid, jwf):
                                                   email,
                                                   str(uuid.uuid4()),
                                                   job,
-                                                  '%s/%s' % (job_sandbox, job['name']))
+                                                  '%s/%s' % (job_sandbox, job['name']),
+                                                  True)
             cjob['+ProminenceWorkflowName'] = condor_str(wf_name)
 
             # Write JDL
@@ -199,12 +200,12 @@ def create_workflow(self, username, groups, email, uid, jwf):
                         parameters.append('prominencevalue%d="%s"' % (count,
                                                                       write_parameter_value(parameter['values'][index])))
                         count += 1
-                    dag.append('JOB %s%d job.jdl DIR %s' % (job['name'], index, dir_name))
-                    dag.append('VARS %s%d %s prominencecount="%d" %s' % (job['name'], index,
+                    dag.append('JOB %s_%d job.jdl DIR %s' % (job['name'], index, dir_name))
+                    dag.append('VARS %s_%d %s prominencecount="%d" %s' % (job['name'], index,
                                                                           ' '.join(parameters),
                                                                           index,
                                                                           self._output_urls(jwf, uid, index)))
-                    jobs_in_dag.append('%s%d' % (job['name'], index))
+                    jobs_in_dag.append('%s_%d' % (job['name'], index))
             elif job_factory['type'] == 'parameterSweep':
                 num_dimensions = len(job_factory['parameters'])
 
@@ -240,9 +241,9 @@ def create_workflow(self, username, groups, email, uid, jwf):
                         dir_name = create_dir_structure(job['name'], job_count, ps_num[0])
                         if dir_name not in exec_copy_dirs:
                             exec_copy_dirs.append(dir_name)
-                        dag.append('JOB %s%d job.jdl DIR %s' % (job['name'], job_count, dir_name))
-                        dag.append('VARS %s%d prominencevalue0="%s" prominencecount="%d" %s' % (job['name'], job_count, write_parameter_value(x1_val), job_count, self._output_urls(jwf, uid, job_count)))
-                        jobs_in_dag.append('%s%d' % (job['name'], job_count))
+                        dag.append('JOB %s_%d job.jdl DIR %s' % (job['name'], job_count, dir_name))
+                        dag.append('VARS %s_%d prominencevalue0="%s" prominencecount="%d" %s' % (job['name'], job_count, write_parameter_value(x1_val), job_count, self._output_urls(jwf, uid, job_count)))
+                        jobs_in_dag.append('%s_%d' % (job['name'], job_count))
                         job_count += 1
 
                 elif num_dimensions == 2:
@@ -254,9 +255,9 @@ def create_workflow(self, username, groups, email, uid, jwf):
                             dir_name = create_dir_structure(job['name'], job_count, ps_num[0]*ps_num[1])
                             if dir_name not in exec_copy_dirs:
                                 exec_copy_dirs.append(dir_name)
-                            dag.append('JOB %s%d job.jdl DIR %s' % (job['name'], job_count, job['name']))
-                            dag.append('VARS %s%d prominencevalue0="%s" prominencevalue1="%s" prominencecount="%d" %s' % (job['name'], job_count, write_parameter_value(x1_val), write_parameter_value(y1_val), job_count, self._output_urls(jwf, uid, job_count)))
-                            jobs_in_dag.append('%s%d' % (job['name'], job_count))
+                            dag.append('JOB %s_%d job.jdl DIR %s' % (job['name'], job_count, job['name']))
+                            dag.append('VARS %s_%d prominencevalue0="%s" prominencevalue1="%s" prominencecount="%d" %s' % (job['name'], job_count, write_parameter_value(x1_val), write_parameter_value(y1_val), job_count, self._output_urls(jwf, uid, job_count)))
+                            jobs_in_dag.append('%s_%d' % (job['name'], job_count))
                             job_count += 1
 
                 elif num_dimensions == 3:
@@ -270,9 +271,9 @@ def create_workflow(self, username, groups, email, uid, jwf):
                                 dir_name = create_dir_structure(job['name'], job_count, ps_num[0]*ps_num[1]*ps_num[2])
                                 if dir_name not in exec_copy_dirs:
                                     exec_copy_dirs.append(dir_name)
-                                dag.append('JOB %s%d job.jdl DIR %s' % (job['name'], job_count, job['name']))
-                                dag.append('VARS %s%d prominencevalue0="%s" prominencevalue1="%s" prominencevalue2="%s" prominencecount="%d" %s' % (job['name'], job_count, write_parameter_value(x1_val), write_parameter_value(y1_val), write_parameter_value(z1_val), job_count, self._output_urls(jwf, uid, job_count)))
-                                jobs_in_dag.append('%s%d' % (job['name'], job_count))
+                                dag.append('JOB %s_%d job.jdl DIR %s' % (job['name'], job_count, job['name']))
+                                dag.append('VARS %s_%d prominencevalue0="%s" prominencevalue1="%s" prominencevalue2="%s" prominencecount="%d" %s' % (job['name'], job_count, write_parameter_value(x1_val), write_parameter_value(y1_val), write_parameter_value(z1_val), job_count, self._output_urls(jwf, uid, job_count)))
+                                jobs_in_dag.append('%s_%d' % (job['name'], job_count))
                                 job_count += 1
 
                 elif num_dimensions == 4:
@@ -288,9 +289,9 @@ def create_workflow(self, username, groups, email, uid, jwf):
                                     dir_name = create_dir_structure(job['name'], job_count, ps_num[0]*ps_num[1]*ps_num[2]*ps_num[3])
                                     if dir_name not in exec_copy_dirs:
                                         exec_copy_dirs.append(dir_name)
-                                    dag.append('JOB %s%d job.jdl DIR %s' % (job['name'], job_count, job['name']))
-                                    dag.append('VARS %s%d prominencevalue0="%s" prominencevalue1="%s" prominencevalue2="%s" prominencevalue3="%s" prominencecount="%d" %s' % (job['name'], job_count, write_parameter_value(x1_val), write_parameter_value(y1_val), write_parameter_value(z1_val), write_parameter_value(t1_val), job_count, self._output_urls(jwf, uid, job_count)))
-                                    jobs_in_dag.append('%s%d' % (job['name'], job_count))
+                                    dag.append('JOB %s_%d job.jdl DIR %s' % (job['name'], job_count, job['name']))
+                                    dag.append('VARS %s_%d prominencevalue0="%s" prominencevalue1="%s" prominencevalue2="%s" prominencevalue3="%s" prominencecount="%d" %s' % (job['name'], job_count, write_parameter_value(x1_val), write_parameter_value(y1_val), write_parameter_value(z1_val), write_parameter_value(t1_val), job_count, self._output_urls(jwf, uid, job_count)))
+                                    jobs_in_dag.append('%s_%d' % (job['name'], job_count))
                                     job_count += 1
 
                 elif num_dimensions > 4:

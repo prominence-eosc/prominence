@@ -52,17 +52,17 @@ cookieConsent()
 {% block content %}
       <section id="promo">
       <nav class="navbar navbar-dark navbar-expand">
-         <a class="navbar-brand mb-0 h1" href="/">prominence</a>
+          <div class="navbar-brand-public mb-0">prominence</div>
           <div class="navbar-collapse collapse">
            <ul class="navbar-nav ml-auto">
           <li class="nav-item">
-            <a class="nav-link" href="#">About</a>
+            <a class="nav-link-public" href="#">About</a>
           </li>
           <li class="nav-item">
-            <a class="nav-link" href="https://prominence.readthedocs.io">Docs</a>
+            <a class="nav-link-public" href="https://prominence.readthedocs.io">Docs</a>
           </li>
           <li class="nav-item">
-            <a class="nav-link" href="https://github.com/prominence-eosc/">GitHub</a>
+            <a class="nav-link-public" href="https://github.com/prominence-eosc/">GitHub</a>
           </li>
            </ul>
            </div>
@@ -127,7 +127,7 @@ cookieConsent()
                   Reliability & reproduceability
                </h4>
                <p class="text-muted">
-                  All jobs are run in containers to ensure they will can run reliably anywhere and are reproducible.
+                  All jobs are run in containers to ensure they will run reliably anywhere and are reproducible.
                </p>
             </div>
             <div class="col">
@@ -202,7 +202,7 @@ cookieConsent()
 	      <h6 class="text-center">Submit from anywhere, run on any cloud.</h6>
 	      <br/>
               <div class="row justify-content-md-center">
-		      <img src="{% static 'images/prominence.png' %}"</img>
+		      <img src="{% static 'images/prominence.png' %}" alt="PROMINENCE enables users to submit jobs using a web UI, command line interface, REST API or Jupyter, and run jobs across local, national, and public clouds and the EGI Federated Cloud."></img>
       </div>
       </div>
 

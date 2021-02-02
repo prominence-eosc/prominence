@@ -7,7 +7,7 @@ import htcondor
 
 from .utilities import run
 
-def rerun_workflow(self, username, email, workflow_id):
+def rerun_workflow(self, username, groups, email, workflow_id):
     """
     Re-run any failed jobs from a completed workflow
     """
@@ -51,6 +51,7 @@ def rerun_workflow(self, username, email, workflow_id):
     dag_appends.append("'+ProminenceType=\"workflow\"'")
     dag_appends.append("'+ProminenceIdentity=\"%s\"'" % username)
     dag_appends.append("'+ProminenceJobUniqueIdentifier=\"%s\"'" % str(uuid.uuid4()))
+    dag_appends.append("'+ProminenceGroup=\"%s\"'" % groups)
 
     if email:
         dag_appends.append("'+ProminenceEmail=\"%s\"'" % email)
@@ -62,7 +63,7 @@ def rerun_workflow(self, username, email, workflow_id):
 
     (return_code, stdout, stderr, timedout) = run(cmd, iwd, 30)
 
-    m = re.search(r'submitted to cluster\s(\d+)', stdout)
+    m = re.search(r'submitted to cluster\s(\d+)', str(stdout))
     data = {}
     if m:
         retval = 0

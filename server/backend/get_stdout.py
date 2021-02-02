@@ -23,6 +23,6 @@ def get_stdout(self, uid, iwd, out, err, job_id, job_name=None, instance_id=-1, 
     elif out and os.path.isfile(out):
         if not content:
             return out
-        with open(out) as fd:
+        with open(out, 'rt') as fd:
             return fd.read()
     return None

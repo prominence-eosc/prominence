@@ -1,6 +1,7 @@
 import logging
 import os
 import shutil
+import time
 
 import classad
 import htcondor
@@ -45,5 +46,17 @@ def create_job(self, username, groups, email, uid, jjob):
         logger.critical('Exception submitting job for user %s and uid %s to HTCondor due to %s', username, uid, err)
         retval = 1
         data = {"error":"Job submission failed with an exception"}
+        
+        time.sleep(1)
+        try:
+            sub = htcondor.Submit(cjob)
+            schedd = htcondor.Schedd()
+            with schedd.transaction() as txn:
+                cid = sub.queue(txn, 1)
+            data['id'] = cid
+        except Exception as err:
+            logger.critical('Exception submitting job for user %s and uid %s to HTCondor due to %s', username, uid, err)
+            retval = 1
+            data = {"error":"Job submission failed with an exception"}
 
     return (retval, data)

@@ -32,6 +32,18 @@ Jobs
      prefix: 'fs4',
      formCssClass: 'dynamic-formset4'
    });
+   $('.output-file-formset').formset({
+     addText: '<span class="text-primary">Add output file</span>',
+     deleteText: '<span class="largetext">&times;</span>',
+     prefix: 'fs5',
+     formCssClass: 'dynamic-formset5'
+   });
+   $('.output-dir-formset').formset({
+     addText: '<span class="text-primary">Add output directory</span>',
+     deleteText: '<span class="largetext">&times;</span>',
+     prefix: 'fs6',
+     formCssClass: 'dynamic-formset6'
+   });
 </script>
 <script>
 $(document).ready(function(){
@@ -44,6 +56,7 @@ $(document).ready(function(){
 <br/>
 <form enctype="multipart/form-data" method="post" action="{% url 'job_create' %}">
    {% csrf_token %}
+   <div class="d-flex">
    <div class="project-tab">
       <div class="container">
          <div class="row">
@@ -183,7 +196,7 @@ $(document).ready(function(){
                      <br/>
                      <br/>
 		     <b>Artifacts</b><br/>
-                     Additional input files which can be obtained from a URL.
+                     Additional input files which can be obtained from a URL or object storage.
                      <br/>
                      <br/>
                      {{ artifacts_formset.management_form }}
@@ -198,12 +211,39 @@ $(document).ready(function(){
 			&nbsp;
                      </div>
                      {% endfor %}
+		     <br/>
+		     <br/>
+                     <b>Output files</b><br/>
+                     Output files to be uploaded to object storage.
+                     <br/>
+                     <br/>
+                     {{ output_file_formset.management_form }}
+                     {% for output_file_form in output_file_formset %}
+                     <div class="output-file-formset">
+                        {{ output_file_form.name.label_tag }}
+                        {{ output_file_form.name }}
+                     </div>
+                     {% endfor %}
+                     <br/>
+                     <br/>
+                     <b>Output directories</b><br/>
+                     Output directories to be uploaded to object storage.
+                     <br/>
+                     <br/>
+                     {{ output_dir_formset.management_form }}
+                     {% for output_dir_form in output_dir_formset %}
+                     <div class="output-dir-formset">
+                        {{ output_dir_form.name.label_tag }}
+                        {{ output_dir_form.name }}
+                     </div>
+                     {% endfor %}
                      <br/>
                      <br/>
 		     <b>Storage</b><br/>
                      Optional storage to be automatically mounted and made available to jobs.
                      <br/>
                      <br/>
+		     {% if storage %}
                      <table>
                        <tr>
                          <td>
@@ -222,6 +262,9 @@ $(document).ready(function(){
                          </td>
                        </tr>
                      </table>
+		     {% else %}
+		     No storage systems defined.
+		     {% endif %}
                   </div>
                   <div id="policies" class="tab-pane fade">
                      <br/>
@@ -241,6 +284,12 @@ $(document).ready(function(){
                      {{ form.policy_task_maxretries|add_class:"form-control form-control-sm" }}
                      </div>
                      </div>
+                     <div class="form-group row">
+                     <div class="col-xs-4">
+                     <b>Maximum time pending</b> (hrs)<span class="text-secondary"> <span class="fa fa-question-circle" data-toggle="tooltip" title="The job will be killed if it has not started running within this time. If set to zero the job will be killed immediately after the first failed attempt to deploy infrastructure for the job."></span></span>
+                     {{ form.policy_job_max_time_pending|add_class:"form-control form-control-sm" }}
+                     </div>
+                     </div>
 		     <div class="form-group row">
 			     <div class="col-xs-4">
 			     <b>Required sites</b><span class="text-secondary"> <span class="fa fa-question-circle" data-toggle="tooltip" title="Specify a custom list of site names to run the job. Use commas to separate multiple sites if necessary."></span></span>
@@ -253,7 +302,6 @@ $(document).ready(function(){
 				                            {{ form.policy_regions|add_class:"form-control form-control-sm" }}
 							                                                   </div>
 													                                                                       </div>
-
 		     <div class="row">
 		     <b>Queues</b>
 		     </div>
@@ -285,6 +333,7 @@ $(document).ready(function(){
             </div>
          </div>
       </div>
+   </div>
    </div>
    <br/>
    <br/>

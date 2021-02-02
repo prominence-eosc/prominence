@@ -37,7 +37,7 @@ def _create_htcondor_job(self, username, groups, email, uid, jjob, job_path, wor
             filename_new = os.path.join(job_path + '/input', os.path.basename(file_input['filename']))
             try:
                 with open(filename_new, 'w') as file:
-                    file.write(str(base64.b64decode(file_input['content'])))
+                    file.write(base64.b64decode(file_input['content']).decode('utf-8'))
             except IOError:
                 return (1, {"error":"Unable to write input file to disk"}, cjob)
 
@@ -158,14 +158,14 @@ def _create_htcondor_job(self, username, groups, email, uid, jjob, job_path, wor
         cjob['+ProminenceWantJobRouter'] = str('JobStatus == 1 && ((CurrentTime - ProminenceLastRouted > 1200) || isUndefined(ProminenceLastRouted))')
 
     # Should the job be removed from the queue once finished?
-    cjob['+ProminenceRemoveFromQueue'] = 'True'
+    #cjob['+ProminenceRemoveFromQueue'] = 'True'
 
-    if 'policies' in jjob:
-        if 'leaveInQueue' in jjob['policies']:
-            if jjob['policies']['leaveInQueue']:
-                cjob['+ProminenceRemoveFromQueue'] = 'False'
+    #if 'policies' in jjob:
+    #    if 'leaveInQueue' in jjob['policies']:
+    #        if jjob['policies']['leaveInQueue']:
+    #            cjob['+ProminenceRemoveFromQueue'] = 'False'
 
-    cjob['leave_in_queue'] = '(JobStatus == 4 || JobStatus == 3) && ProminenceRemoveFromQueue =?= False'
+    #cjob['leave_in_queue'] = '(JobStatus == 4 || JobStatus == 3) && ProminenceRemoveFromQueue =?= False'
 
     # Artifacts
     artifacts = []

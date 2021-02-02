@@ -23,6 +23,6 @@ def get_stderr(self, uid, iwd, out, err, job_id, job_name=None, instance_id=-1, 
     elif err and os.path.isfile(err):
         if not content:
             return err
-        with open(err) as fd:
+        with open(err, 'rt') as fd:
             return fd.read()
     return None

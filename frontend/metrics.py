@@ -38,7 +38,7 @@ class JobMetrics(Metrics):
     """
     def get_jobs(self, identity, since):
         query = (' from(bucket:"' + self.bucket + '")'
-                 '|> range(start: -' + str("test") + 'm)'
+                 '|> range(start: -' + str(since) + 'm)'
                  '|> filter(fn:(r) => r._measurement == "jobs_by_identity")'
                  '|> filter(fn:(r) => r.identity == "' + identity + '")')
 

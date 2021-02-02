@@ -2,6 +2,25 @@ import boto3
 
 from .. import settings
 
+def get_object_size(self, bucket_name, object_name):
+    """
+    Get the size of an object
+    """
+    s3_client = boto3.client('s3',
+                             endpoint_url=settings.CONFIG['S3_URL'],
+                             aws_access_key_id=settings.CONFIG['S3_ACCESS_KEY_ID'],
+                             aws_secret_access_key=settings.CONFIG['S3_SECRET_ACCESS_KEY'])
+
+    try:
+        response = s3_client.head_object(Bucket=bucket_name, Key=object_name)
+    except Exception:
+        return None
+
+    if 'ContentLength' in response:
+                return int(response['ContentLength'])
+
+    return None
+
 def create_presigned_url(self, method, bucket_name, object_name, duration_in_seconds=600):
     """
     Create presigned S3 URL

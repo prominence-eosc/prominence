@@ -13,7 +13,12 @@ from django.contrib.auth import get_user_model
 from django.urls import reverse
 from rest_framework.authtoken.models import Token
 
-from frontend.forms import ComputeForm, StorageForm, JobForm, LabelsFormSet, ArtifactsFormSet, EnvVarsFormSet, InputFilesFormSet
+from django.db.models import Q
+
+from frontend.models import Job, JobLabel, Workflow, WorkflowLabel
+from frontend.serializers import JobSerializer, JobDisplaySerializer, JobDetailsSerializer, WorkflowDetailsSerializer, WorkflowDisplaySerializer
+
+from frontend.forms import ComputeForm, StorageForm, JobForm, LabelsFormSet, ArtifactsFormSet, EnvVarsFormSet, InputFilesFormSet, OutputFileFormSet, OutputDirectoryFormSet
 from frontend.models import Compute, Storage
 from server.backend import ProminenceBackend
 from server.validate import validate_job
@@ -21,6 +26,7 @@ from server.set_groups import set_groups
 import server.settings
 from frontend.utilities import create_job
 from frontend.metrics import JobMetrics, JobMetricsByCloud, JobResourceUsageMetrics
+from frontend.db_utilities import get_condor_job_id, db_create_job
 
 # Get an instance of a logger
 logger = logging.getLogger(__name__)
@@ -114,58 +120,95 @@ def jobs(request):
     if 'limit' in request.GET:
         limit = int(request.GET['limit'])
 
-    active = False
-    if 'active' in request.GET:
-        if request.GET['active'].lower() == 'true':
-            active = True
-
-    completed = False
-    if 'completed' in request.GET:
-        if request.GET['completed'].lower() == 'true':
-            completed = True
-            if limit == -1:
-                limit = 1
-
-    if not active and not completed:
-        active = True
-
     workflow_id = -1
     if 'workflow_id' in request.GET:
         if int(request.GET.get('workflow_id')) > -1:
-            workflow = True
             workflow_id = int(request.GET.get('workflow_id'))
-            limit = -1
+
+    active = False
+    completed = False
+
+    if 'state' in request.GET:
+        if request.GET['state'] == 'active':
+            active = True
+            completed = False
+        if request.GET['state'] == 'completed':
+            completed = True
+            active = False
+        if request.GET['state'] == 'all':
+            active = True
+            completed = True
+    else:
+        active = True
 
     state_selectors = {}
     state_selectors['active'] = ''
     state_selectors['completed'] = ''
     state_selectors['all'] = ''
-    if (active and not completed) or (not active and not completed):
+    state = 'active'
+    if active and not completed:
         state_selectors['active'] = 'checked'
-    elif active and completed:
+        limit = -1
+    if active and completed:
         state_selectors['all'] = 'checked'
-    elif not active and completed:
+        state = 'all'
+    if not active and completed:
         state_selectors['completed'] = 'checked'
+        state = 'completed'
 
-    constraint = ()
+    constraints = {}
     name_constraint = None
     search = ''
     if 'fq' in request.GET:
         fq = request.GET['fq']
         search = fq
         if fq != '':
-            if ':' in fq:
-                pieces = fq.split(':')
-                if len(pieces) == 2:
-                    constraint = (pieces[0], pieces[1])
+            if '=' in fq:
+                pieces = fq.split(',')
+                for constraint in pieces:
+                    if '=' in constraint:
+                        bits = constraint.split('=')
+                        if len(bits) == 2:
+                            constraints[bits[0]] = bits[1]
             else:
                 name_constraint = fq
 
     if 'json' in request.GET:
-        if workflow:
-            jobs = [int(request.GET.get('workflow_id'))]
+        # Define query
+        if active and completed:
+            query = Q(user=request.user)
+        elif active and not completed:
+            query = Q(user=request.user) & (Q(status=0) | Q(status=1) | Q(status=2) | Q(in_queue=True))
+        else:
+            query = Q(user=request.user) & (Q(status=3) | Q(status=4) | Q(status=5) | Q(status=6) | Q(in_queue=True))
 
-        jobs_list = backend.list_jobs(jobs, user_name, active, completed, workflow, limit, False, constraint, name_constraint, True)
+        if workflow_id != -1:
+            workflow = Workflow.objects.get(id=workflow_id)
+            if workflow:
+                query = Q(user=request.user) & Q(workflow=workflow)
+                limit = -1
+
+        if constraints:
+            for constraint in constraints:
+                query = query & Q(labels__key=constraint) & Q(labels__value=constraints[constraint])
+
+        if name_constraint:
+            query = query & Q(name__contains=name_constraint)
+
+        if limit > 0:
+            if completed:
+                jobs = Job.objects.filter(query).order_by('-id')[0:limit]
+            else:
+                jobs = Job.objects.filter(query).order_by('id')[0:limit]
+        else:
+            if completed:
+                jobs = Job.objects.filter(query).order_by('-id')
+            else:
+                jobs = Job.objects.filter(query).order_by('id')
+
+        serializer = JobDisplaySerializer(jobs, many=True)
+        jobs_list = serializer.data
+
         jobs_table = []
         for job in jobs_list:
             new_job = {}
@@ -186,8 +229,7 @@ def jobs(request):
                       'jobs.html',
                       {'search': search,
                        'state_selectors': state_selectors,
-                       'state_active': active, 
-                       'state_completed': completed,
+                       'state': state, 
                        'workflow_id': workflow_id})
 
 @login_required
@@ -200,47 +242,81 @@ def workflows(request):
         limit = int(request.GET['limit'])
 
     active = False
-    if 'active' in request.GET:
-        if request.GET['active'].lower() == 'true':
-            active = True
-
     completed = False
-    if 'completed' in request.GET:
-        if request.GET['completed'].lower() == 'true':
-            completed = True
-            if limit == -1:
-                limit = 1
 
-    if not active and not completed:
+    if 'state' in request.GET:
+        if request.GET['state'] == 'active':
+            active = True
+            completed = False
+        if request.GET['state'] == 'completed':
+            completed = True
+            active = False
+        if request.GET['state'] == 'all':
+            active = True
+            completed = True
+    else:
         active = True
 
     state_selectors = {}
     state_selectors['active'] = ''
     state_selectors['completed'] = ''
     state_selectors['all'] = ''
-    if (active and not completed) or (not active and not completed):
+    state = 'active'
+    if active and not completed:
         state_selectors['active'] = 'checked'
-    elif active and completed:
+    if active and completed:
         state_selectors['all'] = 'checked'
-    elif not active and completed:
+        state = 'all'
+    if not active and completed:
         state_selectors['completed'] = 'checked'
+        state = 'completed'
 
-    constraint = ()
+    constraints = {}
     name_constraint = None
     search = ''
     if 'fq' in request.GET:
         fq = request.GET['fq']
         search = fq
         if fq != '':
-            if ':' in fq:
-                pieces = fq.split(':')
-                if len(pieces) == 2:
-                    constraint = (pieces[0], pieces[1])
+            if '=' in fq:
+                pieces = fq.split(',')
+                for constraint in pieces:
+                    if '=' in constraint:
+                        bits = constraint.split('=')
+                        if len(bits) == 2:
+                            constraints[bits[0]] = bits[1]
             else:
                 name_constraint = fq
 
     if 'json' in request.GET:
-        workflows_list = backend.list_workflows([], user_name, active, completed, limit, False, constraint, name_constraint, True)
+        if active and completed:
+            query = Q(user=request.user)
+        elif active and not completed:
+            query = Q(user=request.user) & (Q(status=0) | Q(status=1) | Q(status=2))
+        else:
+            query = Q(user=request.user) & (Q(status=3) | Q(status=4) | Q(status=5) | Q(status=6))
+
+        if constraints:
+            for constraint in constraints:
+                query = query & Q(labels__key=constraint) & Q(labels__value=constraints[constraint])
+
+        if name_constraint:
+            query = query & Q(name__contains=name_constraint)
+
+        if limit > 0:
+            if completed:
+                workflows = Workflow.objects.filter(query).order_by('-id')[0:limit]
+            else:
+                workflows = Workflow.objects.filter(query).order_by('id')[0:limit]
+        else:
+            if completed:
+                workflows = Workflow.objects.filter(query).order_by('-id')
+            else:
+                workflows = Workflow.objects.filter(query).order_by('id')
+
+        serializer = WorkflowDisplaySerializer(workflows, many=True)
+        workflows_list = serializer.data
+
         workflows_table = []
         for workflow in workflows_list:
             new_workflow = {}
@@ -262,8 +338,7 @@ def workflows(request):
                       'workflows.html',
                       {'search': search,
                        'state_selectors': state_selectors,
-                       'state_active': active,
-                       'state_completed': completed,})
+                       'state': state})
 
 @login_required
 def create_token(request):
@@ -346,11 +421,13 @@ def job_create(request):
         envvars_formset = EnvVarsFormSet(request.POST, prefix='fs2')
         inputs_formset = InputFilesFormSet(request.POST, request.FILES, prefix='fs4')
         artifacts_formset = ArtifactsFormSet(request.POST, prefix='fs3')
+        output_file_formset = OutputFileFormSet(request.POST, prefix='fs5')
+        output_dir_formset = OutputDirectoryFormSet(request.POST, prefix='fs6')
 
-        if form.is_valid() and labels_formset.is_valid() and artifacts_formset.is_valid() and envvars_formset.is_valid() and inputs_formset.is_valid():
+        if form.is_valid() and labels_formset.is_valid() and artifacts_formset.is_valid() and envvars_formset.is_valid() and inputs_formset.is_valid() and output_file_formset.is_valid() and output_dir_formset.is_valid():
             job_uuid = str(uuid.uuid4())
             storage = request.user.storage_systems.all()
-            job_desc = create_job(form.cleaned_data, envvars_formset, labels_formset, request.FILES, artifacts_formset, storage, job_uuid)
+            job_desc = create_job(form.cleaned_data, envvars_formset, labels_formset, request.FILES, artifacts_formset, output_file_formset, output_dir_formset, storage, job_uuid)
             user_name = request.user.username
             backend = ProminenceBackend(server.settings.CONFIG)
 
@@ -363,13 +440,22 @@ def job_create(request):
             # TODO: message that job is invalid
 
             # Submit job
+            job = db_create_job(request.user, job_desc, job_uuid)
             logger.info('Submitting job for user %s with uid %s', user_name, job_uuid)
-            (return_code, msg) = backend.create_job(user_name,
-                                                    ','.join(groups),
-                                                    request.user.email,
-                                                    job_uuid,
-                                                    job_desc)
+            # TODO: put this outside of Django web app
+            (return_code, data) = backend.create_job(user_name,
+                                                     ','.join(groups),
+                                                     request.user.email,
+                                                     job_uuid,
+                                                     job_desc)
             # TODO: if return code not zero, return message to user
+            if 'id' in data:
+                job.backend_id = data['id']
+                if 'policies' in job_desc:
+                    if 'leaveInQueue' in job_desc['policies']:
+                        if job_desc['policies']['leaveInQueue']:
+                            job.in_queue = True
+                job.save()
 
             return redirect('/jobs')
     else:
@@ -378,52 +464,106 @@ def job_create(request):
         envvars_formset = EnvVarsFormSet(prefix='fs2')
         inputs_formset = InputFilesFormSet(prefix='fs4')
         artifacts_formset = ArtifactsFormSet(prefix='fs3')
+        output_file_formset = OutputFileFormSet(prefix='fs5')
+        output_dir_formset = OutputDirectoryFormSet(prefix='fs6')
+        storage_list = request.user.storage_systems.all()
 
     return render(request, 'job-create.html', {'form': form,
+                                               'storage': storage_list,
                                                'envvars_formset': envvars_formset,
                                                'labels_formset': labels_formset,
                                                'artifacts_formset': artifacts_formset,
-                                               'inputs_formset': inputs_formset})
+                                               'inputs_formset': inputs_formset,
+                                               'output_file_formset': output_file_formset,
+                                               'output_dir_formset': output_dir_formset})
 
 @login_required
-def job_delete(request, pk):
+def jobs_delete(request, pk=None):
     data = dict()
     if request.method == 'POST':
         data['form_is_valid'] = True
         user_name = request.user.username
         backend = ProminenceBackend(server.settings.CONFIG)
-        (return_code, msg) = backend.delete_job(request.user.username, [pk])
-        # TODO: message if unsuccessful deletion?
+
+        if 'ids[]' in request.POST:
+            jobs = request.POST.getlist('ids[]')
+            for pk in jobs:
+                logger.info('Deleting job: %d', pk)
+                try:
+                    job = Job.objects.get(Q(user=request.user) & Q(id=pk))
+                except Exception:
+                    # TODO: message if unsuccessful
+                    pass
+                else:
+                    if job:
+                        job.status = 4
+                        job.status_reason = 16
+                        job.save(update_fields=['status', 'status_reason'])
+                        (return_code, msg) = backend.delete_job(request.user.username, [job.backend_id])
+                        # TODO: message if unsuccessful deletion?
     else:
-        job = {}
-        job['id'] = pk
-        context = {'job': job}
+        context = {}
+        if pk:
+            context['job'] = pk
+        else:
+            jobs = request.GET.getlist('ids[]')
+            context['jobs'] = jobs
+            context['jobs_display'] = ','.join(jobs)
+
         data['html_form'] = render_to_string('job-delete.html', context, request=request)
     return JsonResponse(data)
 
 @login_required
+def job_actions(request):
+    data = dict()
+    if request.method == 'POST':
+        if 'job_remove' in request.POST:
+            job_id = int(request.POST['job_remove'])
+            rows = 0
+            try:
+                rows = Job.objects.filter(id=job_id, user=request.user).update(in_queue=False)
+            except Exception:
+                pass
+        if 'id' in request.POST:
+            for item in request.POST.getlist('id'):
+                logger.info('SELDATA=%s', item)
+
+    return redirect('/jobs')
+
+@login_required
 def job_describe(request, pk):
-    user_name = request.user.username
-    backend = ProminenceBackend(server.settings.CONFIG)
-    jobs_list = backend.list_jobs([pk], user_name, True, True, None, -1, True, [], None, True)
+    query = Q(user=request.user, id=pk)
+    jobs = Job.objects.filter(query)
+    serializer = JobDetailsSerializer(jobs, many=True)
+    jobs_list = serializer.data
+
     if len(jobs_list) == 1:
         return render(request, 'job-info.html', {'job': jobs_list[0]})
     return JsonResponse({})
 
 @login_required
 def job_json(request, pk):
-    user_name = request.user.username
-    backend = ProminenceBackend(server.settings.CONFIG)
-    jobs_list = backend.list_jobs([pk], user_name, True, True, None, -1, True, [], None, True)
+    query = Q(user=request.user, id=pk)
+    jobs = Job.objects.filter(query)
+    serializer = JobDetailsSerializer(jobs, many=True)
+    jobs_list = serializer.data
+
     if len(jobs_list) == 1:
         return JsonResponse(jobs_list[0])
     return JsonResponse({})
 
 @login_required
 def job_usage(request, pk):
-    metrics = JobResourceUsageMetrics(server.settings.CONFIG)
-    # TODO: need to specify the range in a better way than this
-    return JsonResponse(metrics.get_job(pk, 20160))
+    try:
+        job = Job.objects.get(id=pk, user=request.user)
+    except:
+        pass
+
+    if job:
+        # TODO: need to specify the range in a better way than this
+        metrics = JobResourceUsageMetrics(server.settings.CONFIG)
+        return JsonResponse(metrics.get_job(job.backend_id, 20160))
+    return JsonResponse({})
 
 @login_required
 def user_usage(request):
@@ -438,7 +578,8 @@ def user_usage(request):
 def job_logs(request, pk):
     user_name = request.user.username
     backend = ProminenceBackend(server.settings.CONFIG)
-    (uid, identity, iwd, out, err, name, _) = backend.get_job_unique_id(pk)
+    condor_job_id = get_condor_job_id(request.user, pk)
+    (uid, identity, iwd, out, err, name, _) = backend.get_job_unique_id(condor_job_id)
 
     if not identity:
         return HttpResponse('No such job')
@@ -446,8 +587,8 @@ def job_logs(request, pk):
     if user_name != identity:
         return HttpResponse('Not authorised for this job')
 
-    stdout = backend.get_stdout(uid, iwd, out, err, pk, name)
-    stderr = backend.get_stderr(uid, iwd, out, err, pk, name)
+    stdout = backend.get_stdout(uid, iwd, out, err, condor_job_id, name)
+    stderr = backend.get_stderr(uid, iwd, out, err, condor_job_id, name)
 
     if not stdout:
         stdout = ''
@@ -461,13 +602,38 @@ def workflow(request, pk):
     backend = ProminenceBackend(server.settings.CONFIG)
 
     if request.method == 'GET':
-        workflows_list = backend.list_workflows([pk], request.user.username, True, True, -1, True, [], None, True)
+        query = Q(user=request.user, id=pk)
+        workflows = Workflow.objects.filter(query)
+        serializer = WorkflowDetailsSerializer(workflows, many=True)
+        workflows_list = serializer.data
+
         if len(workflows_list) == 1:
             return render(request, 'workflow-info.html', {'workflow': workflows_list[0]})
         return JsonResponse({})
-    elif request.method == 'POST':
-        (return_code, data) = backend.rerun_workflow(request.user.username, request.user.email, pk)
-        # TODO: message if unsuccessful
+
+@login_required
+def workflow_actions(request):
+    data = dict()
+    if request.method == 'POST':
+        if 'rerun' in request.POST:
+            workflow_id = int(request.POST['rerun'])
+            try:
+                workflow = Workflow.objects.get(Q(user=request.user) & Q(id=workflow_id))
+            except Exception:
+                return redirect('/workflows')
+            if workflow:
+                groups = set_groups(request)
+                backend = ProminenceBackend(server.settings.CONFIG)
+                (return_code, data) = backend.rerun_workflow(request.user.username,
+                                                             ','.join(groups),
+                                                             request.user.email,
+                                                             workflow.backend_id)
+                if 'id' in data:
+                    workflow.status = 2
+                    workflow.backend_id = int(data['id'])
+                    workflow.save()
+
+    return redirect('/workflows')
 
 @login_required
 def workflow_delete(request, pk):
@@ -476,7 +642,17 @@ def workflow_delete(request, pk):
         data['form_is_valid'] = True
         user_name = request.user.username
         backend = ProminenceBackend(server.settings.CONFIG)
-        (return_code, msg) = backend.delete_workflow(request.user.username, [pk])
+
+        try:
+            workflow = Workflow.objects.get(Q(user=request.user) & Q(id=pk))
+        except Exception:
+            return JsonResponse({})
+
+        if workflow:
+            workflow.status = 4
+            workflow.save(update_fields=['status'])
+
+            (return_code, msg) = backend.delete_workflow(request.user.username, [workflow.backend_id])
         # TODO: message if unsuccessful deletion?
     else:
         workflow = {}

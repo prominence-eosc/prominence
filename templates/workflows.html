@@ -9,6 +9,10 @@
 {% block javascript %}
   <script src="{% static 'js/workflows.js' %}"></script>
 <script>
+$('input[type=radio]').on('change', function() {
+    $(this).closest("form").submit();
+});
+
 $(document).ready(function() {
     var workflowstable = $('#workflows-table').DataTable({
         order: [
@@ -53,7 +57,7 @@ $(document).ready(function() {
                 "render": function(data, type, row, meta) {
                     var url1 = "{% url 'jobs' %}";
                     var url2 = "{% url 'workflow_delete' 12345 %}".replace(/12345/, data.toString());
-			return '<div class="dropleft"><button class="btn btn-outline-secondary" type="button" id="dropdownMenuButtonWorkflow' + data + '" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false" style="border:none;"> <i class="fa fa-ellipsis-v" aria-hidden="true"></i> </button> <div class="dropdown-menu" aria-labelledby="dropdownMenuButtonWorkflow' + data + '"> <a class="dropdown-item" href="' + url1 + '?workflow_id=' + data + '&completed=true&active=true">Show jobs</a> <a class="dropdown-item" href="%">Re-run failed jobs</a> <a class="dropdown-item js-delete-workflow" data-url="' + url2 + '">Delete</a></div>';
+			return '<div class="dropleft"><button class="btn btn-outline-secondary" type="button" id="dropdownMenuButtonWorkflow' + data + '" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false" style="border:none;"> <i class="fa fa-ellipsis-v" aria-hidden="true"></i> </button> <div class="dropdown-menu" aria-labelledby="dropdownMenuButtonWorkflow' + data + '"> <a class="dropdown-item" href="' + url1 + '?workflow_id=' + data + '&completed=true&active=true">Show jobs</a><button class="dropdown-item" type="submit" name="rerun" value="' + data + '">Re-run failed jobs</button><a class="dropdown-item js-delete-workflow" data-url="' + url2 + '">Delete</a></div>';
                 }
             }
         ],
@@ -61,8 +65,7 @@ $(document).ready(function() {
             "url": "/workflows/",
             "data": {
                 "json": 0,
-                "active": "{{ state_active }}",
-                "completed": "{{ state_completed }}",
+                "state": "{{ state }}",
                 "fq": "{{ search }}",
                 "limit": 10
             }
@@ -110,36 +113,33 @@ workflowstable.ajax.draw();
 
 {% block contentuser %}
   <h2 style="display: inline">Workflows</h2>
-  &nbsp; &nbsp; &nbsp; &nbsp;
-  <h6 style="display: inline"> <a href="{% url 'job_create' %}">
-                  <span class="fa fa-plus"></span>
-     CREATE WORKFLOW
-          </a></h6>
 
 <div class="d-flex">
 
-<div class="ml-auto p-2">
+          <div class="ml-auto p-2">
+                  <form class="form-inline" method="GET" action="/workflows">
 <div class="btn-group btn-group-toggle" data-toggle="buttons">
   <label class="btn btn-outline-dark">
-    <input type="radio" name="options" id="option1" autocomplete="off" onclick="javascript:window.location.href='/workflows'; return false;" {{ state_selectors.active }}> Active
+          <input type="radio" name="state" id="option1" value="active" {{ state_selectors.active }}> Active
   </label>
   <label class="btn btn-outline-dark">
-    <input type="radio" name="options" id="option2" autocomplete="off" onclick="javascript:window.location.href='/workflows?completed=true&limit=10'; return false;" {{ state_selectors.completed }}> Completed
+          <input type="radio" name="state" id="option2" value="completed" {{ state_selectors.completed }}> Completed
   </label>
   <label class="btn btn-outline-dark">
-    <input type="radio" name="options" id="option3" autocomplete="off" onclick="javascript:window.location.href='/workflows?completed=true&active=true&limit=10'; return false;" {{ state_selectors.all }}> All
+          <input type="radio" name="state" id="option3" value="all" {{ state_selectors.all }}> All
   </label>
 </div>
-</div>
+          </div>
 
 <div class="p-2">
-                  <form class="form-inline" method="GET" action="/workflows">
                           <input class="form-control" type="search" name="fq" placeholder="&#xF002; Filter workflows" style="font-family:Arial, FontAwesome" aria-label="Search" value={{ search }}>
     </form>
 </div>
 
   </div>
 
+  <form method="POST" action="/workflows/actions/">
+  {% csrf_token %}
   <table class="table table-striped" id="workflows-table">
     <thead>
       <tr>
@@ -153,6 +153,7 @@ workflowstable.ajax.draw();
       </tr>
     </thead>
   </table>
+  </form>
 
   <div class="modal fade" id="modal-workflows">
     <div class="modal-dialog">

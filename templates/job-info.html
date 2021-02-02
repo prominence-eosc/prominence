@@ -139,9 +139,14 @@ None<br/>
 <br/>
 {% for task in job.tasks %}
 <table>
-  <tr><td>Container image</td><td>{{ task.image }}</td></tr>
-  <tr><td>Container runtime</td><td>{{ task.runtime }}</td></tr>
-  <tr><td>Command</td><td>{{ task.cmd }}</td></tr>
+  <tr><td style="padding-left:10px"><b>Container image</b></td><td style="padding-left:20px">{{ task.image }}</td></tr>
+  <tr><td style="padding-left:10px"><b>Container runtime</b></td><td style="padding-left:20px">{{ task.runtime }}</td></tr>
+  <tr><td style="padding-left:10px"><b>Command</b></td><td style="padding-left:20px">{{ task.cmd }}</td></tr>
+  <tr><td style="padding-left:10px; vertical-align: top;"><b>Environment</b></td><td style="padding-left:20px; vertical-align: top;">
+  {% for key, value in task.env.items %}
+  {{ key }} = {{ value }}<br/>
+  {% endfor %}
+  </td></tr>
 </table>
 {% endfor %}
 
@@ -156,10 +161,24 @@ None
 
 <br/>
 <br/>
+<b>Artifacts</b>
+<br/>
+{% for artifact in job.artifacts %}
+{{ artifact.url }} <br/>
+{% empty %}
+None
+{% endfor %}
+
+<br/>
+<br/>
 <b>Output files</b>
 <br/>
 {% for output in job.outputFiles %}
-<a href="{{ output.url }}">{{ output.name }}</a>
+{% if output.name %}
+<a href="{{ output.url }}">{{ output.name }}</a> ({{ output.size }} bytes)
+{% else %}
+{{ output }}
+{% endif %}
 {% empty %}
 None
 {% endfor %}
@@ -169,21 +188,12 @@ None
 <b>Output directories</b>
 <br/>
 {% for output in job.outputDirs %}
-<a href="{{ output.url }}">{{ output.name }}</a>
+<a href="{{ output.url }}">{{ output.name }}</a> ({{ output.size }} bytes)
 {% empty %}
 None
 {% endfor %}
 
 <br/>
-<br/>
-<b>Artifacts</b>
-<br/>
-{% for artifact in job.artifacts %}
-{{ artifact.url }} <br/>
-{% empty %}
-None <br/>
-{% endfor %}
-
 <br/>
 <b>Storage</b>
 <br/>
@@ -199,6 +209,20 @@ None <br/>
 </table>
 {% else %}
 None
+{% endif %}
+
+<br/>
+<br/>
+<b>Policies</b><br/>
+{% if job.policies.placement.requirements.sites %}
+Placement:<br/>
+Requirements: 
+{% for site in job.policies.placement.requirements.sites %}
+{{ site }}
+{% endfor %}
+{% endif %}
+{% if job.policies.maximumTimeInQueue %}
+Maximum time pending: {{ job.policies.maximumTimeInQueue }}
 {% endif %}
 
 {% if job.parameters %}
@@ -235,21 +259,21 @@ None
   <br/>
 <b>Events</b>
 <br/>
-<table class="table table-sm table-borderless w-25">
-  <tr><td>Created</td><td style="text-align:right">{{ job.events.createTime }}</td></tr>
-  <tr><td>Start time</td><td style="text-align:right">{{ job.events.startTime }}</td></tr>
-  <tr><td>End time</td><td style="text-align:right">{{ job.events.endTime }}</td></tr>
+<table>
+  <tr><td style="padding-left:10px"><b>Created</b></td><td style="padding-left:20px">{{ job.events.createTime }}</td></tr>
+  <tr><td style="padding-left:10px"><b>Start time</b></td><td style="padding-left:20px">{{ job.events.startTime }}</td></tr>
+  <tr><td style="padding-left:10px"><b>End time</b></td><td style="padding-left:20px">{{ job.events.endTime }}</td></tr>
 </table>
 <br/>
 
 <b>Tasks</b><br/>
 {% for task in job.execution.tasks %}
-<table class="table table-sm table-borderless w-25">
-<tr><td>Image pull time</td><td style="text-align:right">{{ task.imagePullTime|floatformat:"0" }}</td></tr>
-<tr><td>Exit code</td><td style="text-align:right">{{ task.exitCode }}</td></tr>
-<tr><td>CPU time</td><td style="text-align:right">{{ task.cpuTimeUsage|floatformat:"0" }}</td></tr>
-<tr><td>Wall time</td><td style="text-align:right">{{ task.wallTimeUsage|floatformat:"0" }}</td></tr>
-<tr><td>Retries</td><td style="text-align:right">{{ task.retries }}</td></tr>
+<table>
+<tr><td style="padding-left:10px"><b>Image pull time</b></td><td style="padding-left:20px">{{ task.imagePullTime|floatformat:"0" }}</td></tr>
+<tr><td style="padding-left:10px"><b>Exit code</b></td><td style="padding-left:20px">{{ task.exitCode }}</td></tr>
+<tr><td style="padding-left:10px"><b>CPU time</b></td><td style="padding-left:20px">{{ task.cpuTimeUsage|floatformat:"0" }}</td></tr>
+<tr><td style="padding-left:10px"><b>Wall time</b></td><td style="padding-left:20px">{{ task.wallTimeUsage|floatformat:"0" }}</td></tr>
+<tr><td style="padding-left:10px"><b>Retries</b></td><td style="padding-left:20px">{{ task.retries }}</td></tr>
 </table>
 {% endfor %}
   </div>

@@ -1,6 +1,6 @@
 import base64
 
-def create_job(data, data_envvars, data_labels, files, data_artifacts, storage_list, uuid):
+def create_job(data, data_envvars, data_labels, files, data_artifacts, data_output_files, data_output_dirs, storage_list, uuid):
     """
     Create JSON description of job from form
     """
@@ -29,6 +29,10 @@ def create_job(data, data_envvars, data_labels, files, data_artifacts, storage_l
     if 'policy_leave_job_in_queue' in data:
         if data['policy_leave_job_in_queue']:
             policies['leaveInQueue'] = True
+
+    if 'policy_job_max_time_pending' in data:
+        if data['policy_job_max_time_pending'] > 0:
+            policies['maximumTimeInQueue'] = 60*data['policy_job_max_time_pending']
 
     if 'policy_sites' in data:
         if data['policy_sites'] != "":
@@ -109,6 +113,22 @@ def create_job(data, data_envvars, data_labels, files, data_artifacts, storage_l
             artifacts.append(new_artifact)
     if artifacts:
         job['artifacts'] = artifacts
+
+    output_files = []
+    for output_file in data_output_files:
+        output_file_c = output_file.cleaned_data
+        if output_file_c:
+            output_files.append(output_file_c.get('name'))
+    if output_files:
+        job['outputFiles'] = output_files
+
+    output_dirs = []
+    for output_dir in data_output_dirs:
+        output_dir_c = output_dir.cleaned_data
+        if output_dir_c:
+            output_dirs.append(output_dir_c.get('name'))
+    if output_dirs:
+        job['outputDirs'] = output_dirs
 
     inputs = []
     for input_file in files:

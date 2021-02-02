@@ -64,6 +64,12 @@ class ArtifactForm(forms.Form):
 class InputFileForm(forms.Form):
     input_file = forms.FileField()
 
+class OutputFileForm(forms.Form):
+    name = forms.CharField(label='Name', required=False)
+
+class OutputDirectoryForm(forms.Form):
+    name = forms.CharField(label='Name', required=False)
+
 class JobForm(forms.Form):
     name = forms.CharField(required=False)
     task_type = forms.ChoiceField(choices=TASK_TYPES)
@@ -86,6 +92,7 @@ class JobForm(forms.Form):
     policy_leave_job_in_queue = forms.BooleanField(required=False)
     policy_sites = forms.CharField(label='Sites', required=False)
     policy_regions = forms.CharField(label='Regions', required=False)
+    policy_job_max_time_pending = forms.IntegerField(initial=1, min_value=0, max_value=168)
 
     notify_email_job_finished = forms.BooleanField(required=False)
 
@@ -97,4 +104,5 @@ LabelsFormSet = formset_factory(LabelForm)
 EnvVarsFormSet = formset_factory(EnvVarForm)
 InputFilesFormSet = formset_factory(InputFileForm)
 ArtifactsFormSet = formset_factory(ArtifactForm)
-
+OutputFileFormSet = formset_factory(OutputFileForm)
+OutputDirectoryFormSet = formset_factory(OutputDirectoryForm)

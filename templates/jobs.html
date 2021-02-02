@@ -9,28 +9,43 @@
 {% block javascript %}
 <script src="{% static 'js/jobs.js' %}"></script>
 <script>
+$('input[type=radio]').on('change', function() {
+    $(this).closest("form").submit();
+});
+
 $(document).ready(function() {
     $('[data-toggle="tooltip"]').tooltip();
 });
 
 $(document).ready(function() {
     var jobstable = $('#jobs-table').DataTable({
-        order: [
-            [0, 'asc']
+        "order": [
+            [1, "asc"]
         ],
+        "select": {
+            "style":    "multi",
+            "selector": "td:first-child"
+        },
         "columnDefs": [{
                 "orderable": false,
-                "targets": [4, 5, 6, 7]
+                "targets": [5, 6, 7, 8]
             },
+            {
+                "className": "select-checkbox",
+                "targets": 0,
+                "defaultContent": "",
+                "orderable": false,
+                "data": null
+            },
             {
-                "targets": 0,
+                "targets": 1,
                 "data": "id",
                 "render": function(data, type, row, meta) {
                     return '<a href="' + data + '">' + data + '</a>';
                 }
             },
             {
-                "targets": 2,
+                "targets": 3,
                 "data": "status",
                 "render": function(data, type, row, meta) {
                     var statuses = {
@@ -45,12 +60,12 @@ $(document).ready(function() {
                 }
             },
             {
-                "targets": 7,
+                "targets": 8,
                 "data": "id",
                 "render": function(data, type, row, meta) {
                     var url1 = "{% url 'job_logs' 12345 %}".replace(/12345/, data.toString());
                     var url2 = "{% url 'job_delete' 12345 %}".replace(/12345/, data.toString());
-                    return '<div class="dropleft"><button class="btn btn-outline-secondary" type="button" id="dropdownMenuButtonJob' + data + '" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false" style="border:none;"><i class="fa fa-ellipsis-v" aria-hidden="true"></i></button><div class="dropdown-menu" aria-labelledby="dropdownMenuButtonJob' + data + '"><a class="dropdown-item" href="' + url1 + '">Logs</a><a class="dropdown-item" href="/">Remove from queue</a><a class="dropdown-item js-delete-job" data-url="' + url2 + '">Delete</a></div></div>';
+                    return '<div class="dropleft"><button class="btn btn-outline-secondary" type="button" id="dropdownMenuButtonJob' + data + '" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false" style="border:none;"><i class="fa fa-ellipsis-v" aria-hidden="true"></i></button><div class="dropdown-menu" aria-labelledby="dropdownMenuButtonJob' + data + '"><a class="dropdown-item" href="' + url1 + '">Logs</a><button class="dropdown-item" type="submit" name="job_remove" value="' + data + '">Remove from queue</button><a class="dropdown-item js-delete-job" data-url="' + url2 + '">Delete</a></div></div>';
                 }
             }
         ],
@@ -58,14 +73,17 @@ $(document).ready(function() {
             "url": "/jobs/",
             "data": {
                 "json": 0,
-                "active": "{{ state_active }}",
-                "completed": "{{ state_completed }}",
+                "state": "{{ state }}",
                 "workflow_id": "{{ workflow_id }}",
                 "fq": "{{ search }}",
                 "limit": 10
             }
         },
-        "columns": [{
+        "columns": [
+            {
+                "data": null
+            },
+            {
                 "data": "id"
             },
             {
@@ -104,9 +122,43 @@ $(document).ready(function() {
         jobstable.ajax.reload();
     }, 30000);
 
+   // Check all 
+   $('#checkall').click(function(){
+       if ($(this).is( ":checked" )) {
+           jobstable.rows().select();
+       } else {
+           jobstable.rows().deselect();
+       }
+   });
+
+  var loadFormJobs = function () {
+    //var rows = jobstable.rows( { selected: true }).data().toArray();
+    var rows = jobstable.rows( { selected: true } ).indexes();
+    var ids_selected = jobstable.cells(rows, 1).data().toArray();
+    var btn = $(this);
+    $.ajax({
+      url: btn.attr("data-url"),
+      data: {
+         "ids": ids_selected
+      },
+      type: 'get',
+      dataType: 'json',
+      beforeSend: function () {
+        $("#modal-jobs .modal-content").html("");
+        $("#modal-jobs").modal("show");
+      },
+      success: function (data) {
+        $("#modal-jobs .modal-content").html(data.html_form);
+      }
+    });
+    };
+
+   $("#delete-jobs").on("click", loadFormJobs);
+
+
 });
 
-jobstable.ajax.draw();
+//jobstable.ajax.draw();
 </script>
 {% endblock %}
 
@@ -120,30 +172,36 @@ jobstable.ajax.draw();
 
 	  <div class="d-flex">
 	  <div class="ml-auto p-2">
+		  <form class="form-inline" method="GET" action="/jobs">
 <div class="btn-group btn-group-toggle" data-toggle="buttons">
   <label class="btn btn-outline-dark">
-	  <input type="radio" name="options" id="option1" onclick="javascript:window.location.href='/jobs'; return false;" {{ state_selectors.active }}> Active
+	  <input type="radio" name="state" id="option1" value="active" {{ state_selectors.active }}> Active
   </label>
   <label class="btn btn-outline-dark">
-	  <input type="radio" name="options" id="option2" onclick="javascript:window.location.href='/jobs?completed=true&limit=10'; return false;" {{ state_selectors.completed }}> Completed
+	  <input type="radio" name="state" id="option2" value="completed" {{ state_selectors.completed }}> Completed
   </label>
   <label class="btn btn-outline-dark">
-	  <input type="radio" name="options" id="option3" onclick="javascript:window.location.href='/jobs?completed=true&active=true&limit=10'; return false;" {{ state_selectors.all }}> All
+	  <input type="radio" name="state" id="option3" value="all" {{ state_selectors.all }}> All
   </label>
 </div>
 	  </div>
 
 	  <div class="p-2">
-		  <form class="form-inline" method="GET" action="/jobs">
 			  <input class="form-control" type="search" name="fq" placeholder="&#xF002; Filter jobs" style="font-family:Arial, FontAwesome" aria-label="Search" value="{{ search }}">
     </form>
+	  </div>
+	  <div class="p-2">
+            <button id="delete-jobs" class="btn btn-danger js-delete-job" data-url="{% url 'jobs_delete' %}" data-toggle="modal" data-target="#modal-jobs">Delete</button>
 	  </div>
 
   </div>
 
+  <form id="job-actions" method="POST" action="/jobs/actions/">
+  {% csrf_token %}
   <table class="table table-striped" id="jobs-table">
     <thead>
       <tr>
+      <th><input type="checkbox" class="checkall" id="checkall"></th>
         <th>Id</th>
         <th>Name</th>
         <th>Status</th>
@@ -155,6 +213,7 @@ jobstable.ajax.draw();
       </tr>
     </thead>
   </table>
+  </form>
 <br/>
   
   <div class="modal fade" id="modal-jobs">
