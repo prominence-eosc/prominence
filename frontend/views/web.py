@@ -636,28 +636,38 @@ def workflow_actions(request):
     return redirect('/workflows')
 
 @login_required
-def workflow_delete(request, pk):
+def workflows_delete(request, pk=None):
     data = dict()
     if request.method == 'POST':
         data['form_is_valid'] = True
         user_name = request.user.username
         backend = ProminenceBackend(server.settings.CONFIG)
 
-        try:
-            workflow = Workflow.objects.get(Q(user=request.user) & Q(id=pk))
-        except Exception:
-            return JsonResponse({})
-
-        if workflow:
-            workflow.status = 4
-            workflow.save(update_fields=['status'])
-
-            (return_code, msg) = backend.delete_workflow(request.user.username, [workflow.backend_id])
-        # TODO: message if unsuccessful deletion?
+        if 'ids[]' in request.POST:
+            workflows = request.POST.getlist('ids[]')
+            for pk in workflows:
+                logger.info('Deleting workflow: %d', pk)
+                try:
+                    workflow = Workflow.objects.get(Q(user=request.user) & Q(id=pk))
+                except Exception:
+                    # TODO: message if unsuccessful
+                    pass
+                else:
+                    if workflow:
+                        workflow.status = 4
+                        workflow.status_reason = 16
+                        workflow.save(update_fields=['status', 'status_reason'])
+                        (return_code, msg) = backend.delete_workflow(request.user.username, [workflow.backend_id])
+                        # TODO: message if unsuccessful deletion?
     else:
-        workflow = {}
-        workflow['id'] = pk
-        context = {'workflow': workflow}
+        context = {}
+        if pk:
+            context['workflow'] = pk
+        else:
+            workflows = request.GET.getlist('ids[]')
+            context['workflows'] = workflows
+            context['workflows_display'] = ','.join(workflows)
+
         data['html_form'] = render_to_string('workflow-delete.html', context, request=request)
     return JsonResponse(data)
 

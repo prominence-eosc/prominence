@@ -18,19 +18,30 @@ $(document).ready(function() {
         order: [
             [0, 'asc']
         ],
+        "select": {
+            "style":    "multi",
+            "selector": "td:first-child"
+        },
         "columnDefs": [{
                 "orderable": false,
-                "targets": [4, 5, 6]
+                "targets": [5, 6, 7]
             },
+            {
+                "className": "select-checkbox",
+                "targets": 0,
+                "defaultContent": "",
+                "orderable": false,
+                "data": null
+            },
             {
-                "targets": 0,
+                "targets": 1,
                 "data": "id",
                 "render": function(data, type, row, meta) {
                     return '<a href="' + data + '">' + data + '</a>';
                 }
             },
             {
-                "targets": 2,
+                "targets": 3,
                 "data": "status",
                 "render": function(data, type, row, meta) {
                     var statuses = {
@@ -45,14 +56,14 @@ $(document).ready(function() {
                 }
             },
             {
-                "targets": 5,
+                "targets": 6,
                 "data": "progress",
                 "render": function(data, type, row, meta) {
                     return '<div class="progress data-toggle="tooltip" title="done: ' + data['done'] + ', failed: ' + data['failed'] + ', total: ' + data['total'] + '"> <div class="progress-bar bg-success" role="progressbar" style="width: '+data['donePercentage']+'%" aria-valuenow="'+data['done']+'" aria-valuemin="0" aria-valuemax="'+data['total']+'"></div><div class="progress-bar bg-danger" role="progressbar" style="width: '+data['failedPercentage']+'%" aria-valuenow="'+data['failed']+'" aria-valuemin="0" aria-valuemax="'+data['total']+'"></div></div></div>';
                 }
             },
             {
-                "targets": 6,
+                "targets": 7,
                 "data": "id",
                 "render": function(data, type, row, meta) {
                     var url1 = "{% url 'jobs' %}";
@@ -70,7 +81,11 @@ $(document).ready(function() {
                 "limit": 10
             }
         },
-        "columns": [{
+        "columns": [
+            {
+                "data": null
+            },
+            {
                 "data": "id"
             },
             {
@@ -105,9 +120,42 @@ $(document).ready(function() {
     setInterval(function() {
         workflowstable.ajax.reload();
     }, 30000);
+
+   // Check all
+   $('#checkall').click(function(){
+       if ($(this).is( ":checked" )) {
+           workflowstable.rows().select();
+       } else {
+           workflowstable.rows().deselect();
+       }
+   });
+
+  var loadFormWorkflows = function () {
+    var rows = workflowstable.rows( { selected: true } ).indexes();
+    var ids_selected = workflowstable.cells(rows, 1).data().toArray();
+    var btn = $(this);
+    $.ajax({
+      url: btn.attr("data-url"),
+      data: {
+         "ids": ids_selected
+      },
+      type: 'get',
+      dataType: 'json',
+      beforeSend: function () {
+        $("#modal-workflows .modal-content").html("");
+        $("#modal-workflows").modal("show");
+      },
+      success: function (data) {
+        $("#modal-workflows .modal-content").html(data.html_form);
+      }
+    });
+    };
+
+   $("#delete-workflows").on("click", loadFormWorkflows);
+
 });
 
-workflowstable.ajax.draw();
+//workflowstable.ajax.draw();
 </script>
 {% endblock %}
 
@@ -136,6 +184,10 @@ workflowstable.ajax.draw();
     </form>
 </div>
 
+<div class="p-2">
+<button id="delete-workflows" class="btn btn-danger js-delete-workflow" data-url="{% url 'workflows_delete' %}" data-toggle="modal" data-target="#modal-workflows">Delete</button>
+</div>
+
   </div>
 
   <form method="POST" action="/workflows/actions/">
@@ -143,6 +195,7 @@ workflowstable.ajax.draw();
   <table class="table table-striped" id="workflows-table">
     <thead>
       <tr>
+        <th><input type="checkbox" class="checkall" id="checkall"></th>
         <th>Id</th>
         <th>Name</th>
         <th>Status</th>

@@ -1,4 +1,4 @@
-<form method="post" action="{% url 'workflow_delete' workflow.id %}" class="js-workflow-delete-form">
+<form method="post" action="{% url 'workflows_delete' %}" class="js-workflow-delete-form">
   {% csrf_token %}
   <div class="modal-header">
     <h5 class="modal-title">Confirm workflow deletion</h5>
@@ -7,7 +7,15 @@
     </button>
   </div>
   <div class="modal-body">
-    Are you sure you want to delete workflow <strong>{{ workflow.id }}</strong>?
+  {% if workflow %}
+  Are you sure you want to delete workflow <strong>{{ workflow }}</strong>?
+  <input type="hidden" name="ids[]" value="{{ workflow }}">
+  {% else %}
+  {% for id in workflows %}
+  <input type="hidden" name="ids[]" value="{{ id }}">
+  {% endfor %}
+  Are you sure you want to delete the following workflows: {{ workflows_display }}?
+  {% endif %}
   </div>
   <div class="modal-footer">
     <button type="button" class="btn btn-outline-dark" data-dismiss="modal">Close</button>
