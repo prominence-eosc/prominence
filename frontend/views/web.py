@@ -508,7 +508,7 @@ def jobs_delete(request, pk=None):
         else:
             jobs = request.GET.getlist('ids[]')
             context['jobs'] = jobs
-            context['jobs_display'] = ','.join(jobs)
+            context['jobs_display'] = ', '.join(jobs)
 
         data['html_form'] = render_to_string('job-delete.html', context, request=request)
     return JsonResponse(data)
@@ -666,7 +666,7 @@ def workflows_delete(request, pk=None):
         else:
             workflows = request.GET.getlist('ids[]')
             context['workflows'] = workflows
-            context['workflows_display'] = ','.join(workflows)
+            context['workflows_display'] = ', '.join(workflows)
 
         data['html_form'] = render_to_string('workflow-delete.html', context, request=request)
     return JsonResponse(data)
