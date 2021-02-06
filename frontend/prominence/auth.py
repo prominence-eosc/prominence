@@ -11,6 +11,22 @@ import errors
 import validate
 from utilities import get_remote_addr
 
+def validate_token(token):
+    """
+    Try to decode the token using the job token secret and return the username and groups if the token is valid
+    """
+    decoded = None
+    try:
+        decoded = jwt.decode(token, app.config['JOB_TOKEN_SECRET'], algorithms=["HS256"])
+    except Exception as err:
+        app.logger.warning('Got exception checking for job token: %s', err)
+
+    if decoded:
+        if 'username' in decoded and 'groups' in decoded:
+            return (str(decoded['username']), str(decoded['groups']))
+
+    return (None, None)
+
 def get_expiry(token):
     """
     Get expiry date from a JWT token
@@ -99,8 +115,17 @@ def requires_auth(function):
             app.logger.warning('%s AuthenticationFailure token has already expired' % get_remote_addr(request))
             return authenticate()
 
-        # Query OIDC server
-        (success, username, group, email, allowed) = get_user_details(token)
+        # Firstly check if token is a job token
+        success = False
+        (username, group) = validate_token(token)
+        if username and group:
+            success = True
+            allowed = True
+            email = ''
+
+        # Query OIDC server if necessary
+        if not success:
+            (success, username, group, email, allowed) = get_user_details(token)
 
         if not success:
             return errors.oidc_error()
