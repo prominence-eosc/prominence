@@ -71,13 +71,13 @@ def get_user_details(token):
     allowed = False
     if app.config['REQUIRED_ENTITLEMENTS'] != '':
         if 'edu_person_entitlements' in response.json():
-            for entitlements in app.config['REQUIRED_ENTITLEMENTS']:
-                num_required = len(entitlements)
+            for vo in app.config['REQUIRED_ENTITLEMENTS']:
+                num_required = len(app.config['REQUIRED_ENTITLEMENTS'][vo])
                 num_have = 0
-                for entitlement in entitlements:
+                for entitlement in app.config['REQUIRED_ENTITLEMENTS'][vo]:
                     if entitlement in response.json()['edu_person_entitlements']:
-                        if 'member@' in entitlement and not groups:
-                            groups = entitlement.split('@')[1]
+                        if 'role=member' in entitlement and not groups:
+                            groups = vo
                         num_have += 1
                 if num_required == num_have:
                     allowed = True
