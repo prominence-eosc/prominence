@@ -176,6 +176,9 @@ class JobsView(views.APIView):
         detail = False
         if 'detail' in request.query_params:
             detail = True
+        elif job_ids:
+            # If user has specified job(s), assume they want details
+            detail = True
 
         if limit > 0:
             if completed:
