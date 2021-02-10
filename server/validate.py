@@ -358,6 +358,9 @@ def validate_job(job):
         if not isinstance(job['tasks'], list):
             return (False, 'an array of tasks must be provided')
 
+        if not job['tasks']:
+            return (False, 'a job must contain at least one task')
+
         for task in job['tasks']:
             for item in task:
                 if item not in task_valids:
