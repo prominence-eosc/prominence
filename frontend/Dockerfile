@@ -5,16 +5,20 @@ RUN yum -y install epel-release && \
                    python-devel \
                    gcc \
                    openssh-clients && \
-    pip install uwsgi \
-                flask \
-                requests \
-                boto3 \
-                PyJWT \
-                elasticsearch \
-                elasticsearch-dsl && \
     useradd prominence
 
-COPY prominence /prominence
+RUN  pip install --upgrade pip
+
+RUN mkdir /tmp/prominence
+COPY setup.py /tmp/prominence/.
+COPY README.md /tmp/prominence/.
+COPY prominence /tmp/prominence/prominence/
+COPY bin /tmp/prominence/bin/
+
+RUN cd /tmp/prominence && \
+    pip install . && \
+    rm -rf /tmp/prominence
+
 COPY promlet.py /usr/local/libexec/
 
 ENTRYPOINT ["uwsgi", \
@@ -25,5 +29,5 @@ ENTRYPOINT ["uwsgi", \
             "--gid", "prominence", \
             "--manage-script-name", \
             "--master", \
-            "--chdir", "/prominence", \
-            "-w", "restapi:app"]
+            "--chdir", "/usr/bin", \
+            "-w", "prominence-restapi:app"]
