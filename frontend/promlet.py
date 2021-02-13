@@ -32,6 +32,24 @@ DOWNLOAD_CONN_TIMEOUT = 10
 DOWNLOAD_MAX_RETRIES = 2
 DOWNLOAD_BACKOFF = 1
 
+def get_token(path):
+    filename = '.job.ad'
+    token = None
+    url = None
+    try:
+        with open(filename, 'r') as fd:
+            for line in fd.readlines():
+                match = re.match(r'ProminenceJobToken = "([\w\.\-]+)"', line)
+                if match:
+                    token = match.group(1)
+                match = re.match(r'ProminenceURL = "([\w\.\-:\/]+)"', line)
+                if match:
+                    url = match.group(1)
+    except Exception:
+        pass
+
+    return (token, url)
+
 def create_sif_from_archive(image_out, image_in):
     """
     Create a Singularity image from a Docker archive
@@ -1087,6 +1105,9 @@ def run_tasks(job, path, is_batch):
     """
     Execute sequential tasks
     """
+    # Get token
+    (token, url) = get_token(path)
+
     num_retries = 0
     if 'policies' in job:
         if 'maximumRetries' in job['policies']:
@@ -1153,6 +1174,10 @@ def run_tasks(job, path, is_batch):
         env = {}
         if 'env' in task:
             env = task['env']
+
+        if token and url:
+            env['PROMINENCE_TOKEN'] = token
+            env['PROMINENCE_URL'] = url
 
         if args.param:
             for pair in args.param:
