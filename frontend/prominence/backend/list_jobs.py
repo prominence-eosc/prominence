@@ -396,14 +396,20 @@ def list_jobs(self, job_ids, identity, active, completed, workflow, num, detail,
                     filename = os.path.basename(output_file)
                     stageout_success = False
                     url = ''
+                    size = None
                     if 'files' in stageout_u:
                         for file in stageout_u['files']:
                             if file['name'] == output_file and file['status'] == 'success':
                                 url = self.create_presigned_url('get',
                                                                 self._config['S3_BUCKET'],
                                                                 'scratch/%s/%s' % (fid, filename),
-                                                                600)
+                                                                24*60*60)
+                                size = self.get_object_size(self._config['S3_BUCKET'],
+                                                            'scratch/%s/%s' % (fid, filename))
+
                     file_map = {'name':output_file, 'url':url}
+                    if size:
+                        file_map['size'] = size
                     outputs.append(file_map)
                 jobj['outputFiles'] = outputs
 
@@ -414,14 +420,19 @@ def list_jobs(self, job_ids, identity, active, completed, workflow, num, detail,
                     dirname_base = dirs[len(dirs) - 1]
                     stageout_success = False
                     url = ''
+                    size = None
                     if 'directories' in stageout_u:
                         for directory in stageout_u['directories']:
                             if directory['name'] == output_dir and directory['status'] == 'success':
                                 url = self.create_presigned_url('get',
                                                                 self._config['S3_BUCKET'],
                                                                 'scratch/%s/%s.tgz' % (fid, dirname_base),
-                                                                600)
+                                                                24*60*60)
+                                size = self.get_object_size(self._config['S3_BUCKET'],
+                                                            'scratch/%s/%s.tgz' % (fid, dirname_base))
                     file_map = {'name':output_dir, 'url':url}
+                    if size:
+                        file_map['size'] = size
                     outputs.append(file_map)
                 jobj['outputDirs'] = outputs
 
