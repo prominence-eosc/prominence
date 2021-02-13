@@ -7,7 +7,7 @@ RUN yum -y install epel-release && \
                    openssh-clients && \
     useradd prominence
 
-RUN  pip install --upgrade pip
+RUN pip install --upgrade "pip < 21.0"
 
 RUN mkdir /tmp/prominence
 COPY setup.py /tmp/prominence/.
