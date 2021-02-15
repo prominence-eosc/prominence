@@ -55,12 +55,13 @@ def _create_htcondor_job(self, username, groups, email, uid, jjob, job_path, wor
     if 'nodes' not in jjob['resources']:
         jjob['resources']['nodes'] = 1
 
-    # Write original job.json
-    try:
-        with open(os.path.join(job_path, 'job.json'), 'w') as file:
-            json.dump(jjob, file)
-    except IOError:
-        return (1, {"error":"Unable to write job.json"}, cjob)
+    # Write original job.json if necessary
+    if workflow:
+        try:
+            with open(os.path.join(job_path, 'job.json'), 'w') as file:
+                json.dump(jjob, file)
+        except IOError:
+            return (1, {"error":"Unable to write job.json"}, cjob)
 
     # Replace image identifiers with S3 presigned URLs if necessary
     tasks_mapped = []
