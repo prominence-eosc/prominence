@@ -63,6 +63,7 @@ def create_job(data, data_envvars, data_labels, files, data_artifacts, data_outp
         resources['memory'] = data['memory']
         resources['disk'] = data['disk']
         resources['walltime'] = data['walltime']*60 # convert hours to mins
+        resources['nodes'] = data['nodes']
     job['resources'] = resources
 
     notifications = []
