@@ -22,6 +22,7 @@ def get_condor_workflow_id(user, workflow_id):
 def db_create_job(user, data, uid):
     job = Job(user=user,
               created=time.time(),
+              uuid=uid,
               sandbox='%s/%s' % (server.settings.CONFIG['SANDBOX_PATH'], uid))
     if 'name' in data:
         job.name = data['name']
