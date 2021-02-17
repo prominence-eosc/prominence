@@ -45,19 +45,19 @@ Workflow {{ workflow.id }}
 <b>Jobs progress</b>
 <table>
 	<tr>
-		<td>Total:</td><td>{{ workflow.progress.total }}</td>
+		<td style="padding-left:10px"><b>Total</b></b></td><td style="padding-left:20px">{{ workflow.progress.total }}</td>
 	</tr>
 	<tr>
-		<td>Done:</td><td>{{ workflow.progress.done }}</td>
+		<td style="padding-left:10px"><b>Done</b></td><td style="padding-left:20px">{{ workflow.progress.done }}</td>
 	</tr>
 	<tr>
-		<td>Failed:</td><td>{{ workflow.progress.failed }}</td>
+		<td style="padding-left:10px"><b>Failed</b></td><td style="padding-left:20px">{{ workflow.progress.failed }}</td>
 	</tr>
 	<tr>
-		<td>Queued:</td><td>{{ workflow.progress.queued }}</td>
+		<td style="padding-left:10px"><b>Queued</b></td><td style="padding-left:20px">{{ workflow.progress.queued }}</td>
 	</tr>
 	<tr>
-		<td>Waiting:</td><td>{{ workflow.progress.waiting }}</td>
+		<td style="padding-left:10px"><b>Waiting</b></td><td style="padding-left:20px">{{ workflow.progress.waiting }}</td>
 	</tr>
 </table>
 
@@ -75,9 +75,9 @@ None
 <b>Events</b>
 <br/>
 <table>
-  <tr><td>Created:</td><td>{{ workflow.events.createTime }}</td></tr>
-  <tr><td>Start time:</td><td>{{ workflow.events.startTime }}</td></tr>
-  <tr><td>End time:</td><td>{{ workflow.events.endTime }}</td></tr>
+  <tr><td style="padding-left:10px"><b>Created</b></td><td style="padding-left:20px">{{ workflow.events.createTime }}</td></tr>
+  <tr><td style="padding-left:10px"><b>Start time</b></td><td style="padding-left:20px">{{ workflow.events.startTime }}</td></tr>
+  <tr><td style="padding-left:10px"><b>End time</b></td><td style="padding-left:20px">{{ workflow.events.endTime }}</td></tr>
 </table>
 
 <br/>
