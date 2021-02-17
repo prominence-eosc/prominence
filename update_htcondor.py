@@ -42,7 +42,7 @@ def delete_jobs():
     for job in jobs:
         if job.backend_id:
             logger.info('Deleting job %d with HTCondor id %d', job.id, job.backend_id)
-            (return_code, msg) = backend.delete_job(job.user.username, [job.backend_id])
+            (return_code, _) = backend.delete_job(job.user.username, [job.backend_id])
         else:
             logger.info('Deleting job %d which has no HTCondor id', job.id)
             return_code = 0
@@ -65,7 +65,7 @@ def delete_workflows():
     for workflow in workflows:
         if workflow.backend_id:
             logger.info('Deleting workflow %d with HTCondor id %d', workflow.id, workflow.backend_id)
-            (return_code, msg) = backend.delete_workflow(workflow.user.username, [workflow.backend_id])
+            (return_code, _) = backend.delete_workflow(workflow.user.username, [workflow.backend_id])
         else:
             logger.info('Deleting workflow %d which has no HTCondor id', workflow.id)
             return_code = 0
