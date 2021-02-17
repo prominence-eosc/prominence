@@ -94,14 +94,6 @@ def create_workflow(self, username, groups, email, uid, jwf):
     if 'name' in jwf:
         wf_name = str(jwf['name'])
 
-    # Write the workflow JSON description to disk
-    try:
-        with open(job_sandbox + '/workflow.json', 'w') as fd:
-            json.dump(jwf, fd)
-    except IOError:
-        logger.critical('Unable to write workflow.json for user %s and job uid %s', username, uid)
-        return (1, {"error":"Unable to write workflow.json"})
-
     dag = []
 
     # Policies
