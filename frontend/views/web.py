@@ -608,16 +608,8 @@ def workflow_actions(request):
             except Exception:
                 return redirect('/workflows')
             if workflow:
-                groups = set_groups(request)
-                backend = ProminenceBackend(server.settings.CONFIG)
-                (return_code, data) = backend.rerun_workflow(request.user.username,
-                                                             ','.join(groups),
-                                                             request.user.email,
-                                                             workflow.backend_id)
-                if 'id' in data:
-                    workflow.status = 2
-                    workflow.backend_id = int(data['id'])
-                    workflow.save()
+                workflow.updated = True
+                workflow.save(update_fields=['updated'])
 
     return redirect('/workflows')
 
