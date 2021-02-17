@@ -11,7 +11,7 @@ import socket
 import time
 import classad
 
-from update_db import update_job_in_db, update_workflow_db
+from update_db import check_db, update_job_in_db, update_workflow_db
 
 CONFIG = configparser.ConfigParser()
 CONFIG.read('/etc/prominence/prominence.ini')
@@ -324,15 +324,16 @@ def main():
                 else:
                     success_db = update_job_in_db(int(cluster_id), status, end_date=completion_date, reason=reason)
 
-            if not success_db:
+            if success_db is None:
                 logger.error('Unable to update status of job %d in the DB', int(cluster_id))
                 continue
 
             # Send job details to InfluxDB
-            success = True
-            if not send_to_socket(cluster_id, identity, promlet_json):
-                logger.error('Got error sending details to InfluxDB')
-                success = False
+            if success_db:
+                success = True
+                if not send_to_socket(cluster_id, identity, promlet_json):
+                    logger.error('Got error sending details to InfluxDB')
+                    success = False
 
             # Move file to processed jobs directory
             move(filename)
@@ -350,9 +351,14 @@ if __name__ == "__main__":
     logger.addHandler(handler)
     logger.setLevel(logging.INFO)
 
+    logger.info('Starting polling loop...')
     while True:
+        if not check_db():
+            sys.exit(1)
+
         try:
             main()
         except Exception as err:
             logger.error('Got exception processing completed jobs: %s', err)
-
+        
+        time.sleep(2)
