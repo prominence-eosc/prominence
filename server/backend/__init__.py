@@ -28,9 +28,4 @@ class ProminenceBackend(object):
         Create job sandbox
         """
         job_sandbox = self._config['SANDBOX_PATH'] + '/' + uid
-        try:
-            os.makedirs(job_sandbox)
-            os.makedirs(job_sandbox + '/input')
-        except:
-            return None
         return job_sandbox
