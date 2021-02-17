@@ -18,9 +18,6 @@ def create_token(request):
     user = user_model.objects.get_by_natural_key(user_name)
     Token.objects.filter(user=user).delete()
     token = Token.objects.get_or_create(user=user)
-    context = {
-        'token': token[0]
-    }
     return HttpResponse('<input id="accesstoken" size=40 type="text" readonly value="%s" />' % token[0])
 
 @login_required
