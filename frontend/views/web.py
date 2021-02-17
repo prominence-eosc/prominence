@@ -33,20 +33,6 @@ from frontend.db_utilities import get_condor_job_id, get_job, db_create_job
 # Get an instance of a logger
 logger = logging.getLogger(__name__)
 
-def index(request):
-    if request.user.is_authenticated:
-        xaxis_min = (datetime.now() - timedelta(hours=24)).strftime("%Y-%m-%dT%H:%M:%SZ")
-        xaxis_max = datetime.now().strftime("%Y-%m-%dT%H:%M:%SZ")
-        return render(request, 'home.html', {'xaxis_min': xaxis_min, 'xaxis_max': xaxis_max})
-    else:
-        return render(request, 'index.html')
-
-def terms_of_use(request):
-    return render(request, 'terms-of-use.html')
-
-def privacy_policy(request):
-    return render(request, 'privacy-policy.html')
-
 @login_required
 def storage(request):
     storage_list = request.user.storage_systems.all()
@@ -341,32 +327,6 @@ def workflows(request):
                       {'search': search,
                        'state_selectors': state_selectors,
                        'state': state})
-
-@login_required
-def create_token(request):
-    """
-    Generate a new API access token for the User.
-    """
-    user_model = get_user_model()
-    user_name = request.user.username
-    user = user_model.objects.get_by_natural_key(user_name)
-    Token.objects.filter(user=user).delete()
-    token = Token.objects.get_or_create(user=user)
-    context = {
-        'token': token[0]
-    }
-    return HttpResponse('Your token is: %s' % token[0])
-
-@login_required
-def revoke_token(request):
-    """
-    Revoke an existing API access token for the User.
-    """
-    user_model = get_user_model()
-    user_name = request.user.username
-    user = user_model.objects.get_by_natural_key(user_name)
-    Token.objects.filter(user=user).delete()
-    return HttpResponse('Your token has been revoked')
 
 @login_required
 def compute(request):
