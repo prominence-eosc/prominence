@@ -15,6 +15,18 @@ logger = logging.getLogger('workflows.update_db')
 
 from frontend.models import Job, Workflow
 
+def check_db():
+    try:
+        django.db.connection.ensure_connection()
+    except Exception as err:
+        logger.critical('Problem accessing database: %s', err)
+        return False
+    else:
+        if not django.db.connection.is_usable():
+            logger.critical('Database connection is not useable')
+            return False
+    return True
+
 def get_workflow_from_db(workflow_condor_id):
     try:
         workflow = Workflow.objects.get(backend_id=workflow_condor_id)
@@ -83,6 +95,7 @@ def find_incomplete_jobs(workflow_condor_id):
 
 def update_job_in_db(job_condor_id, status, start_date=None, end_date=None, reason=None, site=None):
     rows = 0
+
     try:
         if status == 2 and start_date:
             # If job was previously not yet running we need to set the running status and start time
