@@ -67,10 +67,10 @@ class JobsView(views.APIView):
 
         # Create sandbox & write JSON job description
         if not create_sandbox(uid, server.settings.CONFIG['SANDBOX_PATH']):
-            return Response({'error': 'Unable to create job sandbox'}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({'error': 'Unable to create job sandbox'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
         if not write_json(request.data, os.path.join(server.settings.CONFIG['SANDBOX_PATH'], uid), 'job.json'):
-            return Response({'error': 'Unable to write job JSON to job sandbox'}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({'error': 'Unable to write job JSON to job sandbox'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
         # Create job
         job = db_create_job(request.user, request.data, uid)

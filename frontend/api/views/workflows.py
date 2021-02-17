@@ -85,10 +85,10 @@ class WorkflowsView(views.APIView):
 
         # Create sandbox & write JSON job description
         if not create_sandbox(uid, server.settings.CONFIG['SANDBOX_PATH']):
-            return Response({'error': 'Unable to create workflow sandbox'}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({'error': 'Unable to create workflow sandbox'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
         if not write_json(request.data, os.path.join(server.settings.CONFIG['SANDBOX_PATH'], uid), 'workflow.json'):
-            return Response({'error': 'Unable to write workflow JSON to the sandbox'}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({'error': 'Unable to write workflow JSON to the sandbox'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
         # Add workflow to the DB
         workflow = db_create_workflow(request.user, request.data, uid)
