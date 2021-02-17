@@ -1,4 +1,5 @@
 from datetime import datetime, timedelta
+import os
 import logging
 import uuid
 import requests
@@ -24,9 +25,10 @@ from server.backend import ProminenceBackend
 from server.validate import validate_job
 from server.set_groups import set_groups
 import server.settings
-from frontend.utilities import create_job
+from frontend.utilities import create_job, get_details_from_name
+from server.sandbox import create_sandbox, write_json
 from frontend.metrics import JobMetrics, JobMetricsByCloud, JobResourceUsageMetrics
-from frontend.db_utilities import get_condor_job_id, db_create_job
+from frontend.db_utilities import get_condor_job_id, get_job, db_create_job
 
 # Get an instance of a logger
 logger = logging.getLogger(__name__)
@@ -439,23 +441,12 @@ def job_create(request):
             #if not job_status:
             # TODO: message that job is invalid
 
-            # Submit job
+            # Create sandbox & write JSON job description
+            status = create_sandbox(job_uuid, server.settings.CONFIG['SANDBOX_PATH'])
+            status = write_json(job_desc, os.path.join(server.settings.CONFIG['SANDBOX_PATH'], job_uuid), 'job.json')
+
+            # Add job to DB
             job = db_create_job(request.user, job_desc, job_uuid)
-            logger.info('Submitting job for user %s with uid %s', user_name, job_uuid)
-            # TODO: put this outside of Django web app
-            (return_code, data) = backend.create_job(user_name,
-                                                     ','.join(groups),
-                                                     request.user.email,
-                                                     job_uuid,
-                                                     job_desc)
-            # TODO: if return code not zero, return message to user
-            if 'id' in data:
-                job.backend_id = data['id']
-                if 'policies' in job_desc:
-                    if 'leaveInQueue' in job_desc['policies']:
-                        if job_desc['policies']['leaveInQueue']:
-                            job.in_queue = True
-                job.save()
 
             return redirect('/jobs')
     else:
@@ -498,9 +489,8 @@ def jobs_delete(request, pk=None):
                     if job:
                         job.status = 4
                         job.status_reason = 16
-                        job.save(update_fields=['status', 'status_reason'])
-                        (return_code, msg) = backend.delete_job(request.user.username, [job.backend_id])
-                        # TODO: message if unsuccessful deletion?
+                        job.updated = True
+                        job.save(update_fields=['status', 'status_reason', 'updated'])
     else:
         context = {}
         if pk:
@@ -576,19 +566,18 @@ def user_usage(request):
 
 @login_required
 def job_logs(request, pk):
-    user_name = request.user.username
+    job = get_job(request.user, pk)
+    if not job:
+        return HttpResponse('No such job or not authorised to access job')
+
+    name = None
+    instance = 0
+    if job.workflow:
+        (name, instance) = get_details_from_name(job.name)
+
     backend = ProminenceBackend(server.settings.CONFIG)
-    condor_job_id = get_condor_job_id(request.user, pk)
-    (uid, identity, iwd, out, err, name, _) = backend.get_job_unique_id(condor_job_id)
-
-    if not identity:
-        return HttpResponse('No such job')
-
-    if user_name != identity:
-        return HttpResponse('Not authorised for this job')
-
-    stdout = backend.get_stdout(uid, iwd, out, err, condor_job_id, name)
-    stderr = backend.get_stderr(uid, iwd, out, err, condor_job_id, name)
+    stdout = backend.get_stdout(job.sandbox, name, instance)
+    stderr = backend.get_stderr(job.sandbox, name, instance)
 
     if not stdout:
         stdout = ''
@@ -655,10 +644,8 @@ def workflows_delete(request, pk=None):
                 else:
                     if workflow:
                         workflow.status = 4
-                        workflow.status_reason = 16
-                        workflow.save(update_fields=['status', 'status_reason'])
-                        (return_code, msg) = backend.delete_workflow(request.user.username, [workflow.backend_id])
-                        # TODO: message if unsuccessful deletion?
+                        workflow.updated = True
+                        workflow.save(update_fields=['status', 'updated'])
     else:
         context = {}
         if pk:
