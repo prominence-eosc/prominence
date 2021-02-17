@@ -15,9 +15,9 @@ def create_job(self, username, groups, email, uid, jjob):
     """
     # Create the job sandbox
     job_sandbox = self.create_sandbox(uid)
-    if job_sandbox is None:
-        logger.critical('Unable to create job sandbox for user %s and job uid %s', username, uid)
-        return (1, {"error":"Unable to create job sandbox"})
+    #if job_sandbox is None:
+    #    logger.critical('Unable to create job sandbox for user %s and job uid %s', username, uid)
+    #    return (1, {"error":"Unable to create job sandbox"})
 
     # Copy executable to sandbox, change current working directory to the sandbox
     shutil.copyfile(self._promlet_file, os.path.join(job_sandbox, 'promlet.py'))
