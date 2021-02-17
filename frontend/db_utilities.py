@@ -3,6 +3,22 @@ from django.db.models import Q
 from frontend.models import Job, JobLabel, Workflow
 import server.settings
 
+def get_job(user, job_id):
+    try:
+        job = Job.objects.get(Q(user=user) & Q(id=job_id))
+    except Exception:
+        return None
+
+    return job
+
+def get_workflow(user, workflow_id):
+    try:
+        workflow = Workflow.objects.get(Q(user=user) & Q(id=workflow_id))
+    except Exception:
+        return None
+
+    return workflow
+
 def get_condor_job_id(user, job_id):
     try:
         job = Job.objects.get(Q(user=user) & Q(id=job_id))
