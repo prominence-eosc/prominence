@@ -127,6 +127,26 @@ def rerun_workflows():
 
     # Find any workflows to re-run
     workflows = Workflow.objects.filter((Q(status=3) | Q(status=4) | Q(status=5) | Q(status=6)) & Q(updated=True))
+    for workflow in workflows:
+        if workflow.backend_id:
+            logger.info('Re-running workflow with id %d and HTCondor id %d', workflow.id, workflow.backend_id)
+
+            # Set groups
+            groups = set_groups_user(workflow.user)
+
+            (return_code, data) = backend.rerun_workflow(workflow.user.username,
+                                                         ','.join(groups),
+                                                         workflow.user.email,
+                                                         workflow.backend_id)
+        else:
+            logger.info('User request re-running workflow with id %d which has no HTCondor id', workflow.id)
+            return_code = 0
+
+        if return_code == 0 or not workflow.backend_id:
+            workflow.updated = False
+            workflow.save(update_fields=['updated'])
+        else:
+            logger.error('Unable to re-run workflow')
 
 def submit_new_workflows():
     """
