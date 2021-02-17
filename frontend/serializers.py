@@ -136,9 +136,13 @@ class WorkflowDetailsSerializer(WorkflowSerializer):
     jobs = serializers.SerializerMethodField()
     factories = serializers.SerializerMethodField()
     dependencies = serializers.SerializerMethodField()
+    labels = serializers.SerializerMethodField()
 
     class Meta(WorkflowSerializer.Meta):
-        fields = WorkflowSerializer.Meta.fields + ['jobs', 'factories', 'dependencies']
+        fields = WorkflowSerializer.Meta.fields + ['jobs',
+                                                   'factories',
+                                                   'dependencies',
+                                                   'labels']
 
     def get_jobs(self, obj):
         workflow_json = get_workflow_json(obj)
@@ -163,6 +167,13 @@ class WorkflowDetailsSerializer(WorkflowSerializer):
         if 'dependencies' in workflow_json:
             return workflow_json['dependencies']
         return {}
+
+    def get_labels(self, obj):
+        labels = {}
+        if obj.labels:
+            for label in obj.labels.all():
+                labels[label.key] = label.value
+        return labels
 
 class JobSerializer(serializers.ModelSerializer):
     events = serializers.SerializerMethodField()
