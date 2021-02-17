@@ -232,6 +232,12 @@ None
 {% if job.policies.maximumTimeInQueue %}
 <tr><td style="padding-left:10px"><b>Maximum time pending</b> (mins)</td><td style="padding-left:20px">{{ job.policies.maximumTimeInQueue }}</td></tr>
 {% endif %}
+{% if job.policies.maximumRetries %}
+<tr><td style="padding-left:10px"><b>Maximum retries (jobs)</b></td><td style="padding-left:20px">{{ job.policies.maximumRetries }}</td></tr>
+{% endif %}
+{% if job.policies.maximumRetriesPerTask %}
+<tr><td style="padding-left:10px"><b>Maximum retries (tasks)</b></td><td style="padding-left:20px">{{ job.policies.maximumRetriesPerTask }}</td></tr>
+{% endif %}
 </table>
 
 {% if job.parameters %}
