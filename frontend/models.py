@@ -13,14 +13,24 @@ class Workflow(models.Model):
         (7, 'unknown'),
     )
 
+    WORKFLOW_STATUS_REASONS = (
+        (0, ''),
+        (1, 'Workflow deleted by user'),
+        (2, 'One or more jobs failed'),
+    )
+
     backend_id = models.PositiveIntegerField(db_index=True, unique=True, blank=True, null=True, default=None)
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="workflows", null=True)
     name = models.CharField(max_length=512)
     status = models.PositiveSmallIntegerField(choices=WORKFLOW_STATUSES, default=0)
+    #status_reason = models.PositiveSmallIntegerField(choices=WORKFLOW_STATUS_REASONS, default=0)
+    updated = models.BooleanField(default=False)
+    #in_queue = models.BooleanField(default=False)
     created = models.PositiveIntegerField(default=0)
     time_start = models.PositiveIntegerField(default=0)
     time_end = models.PositiveIntegerField(default=0)
     sandbox = models.CharField(max_length=100)
+    uuid = models.CharField(max_length=36)
     jobs_total = models.PositiveIntegerField(default=0)
     jobs_done = models.PositiveIntegerField(default=0)
     jobs_failed = models.PositiveIntegerField(default=0)
