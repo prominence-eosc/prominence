@@ -433,9 +433,6 @@ def job_create(request):
             user_name = request.user.username
             backend = ProminenceBackend(server.settings.CONFIG)
 
-            # Set groups
-            groups = set_groups(request)
-
             # Validate job
             (job_status, msg) = validate_job(job_desc)
             #if not job_status:
