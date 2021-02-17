@@ -1,6 +1,7 @@
 """
 API views for managing workflows
 """
+import os
 import re
 import time
 import uuid
@@ -12,19 +13,24 @@ from rest_framework.response import Response
 
 
 from django.db.models import Q
+from django.shortcuts import HttpResponse
 
 from frontend.models import Workflow, WorkflowLabel
 from frontend.serializers import WorkflowSerializer, WorkflowDetailsSerializer
+
+from frontend.api.renderers import PlainTextRenderer
 
 from server.backend import ProminenceBackend
 from server.validate import validate_workflow
 from server.set_groups import set_groups
 import server.settings
-from frontend.db_utilities import get_condor_workflow_id
+from server.sandbox import create_sandbox, write_json
+from frontend.db_utilities import get_workflow
 
 def db_create_workflow(user, data, uid):
     workflow = Workflow(user=user,
                         created=time.time(),
+                        uuid=uid,
                         sandbox='%s/%s' % (server.settings.CONFIG['SANDBOX_PATH'], uid))
     if 'name' in data:
         workflow.name = data['name']
@@ -77,31 +83,17 @@ class WorkflowsView(views.APIView):
         if not workflow_status:
             return Response({'error': msg}, status=status.HTTP_400_BAD_REQUEST)
 
-        # Set groups
-        groups = set_groups(request)
+        # Create sandbox & write JSON job description
+        if not create_sandbox(uid, server.settings.CONFIG['SANDBOX_PATH']):
+            return Response({'error': 'Unable to create workflow sandbox'}, status=status.HTTP_400_BAD_REQUEST)
 
+        if not write_json(request.data, os.path.join(server.settings.CONFIG['SANDBOX_PATH'], uid), 'workflow.json'):
+            return Response({'error': 'Unable to write workflow JSON to the sandbox'}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Add workflow to the DB
         workflow = db_create_workflow(request.user, request.data, uid)
 
-        # Create workflow
-        (return_code, data) = self._backend.create_workflow(request.user.username,
-                                                            ','.join(groups),
-                                                            request.user.email,
-                                                            uid,
-                                                            request.data)
-
-        # Return status as appropriate; TODO: handle server error differently to user error?
-        http_status = status.HTTP_201_CREATED
-        if return_code == 1:
-            http_status = status.HTTP_400_BAD_REQUEST
-        else:
-            if 'id' in data:
-                workflow.backend_id = data['id']
-                workflow.save()
-
-                # Return id from Django, not HTCondor, to user
-                data['id'] = workflow.id
-
-        return Response(data, status=http_status)
+        return Response({'id': workflow.id}, status=status.HTTP_201_CREATED)
 
     def get(self, request, workflow_id=None):
         """
@@ -208,18 +200,12 @@ class WorkflowsView(views.APIView):
 
         workflows = Workflow.objects.filter(query)
 
-        condor_ids = []
         for workflow in workflows:
-            condor_ids.append(workflow.backend_id)
             workflow.status = 4
-            workflow.save(update_fields=['status'])
+            workflow.updated = True
+            workflow.save(update_fields=['status', 'updated'])
 
-        (return_code, data) = self._backend.delete_workflow(request.user.username, condor_ids)
-
-        if return_code != 0:
-            return Response(data, status=status.HTTP_400_BAD_REQUEST)
-
-        return Response(data, status=status.HTTP_200_OK)
+        return Response({}, status=status.HTTP_204_NO_CONTENT)
 
     def put(self, request, workflow_id=None):
         """
@@ -229,7 +215,7 @@ class WorkflowsView(views.APIView):
         try:
             workflow = Workflow.objects.get(Q(user=request.user) & Q(id=workflow_id))
         except Exception:
-            return Response({}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            return Response({'error': 'No such workflow or not allowed to access this workflow'}, status=status.HTTP_400_BAD_REQUEST)
 
         if not workflow:
             return Response({}, status=status.HTTP_400_BAD_REQUEST)
@@ -261,40 +247,25 @@ class WorkflowStdOutView(views.APIView):
     """
     authentication_classes = [TokenAuthentication]
     permission_classes = [permissions.IsAuthenticated]
+    renderer_classes = [PlainTextRenderer]
 
     def __init__(self, *args, **kwargs):
         self._backend = ProminenceBackend(server.settings.CONFIG)
         super().__init__(*args, **kwargs)
 
-    def get(self, request, workflow_id=None, job=None, instance_id=-1):
+    def get(self, request, workflow_id=None, job=None, instance_id=0):
         """
         Get standard output
         """
-        condor_workflow_id = get_condor_workflow_id(request.user, workflow_id)
+        workflow = get_workflow(request.user, workflow_id)
+        if not workflow:
+            return HttpResponse(status=status.HTTP_400_BAD_REQUEST)
 
-        if not condor_workflow_id:
-            return Response({'error': 'Workflow does not exist'},
-                            status=status.HTTP_400_BAD_REQUEST)
-
-        (uid, identity, iwd, _, _, _, _) = self._backend.get_job_unique_id(condor_workflow_id)
-
-        if not job:
-            job = 0
-
-        if not identity:
-            return Response({'error': 'Job does not exist'},
-                            status=status.HTTP_400_BAD_REQUEST)
-
-        if request.user.username != identity:
-            return Response({'error': 'Not authorized to access this job'},
-                            status=status.HTTP_403_FORBIDDEN)
-
-        stdout = self._backend.get_stdout(uid, iwd, None, None, -1, job, instance_id)
+        stdout = self._backend.get_stdout(workflow.sandbox, job, instance_id)
         if stdout is None:
-            return Response({'error': 'Standard output does not exist'},
-                            status=status.HTTP_400_BAD_REQUEST)
+            return HttpResponse(status=status.HTTP_400_BAD_REQUEST)
 
-        return stdout
+        return Response(stdout)
 
 class WorkflowStdErrView(views.APIView):
     """
@@ -302,37 +273,22 @@ class WorkflowStdErrView(views.APIView):
     """
     authentication_classes = [TokenAuthentication]
     permission_classes = [permissions.IsAuthenticated]
+    renderer_classes = [PlainTextRenderer]
 
     def __init__(self, *args, **kwargs):
         self._backend = ProminenceBackend(server.settings.CONFIG)
         super().__init__(*args, **kwargs)
 
-    def get(self, request, workflow_id=None, job=None, instance_id=-1):
+    def get(self, request, workflow_id=None, job=None, instance_id=0):
         """
         Get standard error
         """
-        condor_workflow_id = get_condor_workflow_id(request.user, workflow_id)
+        workflow = get_workflow(request.user, workflow_id)
+        if not workflow:
+            return HttpResponse(status=status.HTTP_400_BAD_REQUEST)
 
-        if not condor_workflow_id:
-            return Response({'error': 'Workflow does not exist'},
-                            status=status.HTTP_400_BAD_REQUEST)
-
-        (uid, identity, iwd, _, _, _, _) = self._backend.get_job_unique_id(condor_workflow_id)
-
-        if not job:
-            job = 0
-
-        if not identity:
-            return Response({'error': 'Job does not exist'},
-                            status=status.HTTP_400_BAD_REQUEST)
-
-        if request.user.username != identity:
-            return Response({'error': 'Not authorized to access this job'},
-                            status=status.HTTP_403_FORBIDDEN)
-
-        stderr = self._backend.get_stderr(uid, iwd, None, None, -1, job, instance_id)
+        stderr = self._backend.get_stderr(workflow.sandbox, job, instance_id)
         if stderr is None:
-            return Response({'error': 'Standard output does not exist'},
-                            status=status.HTTP_400_BAD_REQUEST)
+            return HttpResponse(status=status.HTTP_400_BAD_REQUEST)
 
-        return stderr
+        return Response(stderr)

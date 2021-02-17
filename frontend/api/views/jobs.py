@@ -1,6 +1,7 @@
 """
 API views for managing jobs
 """
+import os
 import re
 import time
 import uuid
@@ -12,15 +13,19 @@ from rest_framework.response import Response
 from rest_framework import renderers
 
 from django.db.models import Q
+from django.shortcuts import HttpResponse
 
 from frontend.models import Job, JobLabel, Workflow
 from frontend.serializers import JobSerializer, JobDetailsSerializer
+from frontend.db_utilities import get_job, get_condor_job_id, db_create_job
+from frontend.utilities import get_details_from_name
+
+from frontend.api.renderers import PlainTextRenderer
 
 from server.backend import ProminenceBackend
 from server.validate import validate_job
-from server.set_groups import set_groups
+from server.sandbox import create_sandbox, write_json
 import server.settings
-from frontend.db_utilities import get_condor_job_id, db_create_job
 
 def get_job_ids(job_id, request):
     """
@@ -35,13 +40,6 @@ def get_job_ids(job_id, request):
         job_ids.extend(request.query_params.get('id').split(','))
 
     return job_ids
-
-class PlainTextRenderer(renderers.BaseRenderer):
-    media_type = 'text/plain'
-    format = 'text'
-
-    def render(self, data, media_type=None, renderer_context=None):
-        return data.encode(self.charset)
 
 class JobsView(views.APIView):
     """
@@ -67,36 +65,17 @@ class JobsView(views.APIView):
         if not job_status:
             return Response({'error': msg}, status=status.HTTP_400_BAD_REQUEST)
 
-        # Set groups
-        groups = set_groups(request)
+        # Create sandbox & write JSON job description
+        if not create_sandbox(uid, server.settings.CONFIG['SANDBOX_PATH']):
+            return Response({'error': 'Unable to create job sandbox'}, status=status.HTTP_400_BAD_REQUEST)
+
+        if not write_json(request.data, os.path.join(server.settings.CONFIG['SANDBOX_PATH'], uid), 'job.json'):
+            return Response({'error': 'Unable to write job JSON to job sandbox'}, status=status.HTTP_400_BAD_REQUEST)
 
         # Create job
         job = db_create_job(request.user, request.data, uid)
 
-        # TODO: ideally this should be elsewhere
-        (return_code, data) = self._backend.create_job(request.user.username,
-                                                       ','.join(groups),
-                                                       request.user.email,
-                                                       uid,
-                                                       request.data)
-
-        # Return status as appropriate; TODO: handle server error differently to user error?
-        http_status = status.HTTP_201_CREATED
-        if return_code == 1:
-            http_status = status.HTTP_400_BAD_REQUEST
-        else:
-            if 'id' in data:
-                job.backend_id = data['id']
-                if 'policies' in request.data:
-                    if 'leaveInQueue' in request.data['policies']:
-                        if request.data['policies']['leaveInQueue']:
-                            job.in_queue = True
-                job.save()
-
-                # Return id from Django, not HTCondor, to user
-                data['id'] = job.id
-
-        return Response(data, status=http_status)
+        return Response({'id': job.id}, status=status.HTTP_201_CREATED)
 
     def get(self, request, job_id=None):
         """
@@ -219,21 +198,13 @@ class JobsView(views.APIView):
 
         jobs = Job.objects.filter(query)
 
-        condor_job_ids = []
         for job in jobs:
-            condor_job_ids.append(job.backend_id)
             job.status = 4
             job.status_reason = 16
-            job.save(update_fields=['status', 'status_reason'])
+            job.updated = True
+            job.save(update_fields=['status', 'status_reason', 'updated'])
 
-        # Delete the jobs from condor
-        # TODO: this could be done elsewhere perhaps
-        (return_code, data) = self._backend.delete_job(request.user.username, condor_job_ids)
-
-        if return_code != 0:
-            return Response(data, status=status.HTTP_400_BAD_REQUEST)
-
-        return Response(data, status=status.HTTP_204_NO_CONTENT)
+        return Response({}, status=status.HTTP_204_NO_CONTENT)
 
 class JobStdOutView(views.APIView):
     """
@@ -251,18 +222,20 @@ class JobStdOutView(views.APIView):
         """
         Get standard output
         """
-        condor_job_id = get_condor_job_id(request.user, job_id)
+        job = get_job(request.user, job_id)
 
-        if not condor_job_id:
-            return Response({'error': 'Job does not exist'},
-                            status=status.HTTP_400_BAD_REQUEST)
+        if not job:
+            return HttpResponse(status=status.HTTP_400_BAD_REQUEST)
 
-        (uid, _, iwd, out, err, name, _) = self._backend.get_job_unique_id(condor_job_id)
+        name = None
+        instance = 0
+        if job.workflow:
+            (name, instance) = get_details_from_name(job.name)
 
-        stdout = self._backend.get_stdout(uid, iwd, out, err, condor_job_id, name)
+        stdout = self._backend.get_stdout(job.sandbox, name, instance)
+
         if stdout is None:
-            return Response({'error': 'Standard output does not exist'},
-                            status=status.HTTP_400_BAD_REQUEST)
+            return HttpResponse(status=status.HTTP_400_BAD_REQUEST)
 
         return Response(stdout)
 
@@ -282,18 +255,21 @@ class JobStdErrView(views.APIView):
         """
         Get standard error
         """
-        condor_job_id = get_condor_job_id(request.user, job_id)
+        job = get_job(request.user, job_id)
 
-        if not condor_job_id:
-            return Response({'error': 'Job does not exist'},
-                            status=status.HTTP_400_BAD_REQUEST)
+        if not job:
+            return HttpResponse(status=status.HTTP_400_BAD_REQUEST)
 
-        (uid, _, iwd, out, err, name, _) = self._backend.get_job_unique_id(condor_job_id)
+        name = None
+        instance = 0
+        if job.workflow:
+            (name, instance) = get_details_from_name(job.name)
 
-        stderr = self._backend.get_stderr(uid, iwd, out, err, condor_job_id, name)
+        stderr = self._backend.get_stderr(job.sandbox, name, instance)
+
         if stderr is None:
-            return Response({'error': 'Standard output does not exist'},
-                            status=status.HTTP_400_BAD_REQUEST)
+            return HttpResponse(status=status.HTTP_400_BAD_REQUEST)
+
 
         return Response(stderr)
 
