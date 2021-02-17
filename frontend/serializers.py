@@ -233,6 +233,7 @@ class JobDetailsSerializer(JobSerializer):
     parameters = serializers.SerializerMethodField()
     storage = serializers.SerializerMethodField()
     inputs = serializers.SerializerMethodField()
+    labels = serializers.SerializerMethodField()
 
     class Meta(JobSerializer.Meta):
         fields = JobSerializer.Meta.fields + ['resources',
@@ -244,6 +245,7 @@ class JobDetailsSerializer(JobSerializer):
                                               'outputDirs',
                                               'execution',
                                               'parameters',
+                                              'labels',
                                               'storage']
 
     def get_resources(self, obj):
@@ -294,6 +296,13 @@ class JobDetailsSerializer(JobSerializer):
             if 'tasks' in job_json:
                 return job_json['tasks']
         return []
+
+    def get_labels(self, obj):
+        labels = {}
+        if obj.labels:
+            for label in obj.labels.all():
+                labels[label.key] = label.value
+        return labels
 
     def get_outputFiles(self, obj):
         job_json = get_job_json(obj)
