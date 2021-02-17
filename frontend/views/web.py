@@ -1,4 +1,3 @@
-from datetime import datetime, timedelta
 import os
 import logging
 import uuid
@@ -7,94 +6,26 @@ from requests.auth import HTTPBasicAuth
 from requests_oauthlib import OAuth2Session
 
 from django.shortcuts import render, get_object_or_404, HttpResponse, redirect
-from django.http import JsonResponse, HttpResponseRedirect
+from django.http import JsonResponse
 from django.template.loader import render_to_string
 from django.contrib.auth.decorators import login_required
-from django.contrib.auth import get_user_model
 from django.urls import reverse
-from rest_framework.authtoken.models import Token
 
 from django.db.models import Q
 
-from frontend.models import Job, JobLabel, Workflow, WorkflowLabel
-from frontend.serializers import JobSerializer, JobDisplaySerializer, JobDetailsSerializer, WorkflowDetailsSerializer, WorkflowDisplaySerializer
-
-from frontend.forms import ComputeForm, StorageForm, JobForm, LabelsFormSet, ArtifactsFormSet, EnvVarsFormSet, InputFilesFormSet, OutputFileFormSet, OutputDirectoryFormSet
-from frontend.models import Compute, Storage
+from frontend.models import Compute, Job, Workflow
+from frontend.serializers import JobDisplaySerializer, JobDetailsSerializer, WorkflowDetailsSerializer, WorkflowDisplaySerializer
+from frontend.forms import ComputeForm, JobForm, LabelsFormSet, ArtifactsFormSet, EnvVarsFormSet, InputFilesFormSet, OutputFileFormSet, OutputDirectoryFormSet
+from frontend.metrics import JobMetrics, JobMetricsByCloud, JobResourceUsageMetrics
+from frontend.db_utilities import get_job, db_create_job
 from server.backend import ProminenceBackend
 from server.validate import validate_job
-from server.set_groups import set_groups
 import server.settings
 from frontend.utilities import create_job, get_details_from_name
 from server.sandbox import create_sandbox, write_json
-from frontend.metrics import JobMetrics, JobMetricsByCloud, JobResourceUsageMetrics
-from frontend.db_utilities import get_condor_job_id, get_job, db_create_job
 
 # Get an instance of a logger
 logger = logging.getLogger(__name__)
-
-@login_required
-def storage(request):
-    storage_list = request.user.storage_systems.all()
-    return render(request, 'storage.html', {'storage': storage_list})
-
-def save_storage_form(request, form, template_name):
-    data = dict()
-    if request.method == 'POST':
-        if form.is_valid():
-            storage = form.save(commit=False)
-            storage.user = request.user
-            storage.save()
-            data['form_is_valid'] = True
-            storage_list = request.user.storage_systems.all()
-            data['html_storage_list'] = render_to_string('storage-list.html', {'storage': storage_list})
-        else:
-            data['form_is_valid'] = False
-    context = {'form': form}
-    data['html_form'] = render_to_string(template_name, context, request=request)
-    return JsonResponse(data)
-
-@login_required
-def storage_add(request):
-    if request.method == 'POST':
-        form = StorageForm(request.POST)
-        if form.is_valid():
-            storage = form.save(commit=False)
-            storage.user = request.user
-            storage.save()
-        return redirect('/storage')
-    else:
-        form = StorageForm()
-
-    return render(request, 'storage-add.html', {'form': form})
-
-@login_required
-def storage_update(request, pk):
-    storage = get_object_or_404(Storage, user=request.user, pk=pk)
-    if request.method == 'POST':
-        form = StorageForm(request.POST, instance=storage)
-        if form.is_valid():
-            storage = form.save(commit=False)
-            storage.user = request.user
-            storage.save()
-        return redirect('/storage')
-    else:
-        form = StorageForm(instance=storage)
-    return render(request, 'storage-update.html', {'form': form, 'id': pk})
-
-@login_required
-def storage_delete(request, pk):
-    storage = get_object_or_404(Storage, user=request.user, pk=pk)
-    data = dict()
-    if request.method == 'POST':
-        storage.delete()
-        data['form_is_valid'] = True
-        storage_list = request.user.storage_systems.all()
-        data['html_storage_list'] = render_to_string('storage-list.html', {'storage': storage_list})
-    else:
-        context = {'storage': storage}
-        data['html_form'] = render_to_string('storage-delete.html', context, request=request)
-    return JsonResponse(data)
 
 @login_required
 def jobs(request):
