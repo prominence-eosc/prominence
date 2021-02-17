@@ -1,5 +1,13 @@
 import base64
 
+def get_details_from_name(name):
+    pieces = name.split('/')
+    if len(pieces) == 2:
+        return (pieces[1], 0)
+    elif len(pieces) == 3:
+        return (pieces[1], int(pieces[2]))
+    return (None, 0)
+
 def create_job(data, data_envvars, data_labels, files, data_artifacts, data_output_files, data_output_dirs, storage_list, uuid):
     """
     Create JSON description of job from form
