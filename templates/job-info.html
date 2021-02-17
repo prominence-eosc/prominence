@@ -214,16 +214,25 @@ None
 <br/>
 <br/>
 <b>Policies</b><br/>
+<table>
 {% if job.policies.placement.requirements.sites %}
-Placement:<br/>
-Requirements: 
+<tr><td style="padding-left:10px"><b>Placement requirements (sites)</b></td><td style="padding-left:20px">
 {% for site in job.policies.placement.requirements.sites %}
 {{ site }}
 {% endfor %}
+</td></tr>
+{% endif %}
+{% if job.policies.placement.requirements.regions %}
+<tr><td style="padding-left:10px"><b>Placement requirements (regions)</b></td><td style="padding-left:20px">
+{% for region in job.policies.placement.requirements.regions %}
+{{ region }}
+{% endfor %}
+</td></tr>
 {% endif %}
 {% if job.policies.maximumTimeInQueue %}
-Maximum time pending: {{ job.policies.maximumTimeInQueue }}
+<tr><td style="padding-left:10px"><b>Maximum time pending</b> (mins)</td><td style="padding-left:20px">{{ job.policies.maximumTimeInQueue }}</td></tr>
 {% endif %}
+</table>
 
 {% if job.parameters %}
 <br/>
