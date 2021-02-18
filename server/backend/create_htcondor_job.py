@@ -156,7 +156,7 @@ def _create_htcondor_job(self, username, groups, email, uid, jjob, job_path, wor
 
     # Job router - route idle jobs if they have never been routed before or if they were last routed more than 20 mins ago
     if not workflow:
-        cjob['+ProminenceWantJobRouter'] = str('JobStatus == 1 && ((CurrentTime - ProminenceLastRouted > 1200) || isUndefined(ProminenceLastRouted))')
+        cjob['+ProminenceWantJobRouter'] = str('JobStatus == 1 && ((CurrentTime - ProminenceLastRouted > 1200) || (isUndefined(ProminenceLastRouted) && CurrentTime - EnteredCurrentStatus > ProminenceMaxIdleTime))')
 
     # Should the job be removed from the queue once finished?
     #cjob['+ProminenceRemoveFromQueue'] = 'True'
