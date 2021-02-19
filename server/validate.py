@@ -54,7 +54,8 @@ def validate_workflow(workflow):
                        'notifications']
 
     policies_workflow_valids = ['maximumRetries',
-                                'placement']
+                                'placement',
+                                'leaveInQueue']
 
     valid_events = ['workflowFinished']
 
