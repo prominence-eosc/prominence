@@ -214,6 +214,7 @@ None
 <br/>
 <br/>
 <b>Policies</b><br/>
+{% if job.policies %}
 <table>
 {% if job.policies.placement.requirements.sites %}
 <tr><td style="padding-left:10px"><b>Placement requirements (sites)</b></td><td style="padding-left:20px">
@@ -239,6 +240,9 @@ None
 <tr><td style="padding-left:10px"><b>Maximum retries (tasks)</b></td><td style="padding-left:20px">{{ job.policies.maximumRetriesPerTask }}</td></tr>
 {% endif %}
 </table>
+{% else %}
+None
+{% endif %}
 
 {% if job.parameters %}
 <br/>
