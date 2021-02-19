@@ -182,11 +182,11 @@ def submit_new_workflows():
             workflow.backend_id = data['id']
             fields = ['backend_id', 'status']
 
-            #if 'policies' in workflow_desc:
-            #    if 'leaveInQueue' in workflow_desc['policies']:
-            #        if workflow_desc['policies']['leaveInQueue']:
-            #            workflow.in_queue = True
-            #            fields.append('in_queue')
+            if 'policies' in workflow_desc:
+                if 'leaveInQueue' in workflow_desc['policies']:
+                    if workflow_desc['policies']['leaveInQueue']:
+                        workflow.in_queue = True
+                        fields.append('in_queue')
 
             workflow.save(update_fields=fields)
             logger.info('Submitted workflow %d with HTCondor id %d', workflow.id, workflow.backend_id)
