@@ -6,20 +6,19 @@ import glob
 import hashlib
 import json
 import logging
+import math
 import os
 import posixpath
 import re
 import shlex
 import shutil
 import signal
+import socket
 from string import Template
 import subprocess
 import sys
 import tarfile
 import time
-from geoip import geolite2
-import geopy.distance
-from nslookup import Nslookup
 from functools import wraps
 from resource import getrusage, RUSAGE_CHILDREN
 from threading import Timer
@@ -98,35 +97,63 @@ fi
 exit $?
 """
 
+def distance(origin, destination):
+    """
+    Calculate the Haversine distance between two locations
+    """
+    lat1, lon1 = origin
+    lat2, lon2 = destination
+    radius = 6371  # km
+
+    dlat = math.radians(lat2 - lat1)
+    dlon = math.radians(lon2 - lon1)
+    a = (math.sin(dlat / 2) * math.sin(dlat / 2) +
+         math.cos(math.radians(lat1)) * math.cos(math.radians(lat2)) *
+         math.sin(dlon / 2) * math.sin(dlon / 2))
+    c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
+    d = radius * c
+
+    return d
+
 def find_nearest_provider(providers):
     """
     Given a list of hostnames, find the nearest
     """
     # Get my location
     try:
-        response = requests.get('https://ifconfig.me/all.json')
+        response = requests.get('https://geolocation-db.com/json')
+        my_location = (float(response.json()['latitude']),
+                       float(response.json()['longitude']))
     except Exception as err:
-        logging.info('Got exception when trying to get my ip address: %s', err)
+        logging.info('Got exception when trying to get my location: %s', err)
         return None
-
-    my_coords = geolite2.lookup(response.json()['ip_addr']).location
 
     # Find nearest provider by checking distance to each based on geoip
     min_distance = -1
     closest_provider = None
     for provider in providers:
-        dns_query = Nslookup(dns_servers=['8.8.8.8'])
-        ip_address = dns_query.dns_lookup(provider).answer
-        if ip_address:
-            try:
-                coords = geolite2.lookup(ip_address[0]).location
-            except Exception as err:
-                logging.info('Got exception when trying to get location of IP address: %s', err)
-                distance = 1000000000
-            else:
-                distance = geopy.distance.distance(coords, my_coords).km
-        if (distance < min_distance and min_distance > -1) or min_distance == -1:
-            min_distance = distance
+        # Get IP address
+        try:
+            resp = socket.getaddrinfo(provider, None)
+            ip_address = resp[0][4][0]
+        except Exception as err:
+            logging.info('Got exception when trying to get IP address of provider: %s', err)
+            return None
+
+        # Get location
+        try:
+            response = requests.get('https://geolocation-db.com/jsonp/%s' % ip_address)
+            location = (float(response.json()['latitude']),
+                        float(response.json()['longitude']))
+        except Exception as err:
+            logging.info('Got exception when trying to get location of provider: %s', err)
+            return None
+
+        # Estimate distance
+        current_distance = distance(my_location, location)
+
+        if (current_distance < min_distance and min_distance > -1) or min_distance == -1:
+            min_distance = current_distance
             closest_provider = provider
 
     return closest_provider
@@ -851,6 +878,7 @@ def get_usage_from_cgroup():
     """
     Read memory usage from cgroup (work in progress!)
     """
+    # TODO: this is no longer valid for multiple jobs on the same host
     max_usage_in_bytes = -1
     files = glob.glob('/sys/fs/cgroup/memory/htcondor/*/memory.max_usage_in_bytes')
     for file in files:
@@ -1677,11 +1705,11 @@ def run_tasks(job, path, path_images, is_batch):
         logging.info('Received signal, aborting')
 
     # Get overall max memory usage
-    max_usage_in_bytes = get_usage_from_cgroup()
-    if max_usage_in_bytes > -1:
-        task_u = {}
-        task_u['maxMemoryUsageKB'] = max_usage_in_bytes/1000
-        tasks_u.append(task_u)
+    #max_usage_in_bytes = get_usage_from_cgroup()
+    #if max_usage_in_bytes > -1:
+    #    task_u = {}
+    #    task_u['maxMemoryUsageKB'] = max_usage_in_bytes/1000
+    #    tasks_u.append(task_u)
 
     # Handle timeout
     if metrics_task.timed_out:
