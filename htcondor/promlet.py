@@ -119,6 +119,10 @@ def find_nearest_provider(providers):
     """
     Given a list of hostnames, find the nearest
     """
+    # If only a single provider has been specified, just return it
+    if len(providers) == 1:
+        return providers[0]
+
     # Get my location
     try:
         response = requests.get('https://geolocation-db.com/json')
