@@ -9,7 +9,7 @@ ProminenceJobInfraFailed = JobStatus == 1 && (ProminenceInfrastructureState =?= 
 ProminenceJobInfraUnableFatal = JobStatus == 1 && ProminenceInfrastructureState =?= "unable" && ProminenceInfrastructureStateReason =?= "NoMatchingResources"
 
 # Infrastructure deployment unable - temporary
-ProminenceJobInfraUnable = JobStatus == 1 && ProminenceInfrastructureState =?= "unable" && ProminenceInfrastructureStateReason =?= "NoMatchingResourcesAvailable"
+ProminenceJobInfraUnable = JobStatus == 1 && (ProminenceInfrastructureState =?= "unable" && ProminenceInfrastructureStateReason =?= "NoMatchingResourcesAvailable" || ProminenceInfrastructureState =?= "waiting")
 
 # Infrastructure deployed but job is taking too long to start running
 ProminenceJobNotRunning = JobStatus == 1 && ProminenceInfrastructureState =?= "configured" && CurrentTime - ProminenceInfrastructureEnteredCurrentStatus > 2400
@@ -20,15 +20,20 @@ ProminenceQueuedTooLong = JobStatus == 1 && ProminenceMaxTimeInQueue > 0 && Curr
 # Fatal errors - user jobs should be removed
 ProminenceJobFatal = $(ProminenceJobInfraUnableFatal) || $(ProminenceQueuedTooLong)
 
-# Remove the user jobs if the max time in queue has not been defined
-ProminenceJobTransientFatal = ($(ProminenceJobNotRunning) || $(ProminenceJobEvicted) || \
-                               $(ProminenceJobInfraFailed) || $(ProminenceJobInfraUnable)) && \
-                              ProminenceMaxTimeInQueue == 0
+# Remove the user jobs if the max time in queue has not been defined (with ProminenceMaxTimeInQueue set to zero
+# the user job fails upon first failure) or the max time in queue has been exceeded
+ProminenceJobTransientFatal = ($(ProminenceJobNotRunning) || \
+                               $(ProminenceJobEvicted) || \
+                               $(ProminenceJobInfraFailed) || \
+                               $(ProminenceJobInfraUnable)) && (ProminenceMaxTimeInQueue == 0 || \
+                                                                (ProminenceMaxTimeInQueue > 0 && CurrentTime - QDate > ProminenceMaxTimeInQueue))
+                                                                
 
-# Remove the routed jobs if the max time in queue has been defined
-ProminenceJobTransient = ($(ProminenceJobNotRunning) || $(ProminenceJobEvicted) || \
-                          $(ProminenceJobInfraFailed) || $(ProminenceJobInfraUnable)) && \
-                         (ProminenceMaxTimeInQueue == -1 || ProminenceMaxTimeInQueue > 0)
+# Remove the routed jobs in the event of problems
+ProminenceJobTransient = $(ProminenceJobNotRunning) || \
+                         $(ProminenceJobEvicted) || \
+                         $(ProminenceJobInfraFailed) || \
+                         $(ProminenceJobInfraUnable)
 
 # Set SYSTEM_PERIODIC_HOLD
 SYSTEM_PERIODIC_HOLD = ProminenceType =?= "job" && \
