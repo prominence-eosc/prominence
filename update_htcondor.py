@@ -142,11 +142,14 @@ def rerun_workflows():
             logger.info('User request re-running workflow with id %d which has no HTCondor id', workflow.id)
             return_code = 0
 
-        if return_code == 0 or not workflow.backend_id:
-            workflow.updated = False
-            workflow.save(update_fields=['updated'])
-        else:
-            logger.error('Unable to re-run workflow')
+        workflow.updated = False
+        workflow.save(update_fields=['updated'])
+
+        if return_code != 0:
+            if 'error' in data:
+                logger.error('Unable to re-run workflow due to: %s', data['error'])
+            else:
+                logger.error('Unable to re-run workflow')
 
 def submit_new_workflows():
     """
