@@ -88,15 +88,6 @@ class WorkflowSerializer(serializers.ModelSerializer):
         if obj.time_end:
             events['endTime'] = obj.time_end
 
-        if 'createTime' in events:
-            events['createTime'] = datetime_format(events['createTime'])
-
-        if 'startTime' in events:
-            events['startTime'] = datetime_format(events['startTime'])
-
-        if 'endTime' in events:
-            events['endTime'] = datetime_format(events['endTime'])
-
         return events
 
     def get_progress(self, obj):
@@ -131,6 +122,25 @@ class WorkflowDisplaySerializer(WorkflowSerializer):
             events['endTime'] = obj.time_end
 
         return elapsed(events)
+
+    def get_events(self, obj):
+        events = {}
+        events['createTime'] = obj.created
+        if obj.time_start:
+            events['startTime'] = obj.time_start
+        if obj.time_end:
+            events['endTime'] = obj.time_end
+
+        if 'createTime' in events:
+            events['createTime'] = datetime_format(events['createTime'])
+
+        if 'startTime' in events:
+            events['startTime'] = datetime_format(events['startTime'])
+
+        if 'endTime' in events:
+            events['endTime'] = datetime_format(events['endTime'])
+
+        return events
 
 class WorkflowDetailsSerializer(WorkflowSerializer):
     jobs = serializers.SerializerMethodField()
@@ -175,6 +185,26 @@ class WorkflowDetailsSerializer(WorkflowSerializer):
                 labels[label.key] = label.value
         return labels
 
+class WorkflowDetailsDisplaySerializer(WorkflowDetailsSerializer):
+    def get_events(self, obj):
+        events = {}
+        events['createTime'] = obj.created
+        if obj.time_start:
+            events['startTime'] = obj.time_start
+        if obj.time_end:
+            events['endTime'] = obj.time_end
+
+        if 'createTime' in events:
+            events['createTime'] = datetime_format(events['createTime'])
+
+        if 'startTime' in events:
+            events['startTime'] = datetime_format(events['startTime'])
+
+        if 'endTime' in events:
+            events['endTime'] = datetime_format(events['endTime'])
+
+        return events
+
 class JobSerializer(serializers.ModelSerializer):
     events = serializers.SerializerMethodField()
     status = serializers.SerializerMethodField()
@@ -197,15 +227,6 @@ class JobSerializer(serializers.ModelSerializer):
             events['startTime'] = obj.time_start
         if obj.time_end:
             events['endTime'] = obj.time_end
-
-        if 'createTime' in events:
-            events['createTime'] = datetime_format(events['createTime'])
-
-        if 'startTime' in events:
-            events['startTime'] = datetime_format(events['startTime'])
-
-        if 'endTime' in events:
-            events['endTime'] = datetime_format(events['endTime'])
 
         return events
 
@@ -231,6 +252,24 @@ class JobDisplaySerializer(JobSerializer):
             events['endTime'] = obj.time_end
 
         return elapsed(events)
+
+    def get_events(self, obj):
+        events = {"createTime": obj.created}
+        if obj.time_start:
+            events['startTime'] = obj.time_start
+        if obj.time_end:
+            events['endTime'] = obj.time_end
+
+        if 'createTime' in events:
+            events['createTime'] = datetime_format(events['createTime'])
+
+        if 'startTime' in events:
+            events['startTime'] = datetime_format(events['startTime'])
+
+        if 'endTime' in events:
+            events['endTime'] = datetime_format(events['endTime'])
+
+        return events
 
 class JobDetailsSerializer(JobSerializer):
     # see https://stackoverflow.com/questions/49900629/django-serializer-inherit-and-extend-fields
@@ -446,3 +485,22 @@ class JobDetailsSerializer(JobSerializer):
 
     def get_parameters(self, obj):
         return {}
+
+class JobDetailsDisplaySerializer(JobDetailsSerializer):
+    def get_events(self, obj):
+        events = {"createTime": obj.created}
+        if obj.time_start:
+            events['startTime'] = obj.time_start
+        if obj.time_end:
+            events['endTime'] = obj.time_end
+
+        if 'createTime' in events:
+            events['createTime'] = datetime_format(events['createTime'])
+
+        if 'startTime' in events:
+            events['startTime'] = datetime_format(events['startTime'])
+
+        if 'endTime' in events:
+            events['endTime'] = datetime_format(events['endTime'])
+
+        return events 
