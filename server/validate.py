@@ -274,8 +274,7 @@ def validate_job(job):
                         'disk',
                         'walltime']
 
-    policies_valids = ['maximumRetries',
-                       'maximumRetriesPerTask',
+    policies_valids = ['maximumRetriesPerTask',
                        'preemptible',
                        'maximumTimeInQueue',
                        'maximumIdleTimePerResource',
