@@ -109,8 +109,8 @@ class JobsView(views.APIView):
             if request.query_params.get('completed') == 'true':
                 completed = True
                 active = False
-                if 'limit' in request.query_params:
-                    limit = int(request.query_params.get('limit'))
+                if 'num' in request.query_params:
+                    limit = int(request.query_params.get('num'))
                 else:
                     limit = 1
 
