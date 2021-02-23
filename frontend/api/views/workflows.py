@@ -137,6 +137,14 @@ class WorkflowsView(views.APIView):
             active = True
             limit = -1
 
+        # Get workflow ids
+        workflow_ids = get_workflow_ids(workflow_id, request)
+
+        # If user has specified workflow ids, assume they are interested in any status
+        if workflow_ids:
+            completed = True
+            active = True
+
         # Define query
         if active and completed:
             query = Q(user=request.user)
@@ -145,8 +153,6 @@ class WorkflowsView(views.APIView):
         else:
             query = Q(user=request.user) & (Q(status=3) | Q(status=4) | Q(status=5) | Q(status=6))
 
-        # Get workflow ids
-        workflow_ids = get_workflow_ids(workflow_id, request)
         if workflow_ids:
             query_ids = Q(id=workflow_ids[0])
             if len(workflow_ids) > 1:

@@ -119,6 +119,14 @@ class JobsView(views.APIView):
             active = True
             limit = -1
 
+        # Get job ids
+        job_ids = get_job_ids(job_id, request)
+
+        # If user has specified job ids, assume they are interested in any status
+        if job_ids:
+            completed = True
+            active = True
+
         # Define query
         if active and completed:
             query = Q(user=request.user)
@@ -127,15 +135,12 @@ class JobsView(views.APIView):
         else:
             query = Q(user=request.user) & (Q(status=3) | Q(status=4) | Q(status=5) | Q(status=6) | Q(in_queue=True))
 
-        # Get job ids
-        job_ids = get_job_ids(job_id, request)
-
         # Select jobs from a workflow if necessary
         workflow = False
         if 'workflow' in request.query_params:
             if request.query_params.get('workflow') == 'true':
                 workflow = True
-                if 'limit' not in request.query_params:
+                if 'num' not in request.query_params:
                     limit = -1
                 wf = Workflow.objects.get(id=job_ids[0])
                 query = query & Q(workflow=wf)
