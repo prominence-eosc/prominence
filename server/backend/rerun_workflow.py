@@ -70,7 +70,7 @@ def rerun_workflow(self, username, groups, email, workflow_id):
         data['id'] = int(m.group(1))
     else:
         retval = 1
-        data = {"error":"Workflow resubmission failed"}
+        data = {"error":"Workflow resubmission failed due to %s" % stderr}
 
     try:
         shutil.copyfile('%s/workflow.dag.status' % iwd,
