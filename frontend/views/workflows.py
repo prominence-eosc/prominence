@@ -8,7 +8,7 @@ from django.contrib.auth.decorators import login_required
 from django.db.models import Q
 
 from frontend.models import Workflow
-from frontend.serializers import WorkflowDetailsSerializer, WorkflowDisplaySerializer
+from frontend.serializers import WorkflowDetailsDisplaySerializer, WorkflowDisplaySerializer
 from server.backend import ProminenceBackend
 import server.settings
 
@@ -130,7 +130,7 @@ def workflow(request, pk):
     if request.method == 'GET':
         query = Q(user=request.user, id=pk)
         workflows = Workflow.objects.filter(query)
-        serializer = WorkflowDetailsSerializer(workflows, many=True)
+        serializer = WorkflowDetailsDisplaySerializer(workflows, many=True)
         workflows_list = serializer.data
 
         if len(workflows_list) == 1:
