@@ -9,15 +9,15 @@ from django.contrib.auth.decorators import login_required
 
 from django.db.models import Q
 
-from frontend.models import Job
-from frontend.serializers import JobDisplaySerializer, JobDetailsSerializer
+from frontend.models import Job, Workflow
+from frontend.serializers import JobDisplaySerializer, JobDetailsDisplaySerializer
 from frontend.forms import JobForm, LabelsFormSet, ArtifactsFormSet, EnvVarsFormSet, InputFilesFormSet, OutputFileFormSet, OutputDirectoryFormSet
 from server.backend import ProminenceBackend
 from server.validate import validate_job
 import server.settings
 from frontend.utilities import create_job, get_details_from_name
 from server.sandbox import create_sandbox, write_json
-from frontend.db_utilities import get_job
+from frontend.db_utilities import get_job, db_create_job
 
 # Get an instance of a logger
 logger = logging.getLogger(__name__)
@@ -252,7 +252,7 @@ def job_actions(request):
 def job_describe(request, pk):
     query = Q(user=request.user, id=pk)
     jobs = Job.objects.filter(query)
-    serializer = JobDetailsSerializer(jobs, many=True)
+    serializer = JobDetailsDisplaySerializer(jobs, many=True)
     jobs_list = serializer.data
 
     if len(jobs_list) == 1:
