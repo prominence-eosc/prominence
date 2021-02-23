@@ -70,6 +70,7 @@ class Job(models.Model):
         (16, 'Job deleted by user'),
         (17, 'Quota exceeded'),
         (18, 'Required VM image not found'),
+        (19, 'Infrastructure failed before job completed')
     )
 
     backend_id = models.PositiveIntegerField(db_index=True, unique=True, blank=True, null=True, default=None)
