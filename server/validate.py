@@ -337,7 +337,7 @@ def validate_job(job):
             if job['resources']['memory'] < 1:
                 return (False, 'memory must be at least 1')
         else:
-            return (False, 'memory (in GB) must be defined')
+            return (False, 'memory must be defined')
 
         if 'disk' in job['resources']:
             if not isinstance(job['resources']['disk'], int):
@@ -350,6 +350,8 @@ def validate_job(job):
                 return (False, 'required walltime must be an integer')
             if job['resources']['walltime'] < 1:
                 return (False, 'walltime must be at least 1 minute')
+            if job['resources']['walltime'] > 10080:
+                return (False, 'maximum allowed walltime is 1 week')
     else:
         return (False, 'a job must contain resources')
 
