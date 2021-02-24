@@ -107,6 +107,9 @@ def get_status_and_reason(ad, promlet_json):
             if ad['RemoveReason'] == 'NoMatchingResources':
                 reason = 4
                 status = 5
+            if 'Job was evicted' in ad['RemoveReason']:
+                reason = 19
+                status = 5
 
         if job_status == 3 and 'HoldReason' in ad:
             if 'Infrastructure took too long to be deployed' in ad['HoldReason']:
@@ -118,7 +121,7 @@ def get_status_and_reason(ad, promlet_json):
                     reason = 4
                 status = 5
             if 'Job was evicted' in ad['HoldReason']:
-                reason = 4
+                reason = 19
                 status = 5
             if ad['HoldReason'] == 'NoMatchingResourcesAvailable':
                 if reason == 0:
@@ -178,6 +181,18 @@ def get_status_and_reason(ad, promlet_json):
                 status = 6
                 reason = 12
 
+    # Return status as failed if task had non-zero exit code
+    if promlet_json and 'tasks' in promlet_json:
+        for task in promlet_json['tasks']:
+            if 'exitCode' in task:
+                if task['exitCode'] != 0:
+                    status = 5
+                    reason = 14
+
+    # Make sure no errors are given if job completed successfully
+    if status == 3:
+        reason = 0
+
     return (status, reason)
 
 def handle_workflow(job_id, ad):
@@ -205,7 +220,7 @@ def move(filename):
     except Exception as err:
         logger.critical('Unable to remove file %s due to: %s', filename, err)
 
-def send_to_socket(job_id, identity, promlet_json):
+def send_to_socket(job_id, identity, group, promlet_json):
     """
     Sends InfluxDB formatted accounting record to Telegraf socket
     """
@@ -227,7 +242,7 @@ def send_to_socket(job_id, identity, promlet_json):
             if 'wallTimeUsage' in task:
                 walltime += task['wallTimeUsage']
 
-    message = "accounting,identity=%s,infra_site=%s job_id=%d,walltime=%d,cputime=%d\n" % (identity, site, job_id, walltime, cputime)
+    message = "accounting,identity=%s,group=%s,infra_site=%s job_id=%d,walltime=%d,cputime=%d\n" % (identity, group, site, job_id, walltime, cputime)
 
     try:
         sock.send(message.encode('utf8'))
@@ -259,9 +274,12 @@ def main():
                     continue
 
             identity = None
+            group = None
             cluster_id = None
             if 'ProminenceIdentity' in ad:
                 identity = ad['ProminenceIdentity']
+            if 'ProminenceGroup' in ad:
+                group = ad['ProminenceGroup']
             if 'ClusterId' in ad:
                 cluster_id = int(ad['ClusterId'])
 
@@ -331,7 +349,7 @@ def main():
             # Send job details to InfluxDB
             if success_db:
                 success = True
-                if not send_to_socket(cluster_id, identity, promlet_json):
+                if not send_to_socket(cluster_id, identity, group, promlet_json):
                     logger.error('Got error sending details to InfluxDB')
                     success = False
 
