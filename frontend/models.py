@@ -84,7 +84,7 @@ class Job(models.Model):
     time_start = models.PositiveIntegerField(default=0)
     time_end = models.PositiveIntegerField(default=0)
     site = models.CharField(max_length=32, blank=True)
-    sandbox = models.CharField(max_length=100)
+    sandbox = models.CharField(max_length=512)
     uuid = models.CharField(max_length=36)
     image = models.CharField(max_length=512)
     command = models.CharField(max_length=1024)
