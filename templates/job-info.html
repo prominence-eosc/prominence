@@ -115,6 +115,14 @@ $(document).ready(function () {
 Not yet assigned
 {% endif %}
 
+{% if job.workflow %}
+<br/>
+<br/>
+<b>Associated workflow</b>
+<br/>
+<a href="{% url 'workflow' job.workflow %}">{{ job.workflow }}</a>
+{% endif %}
+
 <br/>
 <br/>
 <b>Labels</b>
