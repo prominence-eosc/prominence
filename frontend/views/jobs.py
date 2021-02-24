@@ -159,8 +159,8 @@ def job_create(request):
 
         if form.is_valid() and labels_formset.is_valid() and artifacts_formset.is_valid() and envvars_formset.is_valid() and inputs_formset.is_valid() and output_file_formset.is_valid() and output_dir_formset.is_valid():
             job_uuid = str(uuid.uuid4())
-            storage = request.user.storage_systems.all()
-            job_desc = create_job(form.cleaned_data, envvars_formset, labels_formset, request.FILES, artifacts_formset, output_file_formset, output_dir_formset, storage, job_uuid)
+            storage_list = request.user.storage_systems.all()
+            job_desc = create_job(form.cleaned_data, envvars_formset, labels_formset, request.FILES, artifacts_formset, output_file_formset, output_dir_formset, storage_list, job_uuid)
             user_name = request.user.username
             backend = ProminenceBackend(server.settings.CONFIG)
 
