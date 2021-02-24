@@ -115,24 +115,33 @@ class Command(BaseCommand):
         backend = ProminenceBackend(server.settings.CONFIG)
 
         # Find any workflows to re-run
+        fields = ['updated']
+        new_backend_id = None
+
         workflows = Workflow.objects.filter((Q(status=3) | Q(status=4) | Q(status=5) | Q(status=6)) & Q(updated=True))
         for workflow in workflows:
             if workflow.backend_id:
-                logger.info('Re-running workflow with id %d and HTCondor id %d', workflow.id, workflow.backend_id)
+                logger.info('Re-running workflow with id %d and original HTCondor id %d', workflow.id, workflow.backend_id)
 
-                # Set groups
                 groups = set_groups_user(workflow.user)
-
                 (return_code, data) = backend.rerun_workflow(workflow.user.username,
                                                              ','.join(groups),
                                                              workflow.user.email,
                                                              workflow.backend_id)
+                if 'id' in data:
+                    new_backend_id = data['id']
             else:
                 logger.info('User request re-running workflow with id %d which has no HTCondor id', workflow.id)
                 return_code = 0
 
             workflow.updated = False
-            workflow.save(update_fields=['updated'])
+
+            # Update the backend_id if necessary
+            if new_backend_id:
+                workflow.backend_id = new_backend_id
+                fields.append('backend_id')
+
+            workflow.save(update_fields=fields)
 
             if return_code != 0:
                 if 'error' in data:
