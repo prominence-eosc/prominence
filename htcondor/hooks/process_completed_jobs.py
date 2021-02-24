@@ -157,14 +157,24 @@ def get_status_and_reason(ad, promlet_json):
 
     # Return status as failed if stageout failed
     if promlet_json and 'stageout' in promlet_json:
-        for item in promlet_json['stageout']:
-            if 'status' in item:
-                if item['status'] == 'failedNoSuchFile':
-                    status = 5
-                    reason = 8
-                if item['status'] == 'failedUpload':
-                    status = 5
-                    reason = 9
+        if 'files' in promlet_json['stageout']:
+            for item in promlet_json['stageout']['files']:
+                if 'status' in item:
+                    if item['status'] == 'failedNoSuchFile':
+                        status = 5
+                        reason = 8
+                    if item['status'] == 'failedUpload':
+                        status = 5
+                        reason = 9
+        if 'directories' in promlet_json['stageout']:
+            for item in promlet_json['stageout']['directories']:
+                if 'status' in item:
+                    if item['status'] == 'failedNoSuchFile':
+                        status = 5
+                        reason = 8
+                    if item['status'] == 'failedUpload':
+                        status = 5
+                        reason = 9
 
     # Return status as failed if container image pull failed
     if promlet_json and 'tasks' in promlet_json:
