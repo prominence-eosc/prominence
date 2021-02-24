@@ -374,6 +374,10 @@ class JobDetailsSerializer(JobSerializer):
             factory_id = get_factory_id(obj)
             if factory_id is not None:
                 location = '%s/%d' % (location, factory_id)
+            elif obj.workflow:
+                pieces = obj.name.split('/')
+                if len(pieces) == 2:
+                    location = '%s/%s' % (location, pieces[1])
 
             outputs = []
             for output_file in job_json['outputFiles']:
@@ -419,6 +423,10 @@ class JobDetailsSerializer(JobSerializer):
             factory_id = get_factory_id(obj)
             if factory_id is not None:
                 location = '%s/%d' % (location, factory_id)
+            elif obj.workflow:
+                pieces = obj.name.split('/')
+                if len(pieces) == 2:
+                    location = '%s/%s' % (location, pieces[1])
 
             outputs = []
             for output_dir in job_json['outputDirs']:

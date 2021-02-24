@@ -149,7 +149,10 @@ def create_workflow(self, username, groups, email, uid, jwf):
                                                   str(uuid.uuid4()),
                                                   job,
                                                   '%s/%s' % (job_sandbox, job['name']),
-                                                  True)
+                                                  True,
+                                                  False,
+                                                  uid,
+                                                  job['name'])
             cjob['+ProminenceWorkflowName'] = condor_str(wf_name)
 
             # Write JDL
@@ -169,6 +172,7 @@ def create_workflow(self, username, groups, email, uid, jwf):
                                                      str(uuid.uuid4()),
                                                      job,
                                                      '%s/%s' % (job_sandbox, job['name']),
+                                                     True,
                                                      True)
 
             cjob['+ProminenceWorkflowName'] = condor_str(wf_name)
