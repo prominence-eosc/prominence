@@ -2,11 +2,10 @@
 import configparser
 import logging
 from logging.handlers import RotatingFileHandler
-import os
 import time
 import htcondor
 
-from workflow_handler import update_workflows, add_workflow, acquire_lock, release_lock
+from workflow_handler import update_workflows, add_workflow
 
 def trigger():
     coll = htcondor.Collector()
@@ -47,21 +46,20 @@ if __name__ == "__main__":
     logger.addHandler(handler)
     logger.setLevel(logging.INFO)
 
-    # Add workflow if necessary
-    trigger()
+    while True:
 
-    # Update workflows
-    start_time = time.time()
-    my_pid = os.getpid()
-    if acquire_lock(my_pid):
+        # Add workflow if necessary
+        trigger()
+
+        # Update workflows
+        start_time = time.time()
         try:
             update_workflows()
         except Exception as err:
             logger.critical('Got exception running update_workflows: %s', err)
-        release_lock(my_pid)
-    # TODO: handle stuck lock due to process dying for some reason
-    else:
-        logger.error('Cannot get lock')
-    end_time = time.time()
+        end_time = time.time()
 
-    logger.info('Time to update workflows: %d secs', int(end_time - start_time))
+        if int(end_time - start_time) > 0:
+            logger.info('Time to update workflows: %d secs', int(end_time - start_time))
+
+        time.sleep(int(CONFIG.get('polling', 'workflow-handler')))

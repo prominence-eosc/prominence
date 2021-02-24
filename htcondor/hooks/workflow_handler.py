@@ -259,8 +259,10 @@ class DatabaseGlobal():
             db.close()
         except Exception as err:
             if 'UNIQUE constraint failed' in str(err):
+                logger.info('Workflow with id %d already known', workflow_id)
                 return False
             else:
+                logger.error('Got exception when trying to add workflow: %s', err)
                 return None
         return True
 
@@ -504,6 +506,9 @@ def get_jobs_by_state(iwd, workflow_id):
 
     # Get workflow from DB
     workflow = get_workflow_from_db(workflow_id)
+    if not workflow:
+        logger.critical('Unable to get workflow from DB in get_jobs_by_state')
+        return (None, None, None)
 
     # Get job json for each job
     job_jsons = {}
@@ -518,7 +523,7 @@ def get_jobs_by_state(iwd, workflow_id):
                 job_jsons[directory] = json.load(json_file)
         except Exception as err:
             logger.info('Unable to open job json file %s due to: %s', filename, err)
-            return
+            return (None, None, None)
 
     # Get workflow name
     try:
@@ -527,7 +532,7 @@ def get_jobs_by_state(iwd, workflow_id):
             workflow_json = json.load(json_file)
     except Exception as err:
         logger.info('Unable to open workflow json file %s due to %s', filename, err)
-        return
+        return (None, None, None)
 
     workflow_name = None
     if 'name' in workflow_json:
@@ -702,7 +707,7 @@ def add_workflow(dag_job_id, iwd, identity, groups, uid):
     Add workflow if necessary
     """
     # Update main database
-    dbg = DatabaseGlobal('/var/spool/prominence/db.dat')
+    dbg = DatabaseGlobal('/var/spool/prominence/database/db.dat')
     if not dbg.is_workflow(dag_job_id):
         dbg.add_workflow(dag_job_id, iwd, identity, groups, uid)
 
@@ -867,7 +872,7 @@ def update_workflows():
     """
     Manage infrastructure as necessary for all running workflows
     """
-    db = DatabaseGlobal('/var/spool/prominence/db.dat')
+    db = DatabaseGlobal('/var/spool/prominence/database/db.dat')
     workflows = db.get_workflows_by_status('created')
     for workflow in workflows:
         logger.info('Working on workflow %d', int(workflow['id']))
@@ -923,12 +928,4 @@ def update_workflows():
             # If a workflow is still running, deploy any jobs if necessary and cleanup any jobs if necessary
             logger.info('Workflow %d is running', int(workflow['id']))
             manage_jobs(int(workflow['id']), workflow['iwd'], workflow['identity'], workflow['groups'], workflow['uid'])
-
-def acquire_lock(pid):
-    db = DatabaseGlobal('/var/spool/prominence/db.dat')
-    return db.acquire_lock()
-
-def release_lock(pid):
-    db = DatabaseGlobal('/var/spool/prominence/db.dat')
-    return db.release_lock()
 
