@@ -130,10 +130,31 @@
 {% endblock %}
 {% block contentuser %}
 <div class="container px-0">
+<div class="row">
+<div class="col-sm-3">
+	<div class="card text-white bg-success">
+		<div class="card-body">
+			<b class="card-title">RUNNING JOBS</b>
+			<h5 class="card-text">{{ jobs_running }}</h5>
+		</div>
+	</div>
+	</div>
+<div class="col-sm-3">
+        <div class="card text-white bg-info">
+                <div class="card-body">
+                        <b class="card-title">PENDING JOBS</b>
+			<h5 class="card-text">{{ jobs_pending }}</h5>
+                </div>
+        </div>
+        </div>
+</div>
+</div>
+<br/>
+<div class="container px-0">
         <div class="col-sm-8 px-0">
 <div class="card">
   <div class="card-body">
-	  <h5 class="card-title">Recent jobs by state</h5>
+	  <b class="card-title">RECENT JOBS BY STATE</b>
     <div class="container">
       <div class="row">
           <canvas id="recent-jobs-by-state-chart" width="800" height="300"></canvas>
@@ -146,7 +167,7 @@
 <div class="col-sm-8 px-0">
 <div class="card">
   <div class="card-body">
-	  <h5 class="card-title">Recent running jobs by resource</h5>
+	  <b class="card-title">RECENT RUNNING JOBS BY RESOURCE</b>
     <div class="container">
       <div class="row">
           <canvas id="recent-jobs-by-cloud-chart" width="800" height="300"></canvas>
