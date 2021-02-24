@@ -9,9 +9,10 @@ def delete_job(self, username, job_ids):
         constraints.append('ClusterId == %d' % int(job_id))
     constraint = '(%s) && ProminenceIdentity == "%s" && ProminenceType == "job"' % (' || '.join(constraints), username)
 
-    schedd = htcondor.Schedd()
-    ret = schedd.act(htcondor.JobAction.Remove, constraint)
+    try:
+        schedd = htcondor.Schedd()
+        ret = schedd.act(htcondor.JobAction.Remove, constraint)
+    except Exception as err:
+        return (1, {"error": err})
 
-    if ret["TotalSuccess"] > 0:
-        return (0, {})
-    return (1, {"error":"No such job(s)"})
+    return (0, {})
