@@ -88,7 +88,6 @@ class JobForm(forms.Form):
     storage_mountpoint = forms.CharField(label='Mount point', required=False)
 
     policy_task_maxretries = forms.IntegerField(label='Task retries', initial=0, min_value=0, max_value=6)
-    policy_job_maxretries = forms.IntegerField(label='Job retries', initial=0, min_value=0, max_value=6)
     policy_leave_job_in_queue = forms.BooleanField(required=False)
     policy_sites = forms.CharField(label='Sites', required=False)
     policy_regions = forms.CharField(label='Regions', required=False)
