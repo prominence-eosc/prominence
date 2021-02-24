@@ -487,20 +487,12 @@ class JobDetailsSerializer(JobSerializer):
         return {}
 
 class JobDetailsDisplaySerializer(JobDetailsSerializer):
-    def get_events(self, obj):
-        events = {"createTime": obj.created}
-        if obj.time_start:
-            events['startTime'] = obj.time_start
-        if obj.time_end:
-            events['endTime'] = obj.time_end
+    workflow = serializers.SerializerMethodField()
 
-        if 'createTime' in events:
-            events['createTime'] = datetime_format(events['createTime'])
+    class Meta(JobSerializer.Meta):
+        fields = JobDetailsSerializer.Meta.fields + ['workflow']
 
-        if 'startTime' in events:
-            events['startTime'] = datetime_format(events['startTime'])
-
-        if 'endTime' in events:
-            events['endTime'] = datetime_format(events['endTime'])
-
-        return events 
+    def get_workflow(self, obj):
+        if obj.workflow:
+            return obj.workflow.id
+        return None
