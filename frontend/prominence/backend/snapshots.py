@@ -17,9 +17,10 @@ def create_snapshot(self, uid, job_id, path):
     # Firstly create the PUT URL
     snapshot_url = self.create_presigned_url('put', self._config['S3_BUCKET'], 'snapshots/%s/snapshot.tgz' % uid, 1000)
 
+    # Use the routed job id, but if there isn't one use the original job id
     job_id_routed = get_routed_job_id(job_id)
     if not job_id_routed:
-        return None
+        job_id_routed = job_id
 
     # Create a tarball & upload to S3
     cmd = 'condor_ssh_to_job %d "tar czf snapshot.tgz %s && curl --upload-file snapshot.tgz \\\"%s\\\""' % (job_id_routed, path, snapshot_url.encode('utf-8'))

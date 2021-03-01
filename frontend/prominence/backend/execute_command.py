@@ -27,9 +27,10 @@ def execute_command(self, job_id, iwd, command):
     """
     Execute a command inside a job
     """
+    # Use the routed job id, but if there isn't one use the original job id
     job_id_routed = get_routed_job_id(job_id)
     if not job_id_routed:
-        return None
+        job_id_routed = job_id
 
     args = ['condor_ssh_to_job', '%d' % job_id_routed]
     args.extend(modify_exec_command(iwd, command))
