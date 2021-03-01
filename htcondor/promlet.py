@@ -97,6 +97,18 @@ fi
 exit $?
 """
 
+def get_cpu_info():
+    """
+    Get CPU details
+    """
+    data = (subprocess.check_output("lscpu", shell=True).strip()).decode()
+    dict = {}
+    for line in data.split('\n'):
+        pieces = line.split(':')
+        dict[pieces[0]] = pieces[1].lstrip()
+
+    return (dict['Vendor ID'], dict['Model name'], dict['CPU MHz'])
+
 def distance(origin, destination):
     """
     Calculate the Haversine distance between two locations
@@ -1551,7 +1563,9 @@ def run_tasks(job, path, path_images, is_batch):
                 if cmd:
                     cmd = Template(cmd).safe_substitute({key:value})
 
-        location = '%s/%s' % (path_images, hashlib.sha256(image_name(image).encode('utf-8')).hexdigest())
+        location = '%s/%s/%s' % (path_images,
+                                 task['runtime'],
+                                 hashlib.sha256(image_name(image).encode('utf-8')).hexdigest())
         logging.info('Image location is: %s', location)
 
         found_image = False
@@ -1864,6 +1878,13 @@ if __name__ == "__main__":
     if 'site' in job_info:
         json_output['site'] = job_info['site']
 
+    # Get CPU info 
+    (cpu_vendor, cpu_model, cpu_clock) = get_cpu_info()
+    json_output['cpu_vendor'] = cpu_vendor
+    json_output['cpu_model'] = cpu_model
+    json_output['cpu_clock'] = cpu_clock
+
+    # Write json file
     try:
         with open('%s/promlet.%d.json' % (path, args.id), 'w') as file:
             json.dump(json_output, file)
