@@ -471,6 +471,11 @@ class JobDetailsSerializer(JobSerializer):
             if not promlet_json:
                 return execution
 
+            if 'cpu_vendor' in promlet_json and 'cpu_model' in promlet_json and 'cpu_clock' in promlet_json:
+                execution['cpu'] = {'vendor': promlet_json['cpu_vendor'],
+                                    'model': promlet_json['cpu_model'],
+                                    'clock': promlet_json['cpu_clock']}
+
             if 'tasks' in promlet_json:
                 tasks = []
                 for task in promlet_json['tasks']:
