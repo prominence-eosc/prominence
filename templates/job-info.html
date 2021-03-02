@@ -303,6 +303,14 @@ None
 <tr><td style="padding-left:10px"><b>Retries</b></td><td style="padding-left:20px">{{ task.retries }}</td></tr>
 </table>
 {% endfor %}
+<br/>
+
+<b>CPU</b><br/>
+<table>
+  <tr><td style="padding-left:10px"><b>Vendor</b></td><td style="padding-left:20px">{{ job.execution.cpu.vendor }}</td></tr>
+  <tr><td style="padding-left:10px"><b>Model</b></td><td style="padding-left:20px">{{ job.execution.cpu.model }}</td></tr>
+  <tr><td style="padding-left:10px"><b>Clock speed</b> (MHz)</td><td style="padding-left:20px">{{ job.execution.cpu.clock }}</td></tr>
+</table>
   </div>
 
 </div>
