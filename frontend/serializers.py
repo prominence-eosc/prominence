@@ -509,3 +509,21 @@ class JobDetailsDisplaySerializer(JobDetailsSerializer):
         if obj.workflow:
             return obj.workflow.id
         return None
+
+    def get_events(self, obj):
+        events = {"createTime": obj.created}
+        if obj.time_start:
+            events['startTime'] = obj.time_start
+        if obj.time_end:
+            events['endTime'] = obj.time_end
+
+        if 'createTime' in events:
+            events['createTime'] = datetime_format(events['createTime'])
+
+        if 'startTime' in events:
+            events['startTime'] = datetime_format(events['startTime'])
+
+        if 'endTime' in events:
+            events['endTime'] = datetime_format(events['endTime'])
+
+        return events
