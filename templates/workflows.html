@@ -15,9 +15,6 @@ $('input[type=radio]').on('change', function() {
 
 $(document).ready(function() {
     var workflowstable = $('#workflows-table').DataTable({
-        order: [
-            [1, 'asc']
-        ],
         "select": {
             "style":    "multi",
             "selector": "td:first-child"
