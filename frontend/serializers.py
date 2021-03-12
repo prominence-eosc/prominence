@@ -459,6 +459,7 @@ class JobDetailsSerializer(JobSerializer):
             if obj.site:
                 if obj.site != '':
                     return {'site': obj.site}
+            return {}
         else:
             execution = {}
 
