@@ -11,13 +11,15 @@ import socket
 import time
 import classad
 
+from django.core.management.base import BaseCommand
+
 from update_db import check_db, update_job_in_db, update_workflow_db
 
 CONFIG = configparser.ConfigParser()
 CONFIG.read('/etc/prominence/prominence.ini')
 
-# TODO: delete old processed completed jobs
-# TODO: https://stackoverflow.com/questions/788411/check-to-see-if-python-script-is-running
+# Logging
+logger = logging.getLogger('completed_jobs')
 
 def get_site(ad):
     if 'MachineAttrProminenceCloud0' in ad:
@@ -262,131 +264,121 @@ def send_to_socket(job_id, identity, group, promlet_json):
 
     return True
 
-def main():
-    start_time = time.time()
+class Command(BaseCommand):
 
-    for filename in glob.glob('/var/spool/prominence/completed_jobs/history.*'):
-        logger.info('Working on file %s', filename)
-        # TODO: handle exception when opening file
-        with open(filename, 'r') as fd:
-            ad = classad.parseOne(fd, parser=classad.Parser.Old)
+    def process(self):
+        start_time = time.time()
 
-            if 'ProminenceType' not in ad:
-                # This job is not one of ours!
-                move(filename)
-                continue
+        for filename in glob.glob('/var/spool/prominence/completed_jobs/history.*'):
+            logger.info('Working on file %s', filename)
+            # TODO: handle exception when opening file
+            with open(filename, 'r') as fd:
+                ad = classad.parseOne(fd, parser=classad.Parser.Old)
 
-            # We don't need to do anything to handle routed jobs
-            if 'RouteName' in ad:
-                if ad['RouteName'] == 'cloud':
-                    logger.info('Job is a routed job, no need to process it')
+                if 'ProminenceType' not in ad:
+                    # This job is not one of ours!
                     move(filename)
                     continue
 
-            identity = None
-            group = None
-            cluster_id = None
-            if 'ProminenceIdentity' in ad:
-                identity = ad['ProminenceIdentity']
-            if 'ProminenceGroup' in ad:
-                group = ad['ProminenceGroup']
-            if 'ClusterId' in ad:
-                cluster_id = int(ad['ClusterId'])
-
-            # Process workflow
-            if 'Cmd' in ad:
-                if ad['Cmd'] == '/usr/bin/condor_dagman':
-                    if handle_workflow(cluster_id, ad):
+                # We don't need to do anything to handle routed jobs
+                if 'RouteName' in ad:
+                    if ad['RouteName'] == 'cloud':
+                        logger.info('Job is a routed job, no need to process it')
                         move(filename)
+                        continue
+
+                identity = None
+                group = None
+                cluster_id = None
+                if 'ProminenceIdentity' in ad:
+                    identity = ad['ProminenceIdentity']
+                if 'ProminenceGroup' in ad:
+                    group = ad['ProminenceGroup']
+                if 'ClusterId' in ad:
+                    cluster_id = int(ad['ClusterId'])
+
+                # Process workflow
+                if 'Cmd' in ad:
+                    if ad['Cmd'] == '/usr/bin/condor_dagman':
+                        if handle_workflow(cluster_id, ad):
+                            move(filename)
+                        continue
+
+                iwd = None
+                if 'Iwd' in ad:
+                    iwd = ad['Iwd']
+
+                # Get promlet json
+                promlet_json_filename = None
+                if 'TransferOutput' in ad:
+                    output_files = ad['TransferOutput']
+                    match = re.search(r'\,(promlet.[\d]+.json)', output_files)
+                    if match:
+                        promlet_json_filename = '%s/%s' % (iwd, match.group(1))
+
+                if not promlet_json_filename:
+                    logger.error('Unable to get name of promlet json file for job %d', int(cluster_id))
                     continue
 
-            iwd = None
-            if 'Iwd' in ad:
-                iwd = ad['Iwd']
+                try:
+                    with open(promlet_json_filename) as promlet_json_file:
+                        promlet_json = json.load(promlet_json_file)
+                except Exception:
+                    logger.error('Unable to open promlet json file for job %d', int(cluster_id))
+                    promlet_json = None
 
-            # Get promlet json
-            promlet_json_filename = None
-            if 'TransferOutput' in ad:
-                output_files = ad['TransferOutput']
-                match = re.search(r'\,(promlet.[\d]+.json)', output_files)
-                if match:
-                    promlet_json_filename = '%s/%s' % (iwd, match.group(1))
+                # Get the completion date
+                completion_date = get_creation_date(ad)
 
-            if not promlet_json_filename:
-                logger.error('Unable to get name of promlet json file for job %d', int(cluster_id))
-                continue
+                # Set the status and reason
+                (status, reason) = get_status_and_reason(ad, promlet_json)
+
+                # Get the site
+                site = get_site(ad)
+
+                # Get the start date
+                start_date = None
+                if 'JobStartDate' in ad:
+                    start_date = ad['JobStartDate']
+                    if start_date:
+                        start_date = int(start_date)
+
+                # Update the job in the DB
+                logger.info('Setting status of job %d to %d with completion date %d and reason %d and site %s', int(cluster_id), status, completion_date, reason, site)
+                if start_date:
+                    if site:
+                        success_db = update_job_in_db(int(cluster_id), status, end_date=completion_date, start_date=start_date, reason=reason, site=site)
+                    else:
+                        success_db = update_job_in_db(int(cluster_id), status, end_date=completion_date, start_date=start_date, reason=reason)
+                else:
+                    if site:
+                        success_db = update_job_in_db(int(cluster_id), status, end_date=completion_date, reason=reason, site=site)
+                    else:
+                        success_db = update_job_in_db(int(cluster_id), status, end_date=completion_date, reason=reason)
+
+                if success_db is None:
+                    logger.error('Unable to update status of job %d in the DB', int(cluster_id))
+                    continue
+
+                # Send job details to InfluxDB
+                if success_db:
+                    success = True
+                    if not send_to_socket(cluster_id, identity, group, promlet_json):
+                        logger.error('Got error sending details to InfluxDB')
+                        success = False
+
+                # Move file to processed jobs directory
+                move(filename)
+
+    def handle(self, **options):
+
+        while True:
+            if not check_db():
+                sys.exit(1)
 
             try:
-                with open(promlet_json_filename) as promlet_json_file:
-                    promlet_json = json.load(promlet_json_file)
-            except Exception:
-                logger.error('Unable to open promlet json file for job %d', int(cluster_id))
-                promlet_json = None
-
-            # Get the completion date
-            completion_date = get_creation_date(ad)
-
-            # Set the status and reason
-            (status, reason) = get_status_and_reason(ad, promlet_json)
-
-            # Get the site
-            site = get_site(ad)
-
-            # Get the start date
-            start_date = None
-            if 'JobStartDate' in ad:
-                start_date = ad['JobStartDate']
-                if start_date:
-                    start_date = int(start_date)
-
-            # Update the job in the DB
-            logger.info('Setting status of job %d to %d with completion date %d and reason %d and site %s', int(cluster_id), status, completion_date, reason, site)
-            if start_date:
-                if site:
-                    success_db = update_job_in_db(int(cluster_id), status, end_date=completion_date, start_date=start_date, reason=reason, site=site)
-                else:
-                    success_db = update_job_in_db(int(cluster_id), status, end_date=completion_date, start_date=start_date, reason=reason)
-            else:
-                if site:
-                    success_db = update_job_in_db(int(cluster_id), status, end_date=completion_date, reason=reason, site=site)
-                else:
-                    success_db = update_job_in_db(int(cluster_id), status, end_date=completion_date, reason=reason)
-
-            if success_db is None:
-                logger.error('Unable to update status of job %d in the DB', int(cluster_id))
-                continue
-
-            # Send job details to InfluxDB
-            if success_db:
-                success = True
-                if not send_to_socket(cluster_id, identity, group, promlet_json):
-                    logger.error('Got error sending details to InfluxDB')
-                    success = False
-
-            # Move file to processed jobs directory
-            move(filename)
-
-    #logger.info('Time taken to process completed jobs: %d secs', int(time.time() - start_time))
-
-if __name__ == "__main__":
-    # Setup logging
-    handler = RotatingFileHandler('/var/log/prominence/completed_jobs.log',
-                                  maxBytes=int(CONFIG.get('logs', 'max_bytes')),
-                                  backupCount=int(CONFIG.get('logs', 'num')))
-    formatter = logging.Formatter('%(asctime)s %(levelname)s [%(name)s] %(message)s')
-    handler.setFormatter(formatter)
-    logger = logging.getLogger('workflows')
-    logger.addHandler(handler)
-    logger.setLevel(logging.INFO)
-
-    logger.info('Starting polling loop...')
-    while True:
-        if not check_db():
-            sys.exit(1)
-
-        try:
-            main()
-        except Exception as err:
-            logger.error('Got exception processing completed jobs: %s', err)
+                self.process()
+            except Exception as err:
+                logger.error('Got exception processing completed jobs: %s', err)
         
-        time.sleep(2)
+            time.sleep(2)
