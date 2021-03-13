@@ -9,7 +9,7 @@ from django.core.management.base import BaseCommand
 from workflow_handler import update_workflows, add_workflow
 
 # Logging
-logger = logging.getLogger('update_job_info')
+logger = logging.getLogger('workflow_trigger')
 
 def trigger():
     coll = htcondor.Collector()
