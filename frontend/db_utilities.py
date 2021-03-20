@@ -50,6 +50,16 @@ def db_create_job(user, data, uid):
             if 'cmd' in data['tasks'][0]:
                 job.command = data['tasks'][0]['cmd']
 
+    if 'resources' in data:
+        if 'cpus' in data['resources']:
+            job.request_cpus = int(data['resources']['cpus'])
+        if 'memory' in data['resources']:
+            job.request_memory = int(data['resources']['memory'])
+        if 'disk' in data['resources']:
+            job.request_disk = int(data['resources']['disk'])
+        if 'nodes' in data['resources']:
+            job.request_nodes = int(data['resources']['nodes'])
+
     job.save()
 
     # Add any labels if necessary
