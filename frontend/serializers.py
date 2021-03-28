@@ -1,3 +1,4 @@
+from collections import OrderedDict
 import json
 import re
 import os
@@ -148,6 +149,10 @@ class WorkflowDetailsSerializer(WorkflowSerializer):
     dependencies = serializers.SerializerMethodField()
     labels = serializers.SerializerMethodField()
 
+    def to_representation(self, instance):
+        result = super(WorkflowDetailsSerializer, self).to_representation(instance)
+        return OrderedDict([(key, result[key]) for key in result if result[key]])
+
     class Meta(WorkflowSerializer.Meta):
         fields = WorkflowSerializer.Meta.fields + ['jobs',
                                                    'factories',
@@ -284,6 +289,10 @@ class JobDetailsSerializer(JobSerializer):
     storage = serializers.SerializerMethodField()
     inputs = serializers.SerializerMethodField()
     labels = serializers.SerializerMethodField()
+
+    def to_representation(self, instance):
+        result = super(JobDetailsSerializer, self).to_representation(instance)
+        return OrderedDict([(key, result[key]) for key in result if result[key]])
 
     class Meta(JobSerializer.Meta):
         fields = JobSerializer.Meta.fields + ['resources',
