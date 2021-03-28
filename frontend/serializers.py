@@ -308,11 +308,12 @@ class JobDetailsSerializer(JobSerializer):
                                               'storage']
 
     def get_resources(self, obj):
-        job_json = get_job_json(obj)
-        if job_json:
-            if 'resources' in job_json:
-                return job_json['resources']
-        return {}
+        resources = {}
+        resources['cpus'] = obj.request_cpus
+        resources['memory'] = obj.request_memory
+        resources['disk'] = obj.request_disk
+        resources['nodes'] = obj.request_nodes
+        return resources
 
     def get_policies(self, obj):
         job_json = get_job_json(obj)
