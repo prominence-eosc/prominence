@@ -6,7 +6,6 @@ import re
 import time
 import uuid
 
-from rest_framework.authentication import TokenAuthentication
 from rest_framework import status, permissions, views
 from rest_framework.renderers import JSONRenderer
 from rest_framework.response import Response
@@ -19,6 +18,7 @@ from frontend.models import Workflow, WorkflowLabel
 from frontend.serializers import WorkflowSerializer, WorkflowDetailsSerializer
 
 from frontend.api.renderers import PlainTextRenderer
+from frontend.api.authentication import TokenAuthentication
 
 from server.backend import ProminenceBackend
 from server.validate import validate_workflow

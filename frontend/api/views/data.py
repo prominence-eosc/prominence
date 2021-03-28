@@ -3,9 +3,10 @@ API view for data management
 """
 from rest_framework import status, views
 from rest_framework.response import Response
-from rest_framework.authentication import TokenAuthentication
 from rest_framework.renderers import JSONRenderer
 from rest_framework import status, permissions, views
+
+from frontend.api.authentication import TokenAuthentication
 
 from server.backend import ProminenceBackend
 from server.set_groups import set_groups

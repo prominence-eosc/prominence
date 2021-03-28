@@ -6,7 +6,6 @@ import re
 import time
 import uuid
 
-from rest_framework.authentication import TokenAuthentication
 from rest_framework import status, permissions, views
 from rest_framework.renderers import JSONRenderer
 from rest_framework.response import Response
@@ -21,6 +20,7 @@ from frontend.db_utilities import get_job, get_condor_job_id, db_create_job
 from frontend.utilities import get_details_from_name
 
 from frontend.api.renderers import PlainTextRenderer
+from frontend.api.authentication import TokenAuthentication
 
 from server.backend import ProminenceBackend
 from server.validate import validate_job

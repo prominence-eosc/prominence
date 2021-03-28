@@ -3,9 +3,10 @@ API view for getting usage data
 """
 from rest_framework import status, views
 from rest_framework.response import Response
-from rest_framework.authentication import TokenAuthentication
 from rest_framework.renderers import JSONRenderer
 from rest_framework import status, permissions, views
+
+from frontend.api.authentication import TokenAuthentication
 
 import server.settings
 from frontend.metrics import ResourceUsage
