@@ -91,7 +91,7 @@ class Command(BaseCommand):
             with socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM) as s:
                 s.connect('/tmp/telegraf.sock')
                 for message in messages:
-                    conn.send(message.encode('utf8'))
+                    s.send(message.encode('utf8'))
         except Exception as err:
             logger.critical('Unable to send metrics due to: %s', err)
 
