@@ -150,6 +150,7 @@ None<br/>
   <tr><td style="padding-left:10px"><b>Container image</b></td><td style="padding-left:20px">{{ task.image }}</td></tr>
   <tr><td style="padding-left:10px"><b>Container runtime</b></td><td style="padding-left:20px">{{ task.runtime }}</td></tr>
   <tr><td style="padding-left:10px"><b>Command</b></td><td style="padding-left:20px">{{ task.cmd }}</td></tr>
+  <tr><td style="padding-left:10px"><b>Work directory</b></td><td style="padding-left:20px">{{ task.workdir }}</td></tr>
   <tr><td style="padding-left:10px; vertical-align: top;"><b>Environment</b></td><td style="padding-left:20px; vertical-align: top;">
   {% for key, value in task.env.items %}
   {{ key }} = {{ value }}<br/>
