@@ -32,6 +32,18 @@ DOWNLOAD_CONN_TIMEOUT = 10
 DOWNLOAD_MAX_RETRIES = 2
 DOWNLOAD_BACKOFF = 1
 
+def get_cpu_info():
+    """
+    Get CPU details
+    """
+    data = (subprocess.check_output("lscpu", shell=True).strip()).decode()
+    dict = {}
+    for line in data.split('\n'):
+        pieces = line.split(':')
+        dict[pieces[0]] = pieces[1].lstrip()
+
+    return (dict['Vendor ID'], dict['Model name'], dict['CPU MHz'])
+
 def get_token(path):
     filename = '.job.ad'
     token = None
@@ -358,11 +370,15 @@ def kill_proc(proc, timeout):
     timeout["value"] = True
     proc.kill()
 
-def run_with_timeout(cmd, env, timeout_sec):
+def run_with_timeout(cmd, env, timeout_sec, capture_std=False):
     """
     Run a process with a timeout
     """
-    proc = subprocess.Popen(shlex.split(cmd), env=env)
+    if capture_std:
+        proc = subprocess.Popen(shlex.split(cmd), env=env, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    else:
+        proc = subprocess.Popen(shlex.split(cmd), env=env)
+
     timeout = {"value": False}
     timer = Timer(timeout_sec, kill_proc, [proc, timeout])
     timer.start()
@@ -542,17 +558,18 @@ def mount_storage(job):
             else:
                 logging.info('Mounts directory already exists, no need to create it')
 
-            process = subprocess.Popen('/usr/bin/oneclient -o allow_other -t %s -H %s /home/user/mounts%s' % (storage_token,
-                                                                                                              storage_provider,
-                                                                                                              storage_mountpoint),
-                                       shell=True,
-                                       stdout=subprocess.PIPE,
-                                       stderr=subprocess.STDOUT)
-            output = process.communicate()[0]
-            return_code = process.returncode
+            cmd = '/usr/bin/oneclient -o allow_other -t %s -H %s /home/user/mounts%s' % (storage_token, storage_provider, storage_mountpoint)
+
+            count = 0
+            return_code = -1
+            while count < 3 and return_code != 0:
+                return_code, timed_out = run_with_timeout(cmd, os.environ, 60, True)
+                if timed_out:
+                    logging.error('Timeout running oneclient')
+                count = count + 1
+
             logging.info('Return code from oneclient is %d', return_code)
             if return_code != 0:
-                logging.error(output)
                 return False
                 
     return True
@@ -733,16 +750,18 @@ def install_udocker(location):
 
             # Install udocker if necessary
             process = subprocess.Popen('udocker install',
-                                       env=dict(os.environ,
+                                       env=dict(PATH='/usr/local/bin:/usr/bin',
                                                 UDOCKER_DIR='%s/.udocker' % location),
                                        shell=True,
                                        stdout=subprocess.PIPE,
                                        stderr=subprocess.STDOUT)
-            output = process.communicate()[0]
+            output, error = process.communicate()
             return_code = process.returncode
 
             if 'Error: installation of udockertools failed' in str(output) or return_code != 0:
                 logging.error('Installation of udockertools failed')
+                logging.error(output)
+                logging.error(error)
             else:
                 logging.info('udockertools installation successful')
                 installed = True
@@ -786,7 +805,7 @@ def download_udocker(image, location, label, path, credential):
     if re.match(r'^http', image) or (image.startswith('/') and image.endswith('.tar')):
         # Load image
         process = subprocess.Popen('udocker load -i %s/image.tar' % location,
-                                   env=dict(os.environ,
+                                   env=dict(PATH='/usr/local/bin:/usr/bin',
                                             UDOCKER_DIR='%s/.udocker' % udocker_location),
                                    shell=True,
                                    stdout=subprocess.PIPE,
@@ -802,7 +821,7 @@ def download_udocker(image, location, label, path, credential):
 
         # Determine image name
         process = subprocess.Popen('udocker images',
-                                   env=dict(os.environ,
+                                   env=dict(PATH='/usr/local/bin:/usr/bin',
                                             UDOCKER_DIR='%s/.udocker' % udocker_location),
                                    shell=True,
                                    stdout=subprocess.PIPE)
@@ -829,7 +848,7 @@ def download_udocker(image, location, label, path, credential):
     else:
         # Pull image
         process = subprocess.Popen('udocker pull %s' % image,
-                                   env=dict(os.environ,
+                                   env=dict(PATH='/usr/local/bin:/usr/bin',
                                             UDOCKER_DIR='%s/.udocker' % udocker_location),
                                    shell=True,
                                    stdout=subprocess.PIPE,
@@ -842,7 +861,7 @@ def download_udocker(image, location, label, path, credential):
 
     # Create container
     process = subprocess.Popen('udocker create --name=image%d %s' % (label, image),
-                               env=dict(os.environ,
+                               env=dict(PATH='/usr/local/bin:/usr/bin',
                                         UDOCKER_DIR='%s/.udocker' % udocker_location),
                                shell=True,
                                stdout=subprocess.PIPE,
@@ -948,7 +967,7 @@ def run_udocker(image, cmd, workdir, env, path, mpi, mpi_processes, mpi_procs_pe
         # Used on clouds
         run_command = ("/usr/local/bin/udocker -q run %s"
                        " --env=HOME=%s"
-                       " --env=USER=user"
+                       " --env=USER=%s"
                        " --env=TMP=/tmp"
                        " --env=TEMP=/tmp"
                        " --env=TMPDIR=/tmp"
@@ -956,12 +975,12 @@ def run_udocker(image, cmd, workdir, env, path, mpi, mpi_processes, mpi_procs_pe
                        " --env=UDOCKER_DIR=%s/.udocker"
                        " --env=PROMINENCE_CONTAINER_RUNTIME=udocker"
                        " --hostauth"
-                       " --user=user"
+                       " --user=%s"
                        " --bindhome"
                        " %s"
                        " --workdir=%s"
                        " -v %s:/tmp"
-                       " %s %s") % (extras, path, workdir, path, mounts, workdir, user_tmp_dir, image, cmd)
+                       " %s %s") % (extras, path, getpass.getuser(), workdir, path, getpass.getuser(), mounts, workdir, user_tmp_dir, image, cmd)
     else:
         # Used on existing HPC systems
         run_command = ("udocker -q run %s"
@@ -985,7 +1004,7 @@ def run_udocker(image, cmd, workdir, env, path, mpi, mpi_processes, mpi_procs_pe
     logging.info('Running: "%s"', run_command)
 
     return_code, timed_out = run_with_timeout(run_command,
-                                              dict(os.environ,
+                                              dict(PATH='/usr/local/bin:/usr/bin',
                                                    UDOCKER_DIR='%s/.udocker' % udocker_location),
                                               walltime_limit)
 
@@ -1494,6 +1513,17 @@ if __name__ == "__main__":
     json_output['tasks'] = json_tasks
     json_output['stageout'] = json_stageout
     json_output['stagein'] = json_stagein
+
+    # Get site
+    job_info = get_info()
+    if 'site' in job_info:
+        json_output['site'] = job_info['site']
+
+    # Get CPU info
+    (cpu_vendor, cpu_model, cpu_clock) = get_cpu_info()
+    json_output['cpu_vendor'] = cpu_vendor
+    json_output['cpu_model'] = cpu_model
+    json_output['cpu_clock'] = cpu_clock
 
     try:
         with open('promlet.%d.json' % args.id, 'w') as file:
