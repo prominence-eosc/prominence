@@ -778,11 +778,15 @@ def kill_proc(proc, timeout):
     timeout["value"] = True
     proc.kill()
 
-def run_with_timeout(cmd, env, timeout_sec):
+def run_with_timeout(cmd, env, timeout_sec, capture_std=False):
     """
     Run a process with a timeout
     """
-    proc = subprocess.Popen(shlex.split(cmd), env=env)
+    if capture_std:
+        proc = subprocess.Popen(shlex.split(cmd), env=env, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    else:
+        proc = subprocess.Popen(shlex.split(cmd), env=env)
+
     timeout = {"value": False}
     timer = Timer(timeout_sec, kill_proc, [proc, timeout])
     timer.start()
@@ -986,24 +990,15 @@ def mount_storage(job):
             else:
                 logging.info('Mounts directory already exists, no need to create it')
 
-            try:
-                process = subprocess.Popen('/usr/bin/oneclient -t %s -H %s /home/user/mounts%s' % (storage_token,
-                                                                                       storage_provider,
-                                                                                       storage_mountpoint),
-                                           shell=True,
-                                           stdout=subprocess.PIPE,
-                                           stderr=subprocess.PIPE)
-                stdout, stderr = process.communicate()
-                return_code = process.returncode
-            except Exception as exc:
-                logging.critical('Unable to mount OneData due to %s', exc)
-                json_mounts.append({'mountpoint':storage_mountpoint,
-                                    'type':'onedata',
-                                    'status':'failed'})
-                return False, json_mounts
+            cmd = '/usr/bin/oneclient -t %s -H %s /home/user/mounts%s' % (storage_token, storage_provider, storage_mountpoint)
 
-            logging.info('mount-stdout=%s', stdout)
-            logging.info('mount-stderr=%s', stderr)
+            count = 0
+            return_code = -1
+            while count < 3 and return_code != 0:
+                return_code, timed_out = run_with_timeout(cmd, os.environ, 60, True)
+                if timed_out:
+                    logging.error('Timeout running oneclient')
+                count = count + 1
 
             if return_code == 0:
                 json_mounts.append({'mountpoint':storage_mountpoint,
