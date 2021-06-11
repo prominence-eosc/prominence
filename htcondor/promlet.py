@@ -1192,7 +1192,7 @@ def install_udocker(location):
 
             # Install udocker if necessary
             process = subprocess.Popen('udocker install',
-                                       env=dict(os.environ,
+                                       env=dict(PATH='/usr/local/bin:/usr/bin',
                                                 UDOCKER_DIR='%s/.udocker' % location),
                                        shell=True,
                                        stdout=subprocess.PIPE,
@@ -1243,7 +1243,7 @@ def download_udocker(image, location, label, path, credential):
     if re.match(r'^http', image) or (image.startswith('/') and image.endswith('.tar')):
         # Load image
         process = subprocess.Popen('udocker load -i %s/image.tar' % location,
-                                   env=dict(os.environ,
+                                   env=dict(PATH='/usr/local/bin:/usr/bin',
                                             UDOCKER_DIR='%s/.udocker' % udocker_location),
                                    shell=True,
                                    stdout=subprocess.PIPE,
@@ -1259,7 +1259,7 @@ def download_udocker(image, location, label, path, credential):
 
         # Determine image name
         process = subprocess.Popen('udocker images',
-                                   env=dict(os.environ,
+                                   env=dict(PATH='/usr/local/bin:/usr/bin',
                                             UDOCKER_DIR='%s/.udocker' % udocker_location),
                                    shell=True,
                                    stdout=subprocess.PIPE)
@@ -1286,7 +1286,7 @@ def download_udocker(image, location, label, path, credential):
     else:
         # Pull image
         process = subprocess.Popen('udocker pull %s' % image,
-                                   env=dict(os.environ,
+                                   env=dict(PATH='/usr/local/bin:/usr/bin',
                                             UDOCKER_DIR='%s/.udocker' % udocker_location),
                                    shell=True,
                                    stdout=subprocess.PIPE,
@@ -1299,7 +1299,7 @@ def download_udocker(image, location, label, path, credential):
 
     # Create container
     process = subprocess.Popen('udocker create --name=image%d %s' % (label, image),
-                               env=dict(os.environ,
+                               env=dict(PATH='/usr/local/bin:/usr/bin',
                                         UDOCKER_DIR='%s/.udocker' % udocker_location),
                                shell=True,
                                stdout=subprocess.PIPE,
