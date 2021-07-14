@@ -820,27 +820,8 @@ def download_udocker(image, location, label, path, credential):
             return 1, False
 
         # Determine image name
-        process = subprocess.Popen('udocker images',
-                                   env=dict(PATH='/usr/local/bin:/usr/bin',
-                                            UDOCKER_DIR='%s/.udocker' % udocker_location),
-                                   shell=True,
-                                   stdout=subprocess.PIPE)
-        stdout, stderr = process.communicate()
-        return_code = process.returncode
-
-        if return_code != 0:
-            logging.error('Unable to determine container image name')
-            return 1, False
-
-        image = None
-        for line in stdout.split('\n'):
-            match_obj_name = re.search(r'([\w\/\.\-\_\:]+)', line)
-            if match_obj_name and 'REPOSITORY' not in line:
-                image = match_obj_name.group(1)
-
-        if image is None:
-            logging.error('No image found')
-            return 1, False
+        image = stdout.split('\n')[len(stdout.split('\n')) - 2]
+        logging.info('Image name used is: %s', image)
 
         # Delete tarball
         os.unlink('%s/image.tar' % location)
