@@ -785,6 +785,8 @@ def download_udocker(image, location, label, path, credential):
         logging.error('Unable to install udockertools')
         return 1, False
 
+    logging.info('Getting udocker image: %s', image)
+
     if re.match(r'^http', image):
         # Download tarball
         logging.info('Downloading udocker image from URL')
@@ -803,6 +805,7 @@ def download_udocker(image, location, label, path, credential):
             return 1, False
 
     if re.match(r'^http', image) or (image.startswith('/') and image.endswith('.tar')):
+        logging.info('Loading udocker image')
         # Load image
         process = subprocess.Popen('udocker load -i %s/image.tar' % location,
                                    env=dict(PATH='/usr/local/bin:/usr/bin',
@@ -841,6 +844,7 @@ def download_udocker(image, location, label, path, credential):
             return 1, False
 
     # Create container
+    logging.info('Creating udocker container')
     process = subprocess.Popen('udocker create --name=image%d %s' % (label, image),
                                env=dict(PATH='/usr/local/bin:/usr/bin',
                                         UDOCKER_DIR='%s/.udocker' % udocker_location),
@@ -851,6 +855,9 @@ def download_udocker(image, location, label, path, credential):
     return_code = process.returncode
 
     if return_code != 0:
+        logging.error('Got error creating udocker container')
+        logging.error('stdout=%s', stdout)
+        logging.error('stderr=%s', stderr)
         return 1, False
 
     return 0, False
