@@ -275,6 +275,9 @@ def list_jobs(self, job_ids, identity, active, completed, workflow, num, detail,
                 if job['HoldReason'] == 'Job was queued for too long':
                     reason = 'Maximum time queued was exceeded'
                     jobj['status'] = 'failed'
+                if 'Job has gone over memory limit' in job['HoldReason']:
+                    reason = 'Job used too much memory'
+                    jobj['status'] = 'failed'
 
             jobj['statusReason'] = reason
 
@@ -329,7 +332,7 @@ def list_jobs(self, job_ids, identity, active, completed, workflow, num, detail,
         if 'JobFinishedHookDone' in job and (job['JobStatus'] == 3 or job['JobStatus'] == 4):
             if int(job['JobFinishedHookDone']) > 0:
                 if 'endTime' in events:
-                    if int(job['JobFinishedHookDone']) > events['endTime']:
+                    if int(job['JobFinishedHookDone']) > events['endTime'] and events['endTime'] == 0:
                         events['endTime'] = int(job['JobFinishedHookDone'])
                 else:
                     events['endTime'] = int(job['JobFinishedHookDone'])
@@ -370,16 +373,26 @@ def list_jobs(self, job_ids, identity, active, completed, workflow, num, detail,
             if 'ProminenceInfrastructureSite' in job:
                 if job['ProminenceInfrastructureSite'] != 'none':
                     execution['site'] = str(job['ProminenceInfrastructureSite'])
-                new_tasks_u = []
-                if tasks_u:
-                    for task_u in tasks_u:
-                        if 'maxMemoryUsageKB' in task_u:
-                            execution['maxMemoryUsageKB'] = task_u['maxMemoryUsageKB']
-                        elif 'error' in task_u:
-                            job_wall_time_limit_exceeded = True
-                        else:
-                            new_tasks_u.append(task_u)
-                    execution['tasks'] = new_tasks_u
+            elif 'site' in job_u:
+                execution['site'] = job_u['site']
+
+            if 'cpu_vendor' in job_u and 'cpu_model' in job_u and 'cpu_clock' in job_u:
+                execution['cpu'] = {'vendor': job_u['cpu_vendor'],
+                                    'model': job_u['cpu_model'],
+                                    'clock': job_u['cpu_clock']}
+
+            new_tasks_u = []
+            if tasks_u:
+                for task_u in tasks_u:
+                    if 'maxMemoryUsageKB' in task_u:
+                        execution['maxMemoryUsageKB'] = task_u['maxMemoryUsageKB']
+                    elif 'error' in task_u:
+                        job_wall_time_limit_exceeded = True
+                    else:
+                        new_tasks_u.append(task_u)
+                execution['tasks'] = new_tasks_u
+
+            if execution:
                 jobj['execution'] = execution
 
             if 'ProminenceJobUniqueIdentifier' in job:
@@ -403,7 +416,7 @@ def list_jobs(self, job_ids, identity, active, completed, workflow, num, detail,
                                 url = self.create_presigned_url('get',
                                                                 self._config['S3_BUCKET'],
                                                                 'scratch/%s/%s' % (fid, filename),
-                                                                24*60*60)
+                                                                7*24*60*60)
                                 size = self.get_object_size(self._config['S3_BUCKET'],
                                                             'scratch/%s/%s' % (fid, filename))
 
@@ -427,7 +440,7 @@ def list_jobs(self, job_ids, identity, active, completed, workflow, num, detail,
                                 url = self.create_presigned_url('get',
                                                                 self._config['S3_BUCKET'],
                                                                 'scratch/%s/%s.tgz' % (fid, dirname_base),
-                                                                24*60*60)
+                                                                7*24*60*60)
                                 size = self.get_object_size(self._config['S3_BUCKET'],
                                                             'scratch/%s/%s.tgz' % (fid, dirname_base))
                     file_map = {'name':output_dir, 'url':url}
