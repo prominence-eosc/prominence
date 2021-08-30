@@ -1,6 +1,5 @@
-"""Update any presigned URLs which will expire too soon"""
 import boto3
-import ConfigParser
+import configparser
 import json
 import logging
 import os
@@ -14,7 +13,7 @@ except ImportError: # Python 3
 
 logger = logging.getLogger(__name__)
 
-CONFIG = ConfigParser.ConfigParser()
+CONFIG = configparser.ConfigParser()
 CONFIG.read('/etc/prominence/prominence.ini')
 
 THRESHOLD = 5*24*60*60
@@ -64,7 +63,7 @@ def update_presigned_urls(args, json_file):
     # Check if object storage is enabled; return immediately if it is not
     if CONFIG.get('s3', 'url') == '':
         return args
-    
+
     # Regular expression
     url = CONFIG.get('s3', 'url').replace('/', '\/').replace(':', '\:').replace('.', '\.')
     url_regex = url + '\/' + CONFIG.get('s3', 'bucket') + '\/[\w\/\%\&\=\?\.\-]+'
@@ -77,7 +76,7 @@ def update_presigned_urls(args, json_file):
             if _get_expiry(match) - time.time() < THRESHOLD:
                 logger.info('Replacing a presigned URL in args')
                 object_name = urlsplit(match).path.replace('/%s/' % CONFIG.get('s3', 'bucket'), '')
-                new_url = _create_presigned_url('put', object_name, 604800)
+                new_url = _create_presigned_url('put', object_name, 864000)
                 new_args = new_args.replace(match, new_url)
 
     # Replave any presigned URLs in the mapped json file
@@ -102,7 +101,7 @@ def update_presigned_urls(args, json_file):
                             logger.info('Replacing a presigned URL in artifacts')
                             changes += 1
                             object_name = urlsplit(match).path.replace('/%s/' % CONFIG.get('s3', 'bucket'), '')
-                            artifact['url'] = _create_presigned_url('get', object_name, 604800)
+                            artifact['url'] = _create_presigned_url('get', object_name, 864000)
             artifacts_new.append(artifact)
         job_json['artifacts'] = artifacts_new
 
@@ -118,7 +117,7 @@ def update_presigned_urls(args, json_file):
                             logger.info('Replacing a presigned URL in output files')
                             changes += 1
                             object_name = urlsplit(match).path.replace('/%s/' % CONFIG.get('s3', 'bucket'), '')
-                            output_file['url'] = _create_presigned_url('put', object_name, 604800)
+                            output_file['url'] = _create_presigned_url('put', object_name, 864000)
             output_files_new.append(output_file)
         job_json['outputFiles'] = output_files_new
 
@@ -134,7 +133,7 @@ def update_presigned_urls(args, json_file):
                             logger.info('Replacing a presigned URL in output directories')
                             changes += 1
                             object_name = urlsplit(match).path.replace('/%s/' % CONFIG.get('s3', 'bucket'), '')
-                            output_dir['url'] = _create_presigned_url('put', object_name, 604800)
+                            output_dir['url'] = _create_presigned_url('put', object_name, 864000)
             output_dirs_new.append(output_dir)
         job_json['outputDirs'] = output_dirs_new
 
