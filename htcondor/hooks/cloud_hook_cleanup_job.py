@@ -1,5 +1,5 @@
-#!/usr/bin/python
-import ConfigParser
+#!/usr/bin/python3
+import configparser
 import json
 import logging
 from logging.handlers import RotatingFileHandler
@@ -9,99 +9,6 @@ import time
 import requests
 from requests.auth import HTTPBasicAuth
 import classad
-
-import send_email
-
-def format_duration(tis):
-    """
-    Format a duration nicely
-    """
-    days = int(tis/86400)
-    time_fmt = '%H:%M:%S'
-    return '%d+%s' % (days, time.strftime(time_fmt, time.gmtime(tis)))
-
-def send_completed_email(event, job_id_original, job_id_routed, identity, email, job_name, site, promlet_json):
-    """
-    Send a notification email
-    """
-    logger.info('[%d] Sending notification email to %s for event %s for job %d', job_id_routed, email, event, job_id_original)
-
-    name = ''
-    if job_name:
-        name = ' (%s)' % job_name
-    subject = 'Your PROMINENCE job with id %d%s has finished' % (job_id_original, name)
-
-    memory_usage = 0
-    cpu_usage = 0
-    wall_usage = 0
-    if 'tasks' in promlet_json:
-        if 'maxMemoryUsageKB' in promlet_json['tasks']:
-            memory_usage = int(promlet_json['tasks']['maxMemoryUsageKB'])/1000
-        for task in promlet_json['tasks']:
-            if 'cpuTimeUsage' in task:
-                cpu_usage += task['cpuTimeUsage']
-            if 'wallTimeUsage' in task:
-                wall_usage += task['wallTimeUsage']
-
-    cpu_usage = format_duration(cpu_usage)
-    wall_usage = format_duration(wall_usage)
-
-    content = ("CPU time usage   %s\n"
-               "Wall time usage  %s\n"
-               "Memory usage     %d MB\n"
-               "\n"
-               "Site             %s\n"
-               "\n"
-               "\n"
-               "--\n"
-               "Please do not reply to this email") % (cpu_usage, wall_usage, memory_usage, site)
-
-    send_email.send_email(email, identity, subject, content)
-
-def handle_notifications(iwd, job_id_original, job_id_routed, identity, email, site):
-    """
-    Check if any notifications are required
-    """
-    # Check if we need to run, as it is possible the cleanup hook may be run multiple times
-    # and we only want to send a single notification
-    lock_file = os.path.join(iwd, '.lock-cleanup-%d' % job_id_original)
-    if os.path.isfile(lock_file):
-        return
-
-    # Create a lock file
-    try:
-        open(lock_file, 'a').close()
-    except Exception:
-        logger.critical('[%d] Unable to write lock file, will ignore notifications...', job_id_routed)
-        return
-
-    # Open JSON job description
-    try:
-        filename = '%s/.job.json' % iwd
-        with open(filename, 'r') as json_file:
-            job_json = json.load(json_file)
-    except Exception as err:
-        logger.error('[%d] Unable to open JSON job description due to: %s', job_id_routed, err)
-        return
-
-    job_name = None
-    if 'name' in job_json:
-        job_name = job_json['name']
-
-    # Open promlet json file
-    try:
-        filename = '%s/promlet.0.json' % iwd
-        with open(filename, 'r') as json_file:
-            promlet_json = json.load(json_file)
-    except Exception as err:
-        logger.error('[%d] Unable to open JSON promlet due to: %s', job_id_routed, err)
-
-    # Check if we need to generate any notifications, and do so if necessary
-    if 'notifications' in job_json:
-        for notification in job_json['notifications']:
-            if notification['event'] == 'jobFinished':
-                if notification['type'] == 'email':
-                    send_completed_email('jobFinished', job_id_original, job_id_routed, identity, email, job_name, site, promlet_json)
 
 def get_from_classad(name, class_ad, default=None):
     """
@@ -133,9 +40,9 @@ def delete_infrastructure(infra_id):
         response = requests.delete('%s/%s' % (CONFIG.get('imc', 'url'), infra_id),
                                    auth=HTTPBasicAuth(CONFIG.get('imc', 'username'),
                                                       CONFIG.get('imc', 'password')),
-                                   cert=(CONFIG.get('imc', 'ssl-cert'),
-                                         CONFIG.get('imc', 'ssl-key')),
-                                   verify=CONFIG.get('imc', 'ssl-cert'),
+                                   #cert=(CONFIG.get('imc', 'ssl-cert'),
+                                   #      CONFIG.get('imc', 'ssl-key')),
+                                   #verify=CONFIG.get('imc', 'ssl-cert'),
                                    timeout=int(CONFIG.get('imc', 'timeout')))
     except requests.exceptions.Timeout:
         return 2
@@ -168,10 +75,6 @@ def cleanup_infrastructure():
     exit_code = -1
 
     logger.info('[%s] Started working on infrastructure with id %s of type %s on site %s with state %s', job_id, infra_id, infra_type, infra_site, infra_state)
-
-    # Send any notifications if necessary, currently we only consider completed jobs
-    if job_status == 4:
-        handle_notifications(iwd, cluster_id_user, cluster_id, identity, email, infra_site)
 
     if str(infra_type) == 'batch':
         logger.info('[%s] Batch infrastructure, so no need to do anything', job_id)
@@ -213,7 +116,7 @@ def cleanup_infrastructure():
 
 if __name__ == "__main__":
     # Read config file
-    CONFIG = ConfigParser.ConfigParser()
+    CONFIG = configparser.ConfigParser()
     CONFIG.read('/etc/prominence/prominence.ini')
 
     # Logging
