@@ -1,8 +1,8 @@
-#!/usr/bin/python
+#!/usr/bin/python3
 from __future__ import print_function
 import base64
 import calendar
-import ConfigParser
+import configparser
 import json
 import logging
 from logging.handlers import RotatingFileHandler
@@ -14,13 +14,14 @@ import uuid
 import requests
 import requests.packages.urllib3
 from requests.auth import HTTPBasicAuth
+import subprocess
 from cryptography.hazmat.primitives import serialization as crypto_serialization
 from cryptography.hazmat.primitives.asymmetric import rsa
 from cryptography.hazmat.backends import default_backend as crypto_default_backend
 import classad
 
-import make_x509_proxy
 import update_presigned_urls
+import create_job_token
 
 requests.packages.urllib3.disable_warnings()
 
@@ -78,9 +79,9 @@ def create_infrastructure(uid, data):
         response = requests.post('%s' % CONFIG.get('imc', 'url'),
                                  auth=HTTPBasicAuth(CONFIG.get('imc', 'username'),
                                                     CONFIG.get('imc', 'password')),
-                                 cert=(CONFIG.get('imc', 'ssl-cert'),
-                                       CONFIG.get('imc', 'ssl-key')),
-                                 verify=CONFIG.get('imc', 'ssl-cert'),
+                                 #cert=(CONFIG.get('imc', 'ssl-cert'),
+                                 #      CONFIG.get('imc', 'ssl-key')),
+                                 #verify=CONFIG.get('imc', 'ssl-cert'),
                                  json=data,
                                  headers=headers,
                                  timeout=int(CONFIG.get('imc', 'timeout')))
@@ -101,8 +102,8 @@ def prepare_credential_content(filename, itype=False, use_file=True):
             content = file_in.readlines()
     else:
         content = []
-        for line in filename.split('\n'):
-            content.append('%s\n' % line)
+        for line in filename.split(b'\n'):
+            content.append('%s\n' % line.decode('utf-8'))
 
     if itype:
         content = ['          %s' % line for line in content]
@@ -110,7 +111,7 @@ def prepare_credential_content(filename, itype=False, use_file=True):
         content = ['%s' % line for line in content]
     return ''.join(content)
 
-def create_worker_credentials(itype=False):
+def create_worker_credentials(itype, max_run_time):
     """
     Create worker node credentials
     """
@@ -118,15 +119,27 @@ def create_worker_credentials(itype=False):
     signing_policy = prepare_credential_content(CONFIG.get('credentials', 'signing-policy'), itype)
     mapfile = prepare_credential_content(CONFIG.get('credentials', 'mapfile'), itype)
 
-    # Proxy for HTCondor auth
-    expiry_time = int(time.time()) + 30*24*60*60
-    proxy = make_x509_proxy.make_x509_proxy(CONFIG.get('credentials', 'host-cert'),
-                                            CONFIG.get('credentials', 'host-key'),
-                                            expiry_time,
-                                            is_legacy_proxy=False,
-                                            cn=None)
+    # Create token for HTCondor auth
+    token_duration = 3*24*60*60
+    if max_run_time > 0:
+        token_duration = int(max_run_time*60)
 
-    proxy = prepare_credential_content(proxy, itype, False)
+    run = subprocess.run(["sudo",
+                          "condor_token_create",
+                          "-identity",
+                          "worker@cloud",
+                          "-key",
+                          "token_key",
+                          "-lifetime",
+                          "%s" % token_duration],
+                         stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+
+    if run.returncode == 0:
+        token = run.stdout.strip()
+    else:
+        raise Exception('condor_token_create failed with invalid return code')
+
+    token = prepare_credential_content(token, itype, False)
 
     # Prepare ssh keys
     (private_ssh_key_1, public_ssh_key_1) = create_ssh_keypair()
@@ -137,10 +150,7 @@ def create_worker_credentials(itype=False):
     private_ssh_key_2 = prepare_credential_content(private_ssh_key_2, itype, False)
     public_ssh_key_2 = prepare_credential_content(public_ssh_key_2, itype, False)
 
-    return (root_ca,
-            proxy,
-            signing_policy,
-            mapfile,
+    return (token,
             private_ssh_key_1,
             public_ssh_key_1,
             private_ssh_key_2,
@@ -171,10 +181,12 @@ def translate_classad():
     identity = get_from_classad('ProminenceIdentity', job_ad)
     uid = get_from_classad('ProminenceJobUniqueIdentifier', job_ad)
     my_groups = get_from_classad('ProminenceGroup', job_ad).split(',')
+    groups = get_from_classad('ProminenceGroup', job_ad)
     factory_id = int(get_from_classad('ProminenceFactoryId', job_ad, 0))
     want_mpi = get_from_classad('ProminenceWantMPI', job_ad)
     existing_route_name = get_from_classad('RouteName', job_ad)
     args = get_from_classad('Args', job_ad)
+    max_run_time = int(get_from_classad('ProminenceMaxRunTime', job_ad, -1))
 
     if want_mpi:
         want_mpi = True
@@ -226,14 +238,11 @@ def translate_classad():
             radl_file = CONFIG.get('templates', 'single-node')
 
         # Create credentials for the worker nodes
-        (root_ca,
-         proxy,
-         signing_policy,
-         mapfile,
+        (token,
          private_ssh_key_1,
          public_ssh_key_1,
          private_ssh_key_2,
-         public_ssh_key_2) = create_worker_credentials(spacing_type)
+         public_ssh_key_2) = create_worker_credentials(spacing_type, max_run_time)
 
         # Calculate total cores and number of worker nodes
         num_total_cores = job_json['resources']['nodes']*job_json['resources']['cpus']
@@ -271,6 +280,7 @@ def translate_classad():
 
         if storage_mountpoint:
             add_mounts = '-v /mnt%s:/home/user%s' % (storage_mountpoint, storage_mountpoint)
+             
         logger.info('[%s] Using mounts="%s"', job_id, add_mounts)
 
         try:
@@ -295,13 +305,11 @@ def translate_classad():
                                                      num_total_cores=num_total_cores,
                                                      cluster=use_uid,
                                                      use_hostname=use_hostname,
+                                                     uid_infra=uid_infra,
                                                      disk_size=job_json['resources']['disk'],
                                                      job_id=cluster_id,
                                                      condor_host=condor_host,
-                                                     root_ca=root_ca,
-                                                     proxy=proxy,
-                                                     signing_policy=signing_policy,
-                                                     mapfile=mapfile,
+                                                     token=token,
                                                      private_ssh_key_1=private_ssh_key_1,
                                                      public_ssh_key_1=public_ssh_key_1,
                                                      private_ssh_key_2=private_ssh_key_2,
@@ -370,10 +378,17 @@ def translate_classad():
             data['requirements']['tags'] = {}
             data['requirements']['tags']['multi-node-jobs'] = 'true'
 
-        data['radl'] = base64.b64encode(radl_contents.encode('utf8'))
+        #data['radl'] = base64.b64encode(radl_contents.encode('utf8'))
+        data['radl'] = base64.b64encode(radl_contents.encode('utf8')).decode()
         data['identifier'] = job_id
         data['identity'] = identity
         data['want'] = use_uid
+
+        if identity and groups and max_run_time > -1:
+            lifetime = max_run_time*60 + 3600
+            job_token = create_job_token.create_job_token(identity, groups, lifetime, uid_raw)
+            classad_new['ProminenceJobToken'] = str('%s' % job_token.decode('utf-8'))
+            classad_new['ProminenceURL'] = str('%s' % CONFIG.get('url', 'restapi'))
 
         # Create infrastructure
         logger.info('[%s] About to create infrastructure with Idempotency-Key "%s"', job_id, uid_infra)
@@ -410,7 +425,7 @@ def translate_classad():
 
 if __name__ == "__main__":
     # Read config file
-    CONFIG = ConfigParser.ConfigParser()
+    CONFIG = configparser.ConfigParser()
     CONFIG.read('/etc/prominence/prominence.ini')
 
     # Logging
