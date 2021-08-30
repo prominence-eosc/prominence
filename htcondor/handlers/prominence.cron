@@ -1,0 +1,2 @@
+# Handle completed jobs
+* * * * * root /usr/local/bin/process_completed_jobs_in_queue.py; /usr/local/bin/process_completed_jobs_history.py
