@@ -15,9 +15,12 @@ SCHEDD_AUDIT_LOG = $(LOG)/AuditLog
 MAX_SCHEDD_AUDIT_LOG = 1d
 MAX_NUM_SCHEDD_AUDIT_LOG = 90
 
+# Add site name to job classad
+SYSTEM_JOB_MACHINE_ATTRS = $(SYSTEM_JOB_MACHINE_ATTRS), ProminenceCloud
+
 # Job lease duration (default is 40 mins)
 JobLeaseDuration = 600
 SUBMIT_ATTRS = $(SUBMIT_ATTRS), JobLeaseDuration
 
-# Per job history files
+# Per-job history files
 PER_JOB_HISTORY_DIR = /var/spool/prominence/completed_jobs
