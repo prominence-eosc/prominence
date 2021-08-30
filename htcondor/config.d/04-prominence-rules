@@ -4,6 +4,9 @@
 # The rules below only apply to original jobs. Currently set_PeriodicRemove is used in the JobRouter to 
 # handle routed jobs.
 
+# Job in the held state
+ProminenceJobHeld = JobStatus == 5 && CurrentTime - EnteredCurrentStatus > 80
+
 # Job in the idle but had previously been running (i.e. evicted)
 ProminenceJobEvicted = JobStatus == 1 && LastJobStatus == 2 && ProminenceInfrastructureState =?= "configured"
 
@@ -16,6 +19,9 @@ ProminenceJobInfraUnableFatal = JobStatus == 1 && ProminenceInfrastructureState 
 # Infrastructure deployment unable - temporary
 ProminenceJobInfraUnable = JobStatus == 1 && (ProminenceInfrastructureState =?= "unable" && ProminenceInfrastructureStateReason =?= "NoMatchingResourcesAvailable" || ProminenceInfrastructureState =?= "waiting")
 
+# Remote routed job so that static resources can be re-tried
+# ProminenceJobRetryStatic = JobStatus == 1 && ProminenceInfrastructureState =?= "waiting" && CurrentTime - ProminenceInfrastructureEnteredCurrentStatus > 600
+
 # Infrastructure deployed but job is taking too long to start running
 ProminenceJobNotRunning = JobStatus == 1 && ProminenceInfrastructureState =?= "configured" && CurrentTime - ProminenceInfrastructureEnteredCurrentStatus > 600
 
@@ -23,20 +29,20 @@ ProminenceJobNotRunning = JobStatus == 1 && ProminenceInfrastructureState =?= "c
 ProminenceJobFatal = $(ProminenceJobInfraUnableFatal)
 
 # Transient errors
-ProminenceJobTransient = ($(ProminenceJobNotRunning) || $(ProminenceJobEvicted) || \
-                          $(ProminenceJobInfraFailed) || $(ProminenceJobInfraUnable)) && \
+ProminenceJobTransient = ($(ProminenceJobHeld) || $(ProminenceJobEvicted) || \
+                          $(ProminenceJobInfraFailed) || $(ProminenceJobInfraUnable) || \
+                          $(ProminenceJobNotRunning)) && \
                          (ProminenceMaxTimeInQueue == -1 || \
                           ProminenceMaxTimeInQueue > 0 && CurrentTime - QDate > ProminenceMaxTimeInQueue)
 
-SYSTEM_PERIODIC_HOLD = isUndefined(RouteName) && isUndefined(DAGManJobId) && ($(ProminenceJobFatal) || $(ProminenceJobTransient))
+# Fatal errors for non-routed jobs
+ProminenceNotRoutedFailed = isUndefined(RoutedToJobId) && isUndefined(RoutedFromJobId) && isUndefined(DAGManJobId) && ProminenceType =?= "job" && $(ProminenceJobHeld)
 
-SYSTEM_PERIODIC_HOLD_REASON = ifThenElse($(ProminenceJobEvicted), "Job was evicted", \
-                              ifThenElse($(ProminenceJobInfraFailed), "Infrastructure deployment failed", \
-                              ifThenElse($(ProminenceJobInfraUnable), "NoMatchingResourcesAvailable", \
-                              ifThenElse($(ProminenceJobInfraUnableFatal), "NoMatchingResources", \
-                              ifThenElse($(ProminenceJobNotRunning), "Infrastructure deployment failed", \
-                                                                     "Infrastructure deployment failed")))))
+SYSTEM_PERIODIC_REMOVE = isUndefined(RouteName) && isUndefined(DAGManJobId) && ($(ProminenceJobFatal) || $(ProminenceJobTransient) || $(ProminenceNotRoutedFailed))
 
-SYSTEM_PERIODIC_HOLD_SUBCODE = 11
-
-SYSTEM_PERIODIC_REMOVE = JobStatus == 5 && HoldReasonSubCode == 11
+SYSTEM_PERIODIC_REMOVE_REASON = ifThenElse($(ProminenceJobHeld), "Job was held", \
+                                ifThenElse($(ProminenceJobEvicted), "Job was evicted", \
+                                ifThenElse($(ProminenceJobInfraFailed), "Infrastructure deployment failed", \
+                                ifThenElse($(ProminenceJobInfraUnable), "NoMatchingResourcesAvailable", \
+                                ifThenElse($(ProminenceJobInfraUnableFatal), "NoMatchingResources", \
+                                ifThenElse($(ProminenceJobNotRunning), "Infrastructure deployment failed", "Infrastructure deployment failed for unknown reasons"))))))
