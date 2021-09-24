@@ -11,7 +11,7 @@ should_transfer_files = YES
 when_to_transfer_output = ON_EXIT_OR_EVICT
 transfer_output_files = promlet.$(prominencecount).log,promlet.$(prominencecount).json
 skip_filechecks = true
-requirements = false
+#requirements = false
 transfer_executable = true
 stream_output = true
 stream_error = true
@@ -21,6 +21,7 @@ RequestMemory = %(reqmemory)s
 +ProminenceIdentity = %(username)s
 +ProminenceGroup = %(group)s
 +ProminenceName = %(name)s
++ProminenceEmail = %(email)s
 +ProminenceMaxIdleTime = %(maxidle)s
 +ProminenceMaxTimeInQueue = %(maxtimeinqueue)s
 +ProminenceWantMPI = %(wantmpi)s
@@ -56,6 +57,7 @@ def write_htcondor_job(cjob, filename):
     info['maxidle'] = 0
     info['maxtimeinqueue'] = cjob['+ProminenceMaxTimeInQueue']
     info['extras'] = extras
+    info['email'] = cjob['+ProminenceEmail']
     if 'extra_args' in cjob:
         info['extra_args'] = cjob['extra_args']
     else:

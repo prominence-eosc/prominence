@@ -4,6 +4,7 @@ import os
 import requests
 
 from utilities import condor_str, retry
+from create_job_token import create_job_token
 
 @retry(tries=2, delay=1, backoff=1)
 def validate_presigned_url(url):
@@ -90,7 +91,7 @@ def _create_htcondor_job(self, username, groups, email, uid, jjob, job_path, wor
                         path = task['image']
                     else:
                         path = '%s/%s' % (username, task['image'])
-                    task['image'] = self.create_presigned_url('get', self._config['S3_BUCKET'], 'uploads/%s' % path, 604800)
+                    task['image'] = self.create_presigned_url('get', self._config['S3_BUCKET'], 'uploads/%s' % path, 864000)
                     url_exists = validate_presigned_url(task['image'])
                     if not url_exists:
                         return (1, {"error":"Image %s does not exist" % image}, cjob)
@@ -122,6 +123,7 @@ def _create_htcondor_job(self, username, groups, email, uid, jjob, job_path, wor
 
     cjob['stream_error'] = 'true'
     cjob['stream_output'] = 'true'
+    #cjob['+HookKeyword'] = condor_str('CONTAINER')
 
     cjob['transfer_input_files'] = str(','.join(input_files))
 
@@ -157,8 +159,9 @@ def _create_htcondor_job(self, username, groups, email, uid, jjob, job_path, wor
     if 'preemptible' in jjob:
         cjob['+ProminencePreemptible'] = 'true'
 
-    # Job router - route idle jobs if they have never been routed before or if they were last routed more than 20 mins ago
-    cjob['+ProminenceWantJobRouter'] = str('JobStatus == 1 && ((CurrentTime - ProminenceLastRouted > 1200) || isUndefined(ProminenceLastRouted))')
+    # Job router - route idle jobs if they have never been routed before and have been idle for over 40 secs
+    # or if they were last routed more than 20 mins ago
+    cjob['+ProminenceWantJobRouter'] = str('JobStatus == 1 && ((CurrentTime - ProminenceLastRouted > 1200) || (CurrentTime - EnteredCurrentStatus > 40 && isUndefined(ProminenceLastRouted))) && ProminenceGroup =!= "CCFE/ALC"')
 
     # Should the job be removed from the queue once finished?
     cjob['+ProminenceRemoveFromQueue'] = 'True'
@@ -181,7 +184,7 @@ def _create_htcondor_job(self, username, groups, email, uid, jjob, job_path, wor
                     path = artifact_url
                 else:
                     path = '%s/%s' % (username, artifact_url)
-                artifact_url = self.create_presigned_url('get', self._config['S3_BUCKET'], 'uploads/%s' % path, 604800)
+                artifact_url = self.create_presigned_url('get', self._config['S3_BUCKET'], 'uploads/%s' % path, 864000)
                 url_exists = validate_presigned_url(artifact_url)
                 if not url_exists:
                     return (1, {"error":"Artifact %s does not exist" % artifact_original}, cjob)
@@ -200,7 +203,7 @@ def _create_htcondor_job(self, username, groups, email, uid, jjob, job_path, wor
                 url_put = self.create_presigned_url('put',
                                                     self._config['S3_BUCKET'],
                                                     'scratch/%s/%s' % (uid, os.path.basename(filename)),
-                                                    604800)
+                                                    864000)
             else:
                 url_put = filename
             output_locations_put.append(url_put)
@@ -218,7 +221,7 @@ def _create_htcondor_job(self, username, groups, email, uid, jjob, job_path, wor
                 url_put = self.create_presigned_url('put',
                                                     self._config['S3_BUCKET'],
                                                     'scratch/%s/%s.tgz' % (uid, os.path.basename(dirname)),
-                                                    604800)
+                                                    864000)
             else:
                 url_put = dirname
             output_locations_put.append(url_put)
@@ -233,6 +236,11 @@ def _create_htcondor_job(self, username, groups, email, uid, jjob, job_path, wor
         if jjob['resources']['walltime'] > -1:
             max_run_time = int(jjob['resources']['walltime'])*60*3
     cjob['+ProminenceMaxRunTime'] = str("%d" % (max_run_time/60))
+
+    # Job token
+    token = create_job_token(username, groups, int(max_run_time*1.5), uid)
+    cjob['+ProminenceJobToken'] = condor_str(token)
+    cjob['+ProminenceURL'] = condor_str(self._config['URL'])
 
     # Is job MPI?
     cjob['+ProminenceWantMPI'] = 'false'
@@ -249,6 +257,8 @@ def _create_htcondor_job(self, username, groups, email, uid, jjob, job_path, wor
     cpus_per_task = jjob['resources']['cpus']
     memory_per_cpu = jjob['resources']['memory']*1000
     cjob['+remote_cerequirements_default'] = condor_str("RequiredTasks == %d && RequiredMemoryPerCpu == %d && RequiredCpusPerTask == %d && RequiredTime == %d" % (tasks, memory_per_cpu, cpus_per_task, max_run_time))
+
+    #cjob['Requirements'] = 'false'
 
     # Set max idle time per resource
     max_idle_time = 0
