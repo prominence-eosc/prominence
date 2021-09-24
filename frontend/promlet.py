@@ -427,6 +427,60 @@ def upload(filename, url):
         return True
     return None
 
+def test_upload(url):
+    """
+    Check if a presigned URL is valid
+    """
+    try:
+        response = requests.put(url, data='aa', timeout=120)
+    except:
+        return None
+
+    if response.status_code == 403:
+        return False
+
+    logging.info('Successfully tested upload url')
+    return True
+
+@retry(tries=3, delay=2, backoff=2)
+def get_new_url(path, name):
+    """
+    Get a new presigned URL
+    """
+    logging.info('Getting new presigned URL for file: %s', name)
+    # Get token
+    (token, url) = get_token(path)
+
+    data = {'name': name}
+    headers = {'Authorization': 'Bearer %s' % token}
+    try:
+        resp = requests.post('%s/data/output' % url, headers=headers, json=data)
+    except Exception as err:
+        logging.error('Got exception when trying to get new presigned URL: %s', err)
+        return None
+
+    if resp.status_code == 201:
+        if 'url' in resp.json():
+            return resp.json()['url']
+
+    logging.error('Unable to get new presigned URL for file: %s', name)
+    return None
+
+def check_url(url):
+    """
+    Check if a presigned URL is valid
+    """
+    match = re.search(r'.*Expires=(\d+).*', url)
+    if match:
+        expires = int(match.group(1))
+        if expires - time.time() < 3600:
+            return False
+        else:
+            if test_upload(url):
+                return True
+            return False
+    return None
+
 def stageout(job, path):
     """
     Copy any required output files and/or directories to S3 storage
@@ -447,11 +501,15 @@ def stageout(job, path):
                 out_file = None   
                 success = False
             if out_file:
-                if upload(out_file, output['url']):
+                url = output['url']
+                if not check_url(url):
+                    url = get_new_url(path, os.path.basename(output['name']))
+
+                if upload(out_file, url):
                     logging.info('Successfully uploaded file %s to cloud storage', out_file)
                     json_out_file['status'] = 'success'
                 else:
-                    logging.error('Unable to upload file %s to cloud storage with url %s', out_file, output['url'])
+                    logging.error('Unable to upload file %s to cloud storage with url %s', out_file, url)
                     json_out_file['status'] = 'failedUpload'
                     success = False
             json_out_files.append(json_out_file)
@@ -472,11 +530,15 @@ def stageout(job, path):
                 success = False
                 tar_file_created = False
             if tar_file_created and os.path.isfile(output_filename):
-                if upload(output_filename, output['url']):
+                url = output['url']
+                if not check_url(url):
+                    url = get_new_url(path, output_filename)
+
+                if upload(output_filename, url):
                     logging.info('Successfully uploaded directory %s to cloud storage', output['name'])
                     json_out_dir['status'] = 'success'
                 else:
-                    logging.error('Unable to upload directory %s to cloud storage with url %s', output['name'], output['url'])
+                    logging.error('Unable to upload directory %s to cloud storage with url %s', output['name'], url)
                     json_out_dir['status'] = 'failedUpload'
                     success = False
             json_out_dirs.append(json_out_dir)
@@ -535,7 +597,7 @@ def get_info():
         return {}
     return job
  
-def mount_storage(job):
+def mount_storage(job, path):
     """
     Mount user-specified storage
     """
@@ -549,16 +611,16 @@ def mount_storage(job):
             storage_provider = job['storage']['onedata']['provider']
             storage_token = job['storage']['onedata']['token']
 
-            if not os.path.isdir('/home/user/mounts%s' % storage_mountpoint):
+            if not os.path.isdir('%s/home/user/mounts%s' % (path, storage_mountpoint)):
                 try:
-                    os.mkdir('/home/user/mounts%s' % storage_mountpoint)
+                    os.makedirs('%s/home/user/mounts%s' % (path, storage_mountpoint))
                 except Exception as ex:
                     logging.error('Unable to create mount directory due to: %s', ex)
                     return False
             else:
                 logging.info('Mounts directory already exists, no need to create it')
 
-            cmd = '/usr/bin/oneclient -o allow_other -t %s -H %s /home/user/mounts%s' % (storage_token, storage_provider, storage_mountpoint)
+            cmd = '/usr/bin/oneclient -o allow_other -t %s -H %s %s/home/user/mounts%s' % (storage_token, storage_provider, path, storage_mountpoint)
 
             count = 0
             return_code = -1
@@ -571,10 +633,10 @@ def mount_storage(job):
             logging.info('Return code from oneclient is %d', return_code)
             if return_code != 0:
                 return False
-                
+
     return True
 
-def unmount_storage(job):
+def unmount_storage(job, path):
     """
     Unmount user-specified storage
     """
@@ -588,9 +650,10 @@ def unmount_storage(job):
             storage_provider = job['storage']['onedata']['provider']
             storage_token = job['storage']['onedata']['token']
 
-            process = subprocess.Popen('/usr/bin/oneclient -t %s -H %s -u /home/user/mounts%s' % (storage_token,
-                                                                                                  storage_provider,
-                                                                                                  storage_mountpoint),
+            process = subprocess.Popen('/usr/bin/oneclient -t %s -H %s -u %s/home/user/mounts%s' % (storage_token,
+                                                                                                    storage_provider,
+                                                                                                    path,
+                                                                                                    storage_mountpoint),
                                        shell=True,
                                        stdout=subprocess.PIPE,
                                        stderr=subprocess.PIPE)
@@ -940,7 +1003,7 @@ def run_udocker(image, cmd, workdir, env, path, mpi, mpi_processes, mpi_procs_pe
     mounts = ''
     if mountpoint is not None:
         logging.info('Mount point is %s', mountpoint)
-        mounts = '-v /home/user/mounts%s:%s ' % (mountpoint, mountpoint)
+        mounts = '-v %s/home/user/mounts%s:%s ' % (path, mountpoint, mountpoint)
 
     # Set source directory for /tmp in container
     user_tmp_dir = path + '/usertmp'
@@ -1056,7 +1119,7 @@ def run_singularity(image, cmd, workdir, env, path, mpi, mpi_processes, mpi_proc
     mounts = ''
     if mountpoint is not None:
         logging.info('Mount point is %s', mountpoint)
-        mounts = '--bind /home/user/mounts%s:%s ' % (mountpoint, mountpoint)
+        mounts = '--bind %s/home/user/mounts%s:%s ' % (path, mountpoint, mountpoint)
 
     # Artifact mounts
     for artifact in artifacts:
@@ -1457,7 +1520,7 @@ if __name__ == "__main__":
         replace_output_urls(job, args.outfile, args.outdir)
 
     # Mount user-specified storage if necessary
-    success_mount = mount_storage(job)
+    success_mount = mount_storage(job, path)
     
     json_mounts = []
     
@@ -1520,7 +1583,7 @@ if __name__ == "__main__":
         logging.critical('Unable to write promlet.json due to: %s', exc)
 
     # Unmount user-specified storage if necessary
-    unmount_storage(job)
+    unmount_storage(job, path)
 
     # Return appropriate exit code - necessary for retries of DAG nodes
     if not success_tasks or not success_stageout or not success_stagein:
