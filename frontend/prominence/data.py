@@ -1,4 +1,5 @@
 """Routes for managing data"""
+import jwt
 from flask import Blueprint, jsonify, request
 from flask import current_app as app
 
@@ -92,3 +93,45 @@ def upload_file(username, group, email):
     else:
         url = backend.create_presigned_url('put', app.config['S3_BUCKET'], 'uploads/%s/%s' % (username, object_name))
     return jsonify({'url':url}), 201
+
+
+@data.route("/prominence/v1/data/output", methods=['POST'])
+@requires_auth
+def get_url(username, group, email):
+    """
+    Create presigned URL to allow job to upload output data
+    """
+    app.logger.info('%s GetJobUploadURL user:%s group:%s' % (get_remote_addr(request), username, group))
+
+    if app.config['ENABLE_DATA'] != 'True':
+        return errors.func_disabled()
+
+    backend = ProminenceBackend(app.config)
+
+    if 'name' in request.get_json():
+        name = request.get_json()['name']
+    else:
+        return jsonify({'error':'Name not specified'})
+
+    if 'Authorization' in request.headers:
+        auth = request.headers['Authorization']
+        try:
+            token = auth.split(' ')[1]
+        except:
+            return jsonify({'error':'A JWT token is required'}), 400
+
+    decoded = None
+    try:
+        decoded = jwt.decode(token, app.config['JOB_TOKEN_SECRET'], algorithms=["HS256"])
+    except Exception as err:
+        return jsonify({'error':'A JWT token is required'}), 400
+
+    job_uuid = None
+    if decoded:
+        if 'job' in decoded:
+            job_uuid = str(decoded['job'])
+            url = backend.create_presigned_url('put', app.config['S3_BUCKET'], 'scratch/%s/%s' % (job_uuid, name), 7200)
+            return jsonify({'url': url}), 201
+
+    return jsonify({'error':'Unspecified error'}), 400
+
