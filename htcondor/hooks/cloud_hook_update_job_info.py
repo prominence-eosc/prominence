@@ -1,6 +1,6 @@
-#!/usr/bin/python
+#!/usr/bin/python3
 from __future__ import print_function
-import ConfigParser
+import configparser
 import logging
 from logging.handlers import RotatingFileHandler
 import os
@@ -12,6 +12,7 @@ import classad
 import htcondor
 
 import update_presigned_urls
+import create_job_token
 
 def get_from_classad(name, class_ad, default=None):
     """
@@ -55,9 +56,9 @@ def get_infrastructure_status(infra_id):
         response = requests.get('%s/%s' % (CONFIG.get('imc', 'url'), infra_id),
                                 auth=HTTPBasicAuth(CONFIG.get('imc', 'username'),
                                                    CONFIG.get('imc', 'password')),
-                                cert=(CONFIG.get('imc', 'ssl-cert'),
-                                      CONFIG.get('imc', 'ssl-key')),
-                                verify=CONFIG.get('imc', 'ssl-cert'),
+                                #cert=(CONFIG.get('imc', 'ssl-cert'),
+                                #      CONFIG.get('imc', 'ssl-key')),
+                                #verify=CONFIG.get('imc', 'ssl-cert'),
                                 timeout=int(CONFIG.get('imc', 'timeout')))
     except requests.exceptions.Timeout:
         return (None, None)
@@ -87,6 +88,9 @@ def update_classad():
     remote_host = get_from_classad('RemoteHost', job_ad)
     iwd = get_from_classad('Iwd', job_ad)
     args = get_from_classad('Args', job_ad)
+    identity = get_from_classad('ProminenceIdentity', job_ad)
+    groups = get_from_classad('ProminenceGroup', job_ad)
+    max_run_time = int(get_from_classad('ProminenceMaxRunTime', job_ad, -1))
 
     state = None
     job_id = '%s.%s' % (cluster_id, proc_id)
@@ -96,6 +100,10 @@ def update_classad():
         new_args = update_presigned_urls.update_presigned_urls(args, '%s/.job.mapped.json' % iwd)
         if new_args:
             print('Args = "%s"' % new_args)
+        if identity and groups and max_run_time > -1:
+            lifetime = max_run_time*60 + 3600
+            job_token = create_job_token.create_job_token(identity, groups, lifetime, uid)
+            print('ProminenceJobToken = "%s"' % job_token.decode('utf-8'))
 
     if infra_id is not None and str(infra_type) == 'cloud' and infra_state != 'configured':
         (state, reason, cloud) = get_infrastructure_status_with_retries(infra_id)
@@ -111,12 +119,6 @@ def update_classad():
         if state == 'failed':
             logger.info('[%s] Infrastructure with id %s is in state failed', job_id, infra_id)
             print('ProminenceInfrastructureState = "failed"')
-            print('ProminenceInfrastructureStateReason = "%s"' % reason)
-            print('ProminenceInfrastructureEnteredCurrentStatus = %d' % int(time.time()))
-            
-        if state == 'waiting':
-            logger.info('[%s] Infrastructure with id %s is in state waiting', job_id, infra_id)
-            print('ProminenceInfrastructureState = "waiting"')
             print('ProminenceInfrastructureStateReason = "%s"' % reason)
             print('ProminenceInfrastructureEnteredCurrentStatus = %d' % int(time.time()))
 
@@ -160,7 +162,7 @@ def update_classad():
 
 if __name__ == "__main__":
     # Read config file
-    CONFIG = ConfigParser.ConfigParser()
+    CONFIG = configparser.ConfigParser()
     CONFIG.read('/etc/prominence/prominence.ini')
 
     # Logging

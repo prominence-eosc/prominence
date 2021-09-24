@@ -1,12 +1,18 @@
-#!/usr/bin/python
+#!/usr/bin/python3
 from __future__ import print_function
-import ConfigParser
+import configparser
 import json
 import os
 import sys
 import time
+import logging
 import classad
 from elasticsearch import Elasticsearch
+
+logger = logging.getLogger('process_completed_jobs.accounting_es')
+
+CONFIG = configparser.ConfigParser()
+CONFIG.read('/etc/prominence/prominence.ini')
 
 def datetime_format(epoch):
     """
@@ -15,11 +21,10 @@ def datetime_format(epoch):
     datetime_fmt = '%Y-%m-%dT%H:%M:%SZ'
     return time.strftime(datetime_fmt, time.gmtime(epoch))
 
-def process_record(filename):
+def process_record(ad):
     """
     Process the specified file containing a ClassAd
     """
-
     start_date = None
     submit_date = None
     routed_by = None
@@ -31,9 +36,6 @@ def process_record(filename):
     workload_type = None
     iwd = None
     factory_id = 0
-
-    with open(filename, 'r') as fd:
-        ad = classad.parseOne(fd, parser=classad.Parser.Old)
 
     if 'ProminenceGroup' in ad:
         group = ad['ProminenceGroup']
@@ -69,7 +71,7 @@ def process_record(filename):
         factory_id = int(ad['ProminenceFactoryId'])
 
     if routed_by == 'jobrouter':
-        exit(0)
+        return
 
     # Is this a job or a workflow?
     is_job = False
@@ -83,7 +85,8 @@ def process_record(filename):
         workload_json_file = '%s/workflow.json' % iwd
 
     if not os.path.exists(workload_json_file):
-        exit(1)
+        logger.error('Workload file %s does not exist', workload_json_file)
+        return
 
     with open(workload_json_file, 'r') as workload_json_fd:
         job = json.load(workload_json_fd)
@@ -148,19 +151,28 @@ def process_record(filename):
 
     return job
 
-if __name__ == "__main__":
-    # Read config file
-    CONFIG = ConfigParser.ConfigParser()
-    CONFIG.read('/opt/prominence/etc/prominence.ini')
-
+def accounting(ad):
     # Create record from job ClassAd
-    job = process_record(sys.argv[1])
+    job = process_record(ad)
 
     # Send record to ElasticSearch
     es = Elasticsearch([{'host':CONFIG.get('elasticsearch', 'host'),
                          'port':CONFIG.get('elasticsearch', 'port')}])
-    result = es.index(index=CONFIG.get('elasticsearch', 'index'),
-                      doc_type='job',
-                      id=job['id'],
-                      body=job)
-    print(result)
+    try:
+        result = es.index(index=CONFIG.get('elasticsearch', 'index'),
+                          doc_type='job',
+                          id=job['id'],
+                          body=job)
+    except Exception as err:
+        logger.error('Error sending job to elasticsearch: %s', err)
+        return None
+
+    if 'result' in result:
+        if result['result'] == 'created':
+            logger.info('Added job to ElasticSearch')
+            return True
+    else:
+        logger.error('Job may not have been successfully added to ElasticSearch')
+        return False
+
+    return False

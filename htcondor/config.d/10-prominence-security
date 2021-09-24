@@ -1,6 +1,6 @@
 use SECURITY: Strong
-
-# By default deny the unknowns
+  
+# By default deny all unknowns
 DENY_READ          = anonymous@*
 DENY_WRITE         = anonymous@*
 DENY_ADMINISTRATOR = anonymous@*
@@ -18,34 +18,19 @@ SEC_DAEMON_ENCRYPTION = REQUIRED
 SEC_DEFAULT_INTEGRITY  = REQUIRED
 SEC_DEFAULT_ENCRYPTION = REQUIRED
 
+# Set the pool password
+SEC_PASSWORD_FILE = /etc/condor/passwords.d/pool_password
+
 # Authentication settings
 SEC_CLIENT_AUTHENTICATION  = REQUIRED
 SEC_DAEMON_AUTHENTICATION  = REQUIRED
 SEC_DEFAULT_AUTHENTICATION = REQUIRED
 
-SEC_CLIENT_AUTHENTICATION_METHODS  = FS, GSI
-SEC_DAEMON_AUTHENTICATION_METHODS  = FS, GSI
-SEC_DEFAULT_AUTHENTICATION_METHODS = FS, GSI
+SEC_CLIENT_AUTHENTICATION_METHODS  = FS, IDTOKENS, PASSWORD
+SEC_DAEMON_AUTHENTICATION_METHODS  = IDTOKENS, PASSWORD
+SEC_ADVERTISE_MASTER_AUTHENTICATION_METHODS = PASSWORD, IDTOKENS
+SEC_ADVERTISE_STARTD_AUTHENTICATION_METHODS = PASSWORD, IDTOKENS
 
-ALLOW_DAEMON = 127.0.0.1, $(IP_ADDRESS), <ip>, condor@*/*
-HOSTALLOW_WRITE = *
-ALLOW_WRITE = *
-ALLOW_READ = *
-HOSTALLOW_DAEMON = $(IP_ADDRESS), <ip>
-ALLOW_NEGOTIATOR = $(IP_ADDRESS), <ip>
-
-SCHEDD.ALLOW_WRITE               = condor@*/*, prominence@*/*
-COLLECTOR.ALLOW_ADVERTISE_STARTD = condor@*
-COLLECTOR.ALLOW_ADVERTISE_SCHEDD = condor@*
-COLLECTOR.ALLOW_ADVERTISE_MASTER = condor@*
-SHADOW.ALLOW_WRITE               = condor@*
-NEGOTIATOR.ALLOW_WRITE           = condor@*/*
-
-# GSI settings
-GSI_DAEMON_CERT           = /etc/condor/certs/hostcert.pem
-GSI_DAEMON_KEY            = /etc/condor/certs/hostkey.pem
-GSI_DAEMON_TRUSTED_CA_DIR = /etc/condor/certs/ca
-CERTIFICATE_MAPFILE       = /etc/condor/condor_mapfile
-
-# We don't use a dedicated certificate per worker, so disable host checks
-GSI_SKIP_HOST_CHECK = True
+ALLOW_DAEMON = condor_pool@*
+COLLECTOR.ALLOW_ADVERTISE_STARTD = worker@cloud
+COLLECTOR.ALLOW_ADVERTISE_MASTER = condor_pool@*, worker@cloud
