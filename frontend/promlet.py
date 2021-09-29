@@ -32,6 +32,59 @@ DOWNLOAD_CONN_TIMEOUT = 10
 DOWNLOAD_MAX_RETRIES = 2
 DOWNLOAD_BACKOFF = 1
 
+def create_dirs(path):
+    """
+    Create the empty user home and tmp directories
+    """
+    # Create the userhome directory if necessary
+    logging.info('Creating userhome directory')
+    if not os.path.isdir(path + '/userhome'):
+        try:
+            os.mkdir(path + '/userhome')
+        except Exception as exc:
+            logging.error('Unable to create userhome directory due to: %s', exc)
+            exit(1)
+
+    # Create the usertmp directory if necessary
+    if not os.path.isdir(path + '/usertmp'):
+        logging.info('Creating usertmp directory')
+        try:
+            os.mkdir(path + '/usertmp')
+        except Exception as exc:
+            logging.error('Unable to create usertmp directory due to: %s', exc)
+            exit(1)
+    else:
+        logging.info('Using existing tmp directory')
+
+    # Create the mounts directory if necessary 
+    if not os.path.isdir(path + '/mounts'):
+        logging.info('Creating user mounts directory')
+        try:
+            os.mkdir(path + '/mounts')
+        except Exception as ex:
+            logging.error('Unable to create user mounts directory due to: %s', ex)
+            exit(1)
+    else:
+        logging.info('Using existing mounts directory')
+
+def move_inputs(job, path):
+    """
+    Move any input files to the userhome directory
+    """
+    if 'inputs' in job:
+        for input_file in job['inputs']:
+            if 'filename' in input_file:
+                filename = os.path.basename(input_file['filename'])
+                logging.info('Moving input file %s into userhome directory', filename)
+                try:
+                    shutil.move('%s/%s' % (path, filename),
+                                '%s/userhome/%s' % (path, filename))
+                except:
+                    logging.critical('Unable to move input file %s', filename)
+                    return False
+
+    return True
+
 def get_cpu_info():
     """
     Get CPU details
@@ -173,11 +226,16 @@ def download_artifacts(job, path):
         for artifact in job['artifacts']:
             logging.info('Downloading URL %s', artifact['url'])
 
+            if 'mountpoint' in artifact:
+                artifact_path = path
+            else:
+                artifact_path = os.path.join(path, 'userhome')
+
             # Create filename
             urlpath = urlsplit(artifact['url']).path
             filename = posixpath.basename(unquote(urlpath))
             json_artifact = {'name':filename}
-            filename = os.path.join(path, filename)
+            filename = os.path.join(artifact_path, filename)
 
             # Download file
             json_artifact['status'] = 'success'
@@ -487,6 +545,9 @@ def stageout(job, path):
     """
     success = True
 
+    # Change directory to the userhome directory
+    os.chdir('%s/userhome' % path)
+
     # Upload any output files
     json_out_files = []
     if 'outputFiles' in job:
@@ -542,6 +603,9 @@ def stageout(job, path):
                     json_out_dir['status'] = 'failedUpload'
                     success = False
             json_out_dirs.append(json_out_dir)
+
+    # Change directory back to the original
+    os.chdir(path)
 
     return success, {'files': json_out_files, 'directories': json_out_dirs}
 
@@ -611,16 +675,16 @@ def mount_storage(job, path):
             storage_provider = job['storage']['onedata']['provider']
             storage_token = job['storage']['onedata']['token']
 
-            if not os.path.isdir('%s/home/user/mounts%s' % (path, storage_mountpoint)):
+            if not os.path.isdir('%s/mounts%s' % (path, storage_mountpoint)):
                 try:
-                    os.makedirs('%s/home/user/mounts%s' % (path, storage_mountpoint))
+                    os.makedirs('%s/mounts%s' % (path, storage_mountpoint))
                 except Exception as ex:
                     logging.error('Unable to create mount directory due to: %s', ex)
                     return False
             else:
                 logging.info('Mounts directory already exists, no need to create it')
 
-            cmd = '/usr/bin/oneclient -o allow_other -t %s -H %s %s/home/user/mounts%s' % (storage_token, storage_provider, path, storage_mountpoint)
+            cmd = '/usr/bin/oneclient -o allow_other -t %s -H %s %s/mounts%s' % (storage_token, storage_provider, path, storage_mountpoint)
 
             count = 0
             return_code = -1
@@ -650,10 +714,10 @@ def unmount_storage(job, path):
             storage_provider = job['storage']['onedata']['provider']
             storage_token = job['storage']['onedata']['token']
 
-            process = subprocess.Popen('/usr/bin/oneclient -t %s -H %s -u %s/home/user/mounts%s' % (storage_token,
-                                                                                                    storage_provider,
-                                                                                                    path,
-                                                                                                    storage_mountpoint),
+            process = subprocess.Popen('/usr/bin/oneclient -t %s -H %s -u %s/mounts%s' % (storage_token,
+                                                                                          storage_provider,
+                                                                                          path,
+                                                                                          storage_mountpoint),
                                        shell=True,
                                        stdout=subprocess.PIPE,
                                        stderr=subprocess.PIPE)
@@ -722,14 +786,16 @@ def download_singularity(image, image_new, location, path, credential):
             # Create singularity image from Docker archive
 
             logging.info('Creating sif image from Docker archive')
-            success = create_sif_from_archive(image_new, '/home/user/mounts/%s' % image)
+            # TODO: Mountpoint needs to be specified
+            success = create_sif_from_archive(image_new, '%s/mounts/%s' % (path, image))
 
             if not success:
                 return 1, False
         else:
             logging.info('Copying Singularity image from source on attached storage')
             try:
-                shutil.copyfile('/home/user/mounts/%s' % image, image_new)
+                # TODO: Mountpoint needs to be specified
+                shutil.copyfile('%s/mounts/%s' % (path, image), image_new)
             except:
                 logging.error('Unable to copy container image from source location on attached storage')
                 return 1, False
@@ -862,7 +928,8 @@ def download_udocker(image, location, label, path, credential):
         # Handle image stored on attached POSIX-like storage
         logging.info('Copying udocker image from source (%s) on attached storage', image)
         try:
-            shutil.copyfile('/home/user/mounts/%s' % image, '%s/image.tar' % location)
+            # TODO: Mountpoint needs to be specified
+            shutil.copyfile('%s/mounts/%s' % (path, image), '%s/image.tar' % location)
         except Exception as err:
             logging.error('Unable to copy container image from source location on attached storage due to "%s"', err)
             return 1, False
@@ -1003,12 +1070,10 @@ def run_udocker(image, cmd, workdir, env, path, mpi, mpi_processes, mpi_procs_pe
     mounts = ''
     if mountpoint is not None:
         logging.info('Mount point is %s', mountpoint)
-        mounts = '-v %s/home/user/mounts%s:%s ' % (path, mountpoint, mountpoint)
+        mounts = '-v %s/mounts%s:%s ' % (path, mountpoint, mountpoint)
 
     # Set source directory for /tmp in container
     user_tmp_dir = path + '/usertmp'
-    if os.path.isdir('/home/user/tmp'):
-        user_tmp_dir = '/home/user/tmp'
 
     # Artifact mounts
     for artifact in artifacts:
@@ -1017,7 +1082,7 @@ def run_udocker(image, cmd, workdir, env, path, mpi, mpi_processes, mpi_procs_pe
     if not is_batch:
         # Used on clouds
         run_command = ("/usr/local/bin/udocker -q run %s"
-                       " --env=HOME=%s"
+                       " --env=HOME=/home/user"
                        " --env=USER=%s"
                        " --env=TMP=/tmp"
                        " --env=TEMP=/tmp"
@@ -1027,15 +1092,15 @@ def run_udocker(image, cmd, workdir, env, path, mpi, mpi_processes, mpi_procs_pe
                        " --env=PROMINENCE_CONTAINER_RUNTIME=udocker"
                        " --hostauth"
                        " --user=%s"
-                       " --bindhome"
+                       " -v %s/userhome:/home/user"
                        " %s"
                        " --workdir=%s"
                        " -v %s:/tmp"
-                       " %s %s") % (extras, path, getpass.getuser(), workdir, path, getpass.getuser(), mounts, workdir, user_tmp_dir, image, cmd)
+                       " %s %s") % (extras, getpass.getuser(), workdir, path, getpass.getuser(), path, mounts, workdir, user_tmp_dir, image, cmd)
     else:
         # Used on existing HPC systems
         run_command = ("udocker -q run %s"
-                       " --env=HOME=%s"
+                       " --env=HOME=/home/user"
                        " --env=TMP=/tmp"
                        " --env=TEMP=/tmp"
                        " --env=TMPDIR=/tmp"
@@ -1045,12 +1110,11 @@ def run_udocker(image, cmd, workdir, env, path, mpi, mpi_processes, mpi_procs_pe
                        " --hostauth"
                        " --user=%s"
                        " --env=USER=%s"
-                       " --bindhome"
+                       " -v %s/userhome:/home/user"
                        " %s"
-                       " -v %s"
                        " --workdir=%s"
                        " -v %s:/tmp"
-                       " %s %s") % (extras, path, workdir, path, getpass.getuser(), getpass.getuser(), mounts, path, workdir, user_tmp_dir, image, cmd)
+                       " %s %s") % (extras, workdir, path, getpass.getuser(), getpass.getuser(), path, mounts, workdir, user_tmp_dir, image, cmd)
 
     logging.info('Running: "%s"', run_command)
 
@@ -1119,7 +1183,7 @@ def run_singularity(image, cmd, workdir, env, path, mpi, mpi_processes, mpi_proc
     mounts = ''
     if mountpoint is not None:
         logging.info('Mount point is %s', mountpoint)
-        mounts = '--bind %s/home/user/mounts%s:%s ' % (path, mountpoint, mountpoint)
+        mounts = '--bind %s/mounts%s:%s ' % (path, mountpoint, mountpoint)
 
     # Artifact mounts
     for artifact in artifacts:
@@ -1127,20 +1191,16 @@ def run_singularity(image, cmd, workdir, env, path, mpi, mpi_processes, mpi_proc
 
     # Set source directory for /tmp in container
     user_tmp_dir = path + '/usertmp'
-    if os.path.isdir('/home/user/tmp'):
-        user_tmp_dir = '/home/user/tmp'
 
     if not is_batch:
         run_command = ("singularity %s"
-                       " --no-home"
-                       " --bind /home"
                        " --bind /mnt"
-                       " --home %s"
+                       " --home %s/userhome:/home/user"
                        " --bind %s:/tmp"
                        " %s"
                        " --pwd %s %s %s") % (command, path, user_tmp_dir, mounts, workdir, image, cmd)
     else:
-        run_command = 'singularity %s --home %s %s --pwd %s --bind %s:/tmp %s %s' % (command, path, mounts, workdir, user_tmp_dir, image, cmd)
+        run_command = 'singularity %s --home %s/userhome:/home/user %s --pwd %s --bind %s:/tmp %s %s' % (command, path, mounts, workdir, user_tmp_dir, image, cmd)
 
     job_cpus = -1
     job_memory = -1
@@ -1200,6 +1260,9 @@ def run_tasks(job, path, is_batch):
     if 'walltime' in job['resources']:
         walltime_limit = job['resources']['walltime']*60
 
+    # Move input files into userhome directory
+    move_inputs(job, path)
+
     # Artifact mounts
     artifacts = {}
     if 'artifacts' in job:
@@ -1237,9 +1300,9 @@ def run_tasks(job, path, is_batch):
             workdir = task['workdir']
 
         if workdir is None:
-            workdir = path
+            workdir = '/home/user'
         elif not workdir.startswith('/'):
-            workdir = path + '/' + workdir
+            workdir = '/home/user/' + workdir
 
         env = {}
         if 'env' in task:
@@ -1457,11 +1520,13 @@ if __name__ == "__main__":
         if 'HOME' in os.environ:
             path = os.environ['HOME']
         is_batch = True
-        logging.info('Assuming running on a batch system')
 
     # Setup logging
     logging.basicConfig(filename='%s/promlet.%d.log' % (path, args.id), level=logging.INFO, format='%(asctime)s %(message)s')
     logging.info('Started promlet using path "%s"' % path)
+
+    if is_batch:
+        logging.info('Assuming running on a batch system')
 
     # Write empty json job details, so no matter what happens next, at least an empty file exists
     try:
@@ -1483,29 +1548,8 @@ if __name__ == "__main__":
         logging.critical('Unable to write lock file, exiting...')
         exit(1)
 
-    # Create the usertmp directory if necessary
-    if not os.path.isdir('/home/user/tmp'):
-        logging.info('Creating usertmp directory')
-        if not os.path.isdir(path + '/usertmp'):
-            try:
-                os.mkdir(path + '/usertmp')
-            except Exception as ex:
-                logging.error('Unable to create usertmp directory due to: %s', ex)
-                exit(1)
-    else:
-        logging.info('Using existing tmp directory')
-
-    # Create the mounts directory if necessary
-    if not os.path.isdir('/home/user/mounts'):
-        logging.info('Creating user mounts directory')
-        if not os.path.isdir('/home/user/mounts'):
-            try:
-                os.mkdir('/home/user/mounts')
-            except Exception as ex:
-                logging.error('Unable to create user mounts directory due to: %s', ex)
-                exit(1)
-    else:
-        logging.info('Using existing mounts directory')
+    # Create the user home & tmp directories
+    create_dirs(path)
 
     # Read job description
     try:
@@ -1577,7 +1621,7 @@ if __name__ == "__main__":
     json_output['cpu_clock'] = cpu_clock
 
     try:
-        with open('promlet.%d.json' % args.id, 'w') as file:
+        with open('%s/promlet.%d.json' % (path, args.id), 'w') as file:
             json.dump(json_output, file)
     except Exception as exc:
         logging.critical('Unable to write promlet.json due to: %s', exc)
