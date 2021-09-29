@@ -10,7 +10,7 @@ def get_snapshot_url(self, uid):
     """
     return str(self.create_presigned_url('get', self._config['S3_BUCKET'], 'snapshots/%s/snapshot.tgz' % uid, 3600))
 
-def create_snapshot(self, uid, job_id, path):
+def create_snapshot(self, uid, job_id, path, userhome):
     """
     Create a snapshot of the specified path
     """
@@ -22,8 +22,13 @@ def create_snapshot(self, uid, job_id, path):
     if not job_id_routed:
         job_id_routed = job_id
 
+    # Change directory if needed
+    cwd = ''
+    if userhome:
+        cwd = 'cd userhome &&'
+
     # Create a tarball & upload to S3
-    cmd = 'condor_ssh_to_job %d "tar czf snapshot.tgz %s && curl --upload-file snapshot.tgz \\\"%s\\\""' % (job_id_routed, path, snapshot_url.encode('utf-8'))
+    cmd = 'condor_ssh_to_job %d "%s tar czf snapshot.tgz %s && curl --upload-file snapshot.tgz \\\"%s\\\""' % (job_id_routed, cwd, path, snapshot_url.encode('utf-8'))
     process = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
     timeout = {"value": False}
     timer = threading.Timer(int(self._config['EXEC_TIMEOUT']), kill_proc, [process, timeout])
@@ -41,7 +46,7 @@ def validate_snapshot_path(self, iwd, path):
         with open(iwd + '/.job.json') as json_file:
             job = json.load(json_file)
     except:
-        return None
+        return (None, None)
 
     found = None
     if 'artifacts' in job:
@@ -53,8 +58,8 @@ def validate_snapshot_path(self, iwd, path):
                     found = directory
 
     if not found and path.startswith('/'):
-        return None
+        return (None, None)
     elif path.startswith('/'):
-        return found
+        return (found, False)
 
-    return path
+    return (path, True)
