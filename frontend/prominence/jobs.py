@@ -134,7 +134,8 @@ def exec_in_job(username, group, email, job_id):
 
     command = []
     if 'command' in request.args:
-        command = str(request.args.get('command')).split(',')
+        command = 'cd userhome && %s' % str(request.args.get('command'))
+        command = command.split(',')
 
     output = backend.execute_command(job_id, iwd, command)
     if output is not None:
@@ -265,11 +266,11 @@ def create_snapshot(username, group, email, job_id):
     else:
         return errors.snapshot_path_req()
 
-    path = backend.validate_snapshot_path(iwd, path)
+    (path, userhome) = backend.validate_snapshot_path(iwd, path)
     if not path:
         return errors.snapshot_invalid_path()
 
-    backend.create_snapshot(uid, job_id, path)
+    backend.create_snapshot(uid, job_id, path, userhome)
     return jsonify({}), 200
 
 @jobs.route("/prominence/v1/jobs/<int:job_id>/remove", methods=['PUT'])
