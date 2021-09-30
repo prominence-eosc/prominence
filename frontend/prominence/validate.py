@@ -260,7 +260,8 @@ def validate_job(job):
                        'maximumTimeInQueue',
                        'maximumIdleTimePerResource',
                        'leaveInQueue',
-                       'placement']
+                       'placement',
+                       'autoScalingType']
 
     valid_events = ['jobFinished']
 
@@ -490,8 +491,8 @@ def validate_job(job):
             if not str(job['policies']['maximumTimeInQueue']).isdigit():
                 return (False, 'the maximum time in queue must be an integer')
 
-            if job['policies']['maximumTimeInQueue'] < 1:
-                return (False, 'the maximum time in queue must be greater than 0')
+            if job['policies']['maximumTimeInQueue'] < 1 and job['policies']['maximumTimeInQueue'] != 0 and job['policies']['maximumTimeInQueue'] != -1:
+                return (False, 'the maximum time in queue must be -1, 0 or greater than 0')
 
             if job['policies']['maximumTimeInQueue'] > 44640:
                 return (False, 'the maximum time in queue must be less than 44640')
