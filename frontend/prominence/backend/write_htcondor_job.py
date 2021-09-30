@@ -11,7 +11,7 @@ should_transfer_files = YES
 when_to_transfer_output = ON_EXIT_OR_EVICT
 transfer_output_files = promlet.$(prominencecount).log,promlet.$(prominencecount).json
 skip_filechecks = true
-#requirements = false
+requirements = %(requirements)s
 transfer_executable = true
 stream_output = true
 stream_error = true
@@ -62,6 +62,7 @@ def write_htcondor_job(cjob, filename):
         info['extra_args'] = cjob['extra_args']
     else:
         info['extra_args'] = ''
+    info['requirements'] = cjob['Requirements']
 
     # Add any labels
     extras_metadata = ''
