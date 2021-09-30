@@ -161,7 +161,16 @@ def _create_htcondor_job(self, username, groups, email, uid, jjob, job_path, wor
 
     # Job router - route idle jobs if they have never been routed before and have been idle for over 40 secs
     # or if they were last routed more than 20 mins ago
-    cjob['+ProminenceWantJobRouter'] = str('JobStatus == 1 && ((CurrentTime - ProminenceLastRouted > 1200) || (CurrentTime - EnteredCurrentStatus > 40 && isUndefined(ProminenceLastRouted))) && ProminenceGroup =!= "CCFE/ALC"')
+    disable_router = False
+    if 'policies' in jjob:
+        if 'autoScalingType' in jjob['policies']:
+            if jjob['policies']['autoScalingType'] == 'none':
+                disable_router = True
+
+    if disable_router:
+        cjob['+ProminenceWantJobRouter'] = 'false'
+    else:
+        cjob['+ProminenceWantJobRouter'] = str('JobStatus == 1 && ((CurrentTime - ProminenceLastRouted > 1200) || (CurrentTime - EnteredCurrentStatus > 40 && isUndefined(ProminenceLastRouted)))')
 
     # Should the job be removed from the queue once finished?
     cjob['+ProminenceRemoveFromQueue'] = 'True'
@@ -170,9 +179,18 @@ def _create_htcondor_job(self, username, groups, email, uid, jjob, job_path, wor
         if 'leaveInQueue' in jjob['policies']:
             if jjob['policies']['leaveInQueue']:
                 cjob['+ProminenceRemoveFromQueue'] = 'False'
-
+ 
     cjob['leave_in_queue'] = '(JobStatus == 4 || JobStatus == 3) && ProminenceRemoveFromQueue =?= False'
 
+    # Site requirements
+    cjob['Requirements'] = 'True'
+    if 'policies' in jjob:
+        if 'placement' in jjob['policies']:
+            if 'requirements' in jjob['policies']['placement']:
+                if 'sites' in jjob['policies']['placement']['requirements']:
+                    sites = ",".join(jjob['policies']['placement']['requirements']['sites'])
+                    cjob['Requirements'] = 'stringListMember(TARGET.ProminenceCloud, "%s")' % sites
+ 
     # Artifacts
     artifacts = []
     if 'artifacts' in jjob:
