@@ -20,7 +20,7 @@ def validate_presigned_url(url):
         return False
     return True
 
-def _create_htcondor_job(self, username, groups, email, uid, jjob, job_path, workflow=False):
+def _create_htcondor_job(self, username, groups, email, uid, jjob, job_path, workflow=False, jobfactory=False, workflowuid=None, joblabel=None):
     """
     Create a dict representing a HTCondor job & write the JSON job description
     (original & mapped) files to disk
@@ -217,11 +217,17 @@ def _create_htcondor_job(self, username, groups, email, uid, jjob, job_path, wor
         output_locations_put = []
 
         for filename in jjob['outputFiles']:
-            if not workflow:
-                url_put = self.create_presigned_url('put',
-                                                    self._config['S3_BUCKET'],
-                                                    'scratch/%s/%s' % (uid, os.path.basename(filename)),
-                                                    864000)
+            if not jobfactory:
+                if not joblabel:
+                    url_put = self.create_presigned_url('put',
+                                                        self._config['S3_BUCKET'],
+                                                        'scratch/%s/%s' % (uid, os.path.basename(filename)),
+                                                        864000)
+                else:
+                    url_put = self.create_presigned_url('put',
+                                                        self._config['S3_BUCKET'],
+                                                        'scratch/%s/%s/%s' % (workflowuid, joblabel, os.path.basename(filename)),
+                                                        864000)
             else:
                 url_put = filename
             output_locations_put.append(url_put)
@@ -235,11 +241,17 @@ def _create_htcondor_job(self, username, groups, email, uid, jjob, job_path, wor
         output_locations_put = []
 
         for dirname in jjob['outputDirs']:
-            if not workflow:
-                url_put = self.create_presigned_url('put',
-                                                    self._config['S3_BUCKET'],
-                                                    'scratch/%s/%s.tgz' % (uid, os.path.basename(dirname)),
-                                                    864000)
+            if not jobfactory:
+                if not joblabel:
+                    url_put = self.create_presigned_url('put',
+                                                        self._config['S3_BUCKET'],
+                                                        'scratch/%s/%s.tgz' % (uid, os.path.basename(dirname)),
+                                                        864000)
+                else:
+                    url_put = self.create_presigned_url('put',
+                                                        self._config['S3_BUCKET'],
+                                                        'scratch/%s/%s/%s.tgz' % (workflowuid, joblabel, os.path.basename(dirname)),
+                                                        864000)
             else:
                 url_put = dirname
             output_locations_put.append(url_put)
