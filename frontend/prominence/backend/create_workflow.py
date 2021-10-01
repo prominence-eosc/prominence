@@ -11,7 +11,7 @@ def write_parameter_value(value):
     """
     Write a parameter value, taking into account its type
     """
-    if isinstance(value, int):
+    if isinstance(value, int) or int(value) == value:
         return '%d' % value
     elif isinstance(value, float):
         return '%f' % value
