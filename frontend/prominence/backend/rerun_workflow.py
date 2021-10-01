@@ -5,7 +5,7 @@ import uuid
 
 import htcondor
 
-from utilities import run
+from .utilities import run
 
 def rerun_workflow(self, username, groups, email, workflow_id):
     """

@@ -4,11 +4,12 @@ import uuid
 from flask import Blueprint, jsonify, request
 from flask import current_app as app
 
-from auth import requires_auth
-from backend import ProminenceBackend
-import errors
-import validate
-from utilities import get_remote_addr
+from .auth import requires_auth
+from .backend import ProminenceBackend
+from .errors import invalid_constraint, func_disabled, no_such_job, not_auth_job, job_not_running, command_failed
+from .errors import job_id_required, no_stdout, no_stderr, snapshot_path_required, snapshot_invalid_path, removal_failed
+from .validate import validate_job
+from .utilities import get_remote_addr
 
 jobs = Blueprint('jobs', __name__)
 
@@ -24,7 +25,7 @@ def submit_job(username, group, email):
     app.logger.info('%s JobSubmission user:%s group:%s uid:%s' % (get_remote_addr(request), username, group, uid))
 
     # Validate the input JSON
-    (status, msg) = validate.validate_job(request.get_json())
+    (status, msg) = validate_job(request.get_json())
     if not status:
         return jsonify({'error': msg}), 400
 
@@ -63,9 +64,9 @@ def list_jobs(username, group, email):
                 constraint = (request.args.get('constraint').split('=')[0],
                               request.args.get('constraint').split('=')[1])
             else:
-                return errors.invalid_constraint()
+                return invalid_constraint()
         else:
-            return errors.invalid_constraint()
+            return invalid_constraint()
 
     name_constraint = None
     if 'name' in request.args:
@@ -120,17 +121,17 @@ def exec_in_job(username, group, email, job_id):
     app.logger.info('%s ExecJob user:%s group:%s id:%d' % (get_remote_addr(request), username, group, job_id))
 
     if app.config['ENABLE_EXEC'] != 'True':
-        return errors.func_disabled()
+        return func_disabled()
 
     backend = ProminenceBackend(app.config)
 
     (_, identity, iwd, _, _, name, status) = backend.get_job_unique_id(job_id)
     if not identity:
-        return errors.no_such_job()
+        return no_such_job()
     if username != identity:
-        return errors.not_auth_job()
+        return not_auth_job()
     if status != 2:
-        return errors.job_not_running()
+        return job_not_running()
 
     command = []
     if 'command' in request.args:
@@ -141,7 +142,7 @@ def exec_in_job(username, group, email, job_id):
     if output is not None:
         return output, 200
  
-    return errors.command_failed()
+    return command_failed()
 
 @jobs.route("/prominence/v1/jobs", methods=['DELETE'])
 @requires_auth
@@ -150,7 +151,7 @@ def delete_jobs(username, group, email):
     Delete the specified job(s)
     """
     if 'id' not in request.args:
-        return errors.job_id_required()
+        return job_id_required()
 
     app.logger.info('%s DeleteJobs user:%s group:%s id:%s' % (get_remote_addr(request), username, group, request.args.get('id')))
 
@@ -187,13 +188,13 @@ def get_stdout(username, group, email, job_id):
     backend = ProminenceBackend(app.config)
     (uid, identity, iwd, out, err, name, _) = backend.get_job_unique_id(job_id)
     if not identity:
-        return errors.no_such_job()
+        return no_such_job()
     if username != identity:
-        return errors.not_auth_job()
+        return not_auth_job()
 
     stdout = backend.get_stdout(uid, iwd, out, err, job_id, name)
     if stdout is None:
-        return errors.no_stdout()
+        return no_stdout()
     else:
         return stdout
 
@@ -208,13 +209,13 @@ def get_stderr(username, group, email, job_id):
     backend = ProminenceBackend(app.config)
     (uid, identity, iwd, out, err, name, _) = backend.get_job_unique_id(job_id)
     if not identity:
-        return errors.no_such_job()
+        return no_such_job()
     if username != identity:
-        return errors.not_auth_job()
+        return not_auth_job()
 
     stderr = backend.get_stderr(uid, iwd, out, err, job_id, name)
     if stderr is None:
-        return errors.no_stderr()
+        return no_stderr()
     else:
         return stderr
 
@@ -227,16 +228,16 @@ def get_snapshot(username, group, email, job_id):
     app.logger.info('%s GetSnapshot user:%s group:%s id:%d' % (get_remote_addr(request), username, group, job_id))
 
     if app.config['ENABLE_SNAPSHOTS'] != 'True':
-        return errors.func_disabled()
+        return func_disabled()
 
     backend = ProminenceBackend(app.config)
     (uid, identity, _, _, _, name, status) = backend.get_job_unique_id(job_id)
     if not identity:
-        return errors.no_such_job()
+        return no_such_job()
     if username != identity:
-        return errors.not_auth_job()
+        return not_auth_job()
     if status != 2:
-        return errors.job_not_running()
+        return job_not_running()
 
     url = backend.get_snapshot_url(uid)
     return jsonify({'url': url}), 200
@@ -250,25 +251,25 @@ def create_snapshot(username, group, email, job_id):
     app.logger.info('%s CreateSnapshot user:%s group:%s id:%d' % (get_remote_addr(request), username, group, job_id))
 
     if app.config['ENABLE_SNAPSHOTS'] != 'True':
-        return errors.func_disabled()
+        return func_disabled()
 
     backend = ProminenceBackend(app.config)
     (uid, identity, iwd, _, _, _, status) = backend.get_job_unique_id(job_id)
     if not identity:
-        return errors.no_such_job()
+        return no_such_job()
     if username != identity:
-        return errors.not_auth_job()
+        return not_auth_job()
     if status != 2:
-        return errors.job_not_running()
+        return job_not_running()
 
     if 'path' in request.args:
         path = request.args.get('path')
     else:
-        return errors.snapshot_path_req()
+        return snapshot_path_required()
 
     (path, userhome) = backend.validate_snapshot_path(iwd, path)
     if not path:
-        return errors.snapshot_invalid_path()
+        return snapshot_invalid_path()
 
     backend.create_snapshot(uid, job_id, path, userhome)
     return jsonify({}), 200
@@ -284,11 +285,11 @@ def remove_job(username, group, email, job_id):
     backend = ProminenceBackend(app.config)
     (uid, identity, iwd, _, _, _, status) = backend.get_job_unique_id(job_id)
     if not identity:
-        return errors.no_such_job()
+        return no_such_job()
     if username != identity:
-        return errors.not_auth_job()
+        return not_auth_job()
 
     if not backend.remove_job(job_id):
-        return errors.removal_failed()
+        return removal_failed()
 
     return jsonify({}), 200

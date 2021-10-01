@@ -5,7 +5,7 @@ import re
 import classad
 import htcondor
 
-import utilities
+from .utilities import redact_storage_creds
 
 def list_jobs(self, job_ids, identity, active, completed, workflow, num, detail, constraint, name_constraint):
     """
@@ -367,7 +367,7 @@ def list_jobs(self, job_ids, identity, active, completed, workflow, num, detail,
                 jobj['constraints'] = job_json_file['constraints']
 
             if 'storage' in job_json_file:
-                jobj['storage'] = utilities.redact_storage_creds(job_json_file['storage'])
+                jobj['storage'] = redact_storage_creds(job_json_file['storage'])
 
             execution = {}
             if 'ProminenceInfrastructureSite' in job:

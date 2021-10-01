@@ -30,6 +30,10 @@ def create_job(self, username, groups, email, uid, jjob):
     if job_sandbox is None:
         return (1, {"error":"Unable to create job sandbox"})
 
+    # Copy executable to sandbox, change current working directory to the sandbox
+    #if 'CCFE/Test' in groups:
+    #    shutil.copyfile('/usr/local/libexec/promlet.py-29sep2021', os.path.join(job_sandbox, 'promlet.py'))
+    #else:
     shutil.copyfile(self._promlet_file, os.path.join(job_sandbox, 'promlet.py'))
 
     os.chdir(job_sandbox)

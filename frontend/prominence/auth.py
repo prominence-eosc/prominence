@@ -7,9 +7,8 @@ import jwt
 from flask import jsonify, request
 from flask import current_app as app
 
-import errors
-import validate
-from utilities import get_remote_addr
+from .errors import auth_failure, oidc_error
+from .utilities import get_remote_addr
 
 def validate_token(token):
     """
@@ -34,7 +33,7 @@ def get_expiry(token):
     """
     expiry = 0
     try:
-        expiry = jwt.decode(token, verify=False)['exp']
+        expiry = jwt.decode(token, options={"verify_signature": False})['exp']
     except:
         pass
     return expiry
@@ -55,8 +54,8 @@ def get_user_details(token):
     headers = {'Authorization':'Bearer %s' % token}
     try:
         response = requests.get(app.config['OIDC_URL']+'/userinfo', timeout=app.config['OIDC_TIMEOUT'], headers=headers)
-    except requests.exceptions.RequestException:
-        app.logger.warning('%s AuthenticationFailure no response from identity provider' % get_remote_addr(request))
+    except requests.exceptions.RequestException as err:
+        app.logger.warning('%s AuthenticationFailure no response from identity provider: %s' % (get_remote_addr(request), err))
         return (False, None, None, False)
 
     username = None
@@ -74,7 +73,7 @@ def get_user_details(token):
 
     groups = None
     if 'groups' in response.json():
-        if response.json()['groups'] > 0:
+        if len(response.json()['groups']) > 0:
             groups = ','.join(str(group) for group in response.json()['groups'])
 
     allowed = False
@@ -100,7 +99,7 @@ def authenticate():
     """
     Sends a 401 response
     """
-    return errors.auth_failure()
+    return auth_failure()
 
 def requires_auth(function):
     """
@@ -137,7 +136,7 @@ def requires_auth(function):
             (success, username, group, email, allowed) = get_user_details(token)
 
         if not success:
-            return errors.oidc_error()
+            return oidc_error()
 
         if not username:
             app.logger.warning('%s AuthenticationFailure username not returned from identity provider' % get_remote_addr(request))

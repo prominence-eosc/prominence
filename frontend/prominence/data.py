@@ -3,11 +3,11 @@ import jwt
 from flask import Blueprint, jsonify, request
 from flask import current_app as app
 
-from backend import ProminenceBackend
-import errors
-from utilities import get_remote_addr, object_access_allowed
+from .backend import ProminenceBackend
+from .errors import func_disabled
+from .utilities import get_remote_addr, object_access_allowed
 
-from auth import requires_auth
+from .auth import requires_auth
 
 data = Blueprint('data', __name__)
 
@@ -21,7 +21,7 @@ def list_objects(username, group, email, path=None):
     app.logger.info('%s ListData user:%s group:%s' % (get_remote_addr(request), username, group))
 
     if app.config['ENABLE_DATA'] != 'True':
-        return errors.func_disabled()
+        return func_disabled()
 
     backend = ProminenceBackend(app.config)
 
@@ -49,7 +49,7 @@ def delete_object(username, group, email, obj):
     app.logger.info('%s DeleteData user:%s group:%s' % (get_remote_addr(request), username, group))
 
     if app.config['ENABLE_DATA'] != 'True':
-        return errors.func_disabled()
+        return func_disabled()
 
     backend = ProminenceBackend(app.config)
 
@@ -71,7 +71,7 @@ def upload_file(username, group, email):
     app.logger.info('%s UploadData user:%s group:%s' % (get_remote_addr(request), username, group))
 
     if app.config['ENABLE_DATA'] != 'True':
-        return errors.func_disabled()
+        return func_disabled()
 
     backend = ProminenceBackend(app.config)
 
@@ -104,7 +104,7 @@ def get_url(username, group, email):
     app.logger.info('%s GetJobUploadURL user:%s group:%s' % (get_remote_addr(request), username, group))
 
     if app.config['ENABLE_DATA'] != 'True':
-        return errors.func_disabled()
+        return func_disabled()
 
     backend = ProminenceBackend(app.config)
 

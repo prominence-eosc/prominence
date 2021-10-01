@@ -4,7 +4,7 @@ import os
 import classad
 import htcondor
 
-from utilities import redact_storage_creds
+from .utilities import redact_storage_creds
 
 def list_workflows(self, workflow_ids, identity, active, completed, num, detail, constraint, name_constraint):
     """

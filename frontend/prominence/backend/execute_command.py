@@ -2,7 +2,7 @@ import json
 import subprocess
 import threading
 
-from utilities import get_routed_job_id, kill_proc
+from .utilities import get_routed_job_id, kill_proc
 
 def modify_exec_command(iwd, command):
     """

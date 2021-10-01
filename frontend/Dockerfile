@@ -1,13 +1,11 @@
-FROM eoscprominence/htcondor:8.9.2
+FROM alahiff/htcondor:9.2.0
 
 RUN yum -y install epel-release && \
-    yum -y install python-pip \
-                   python-devel \
+    yum -y install python3-pip \
+                   python3-devel \
                    gcc \
                    openssh-clients && \
-    useradd prominence
-
-RUN pip install --upgrade "pip < 21.0"
+    useradd prominence --uid 1005
 
 RUN mkdir /tmp/prominence
 COPY setup.py /tmp/prominence/.
@@ -16,7 +14,7 @@ COPY prominence /tmp/prominence/prominence/
 COPY bin /tmp/prominence/bin/
 
 RUN cd /tmp/prominence && \
-    pip install . && \
+    pip3 install . && \
     rm -rf /tmp/prominence
 
 COPY promlet.py /usr/local/libexec/
@@ -30,5 +28,5 @@ ENTRYPOINT ["uwsgi", \
             "--gid", "prominence", \
             "--manage-script-name", \
             "--master", \
-            "--chdir", "/usr/bin", \
+            "--chdir", "/usr/local/bin", \
             "-w", "prominence-restapi:app"]

@@ -4,11 +4,11 @@ import uuid
 from flask import Blueprint, jsonify, request
 from flask import current_app as app
 
-from auth import requires_auth
-from backend import ProminenceBackend
-import errors
-import validate
-from utilities import get_remote_addr
+from .auth import requires_auth
+from .backend import ProminenceBackend
+from .errors import invalid_constraint, no_such_workflow, no_stdout, no_stderr, not_auth_workflow, workflow_id_required
+from .validate import validate_workflow
+from .utilities import get_remote_addr
 
 workflows = Blueprint('workflows', __name__)
 
@@ -37,9 +37,9 @@ def list_workflows(username, group, email):
                 constraint = (request.args.get('constraint').split('=')[0],
                               request.args.get('constraint').split('=')[1])
             else:
-                return errors.invalid_constraint()
+                return invalid_constraint()
         else:
-            return errors.invalid_constraint()
+            return invalid_constraint()
 
     name_constraint = None
     if 'name' in request.args:
@@ -91,13 +91,13 @@ def get_stdout_wf(username, group, email, workflow_id, job):
     if not job:
         job = 0
     if not identity:
-        return errors.no_such_workflow()
+        return no_such_workflow()
     if username != identity:
-        return errors.not_auth_workflow()
+        return not_auth_workflow()
 
     stdout = backend.get_stdout(uid, iwd, None, None, -1, job, -1)
     if stdout is None:
-        return errors.no_stdout()
+        return no_stdout()
     else:
         return stdout
 
@@ -114,13 +114,13 @@ def get_stderr_wf(username, group, email, workflow_id, job):
     if not job:
         job = 0
     if not identity:
-        return errors.no_such_workflow()
+        return no_such_workflow()
     if username != identity:
-        return errors.not_auth_workflow()
+        return not_auth_workflow()
 
     stderr = backend.get_stderr(uid, iwd, None, None, -1, job, -1)
     if stderr is None:
-        return errors.no_stderr()
+        return no_stderr()
     else:
         return stderr
 
@@ -135,13 +135,13 @@ def get_stdout_wf_jf(username, group, email, workflow_id, job, instance_id):
     backend = ProminenceBackend(app.config)
     (uid, identity, iwd, _, _, _, _) = backend.get_job_unique_id(workflow_id)
     if not identity:
-        return errors.no_such_workflow()
+        return no_such_workflow()
     if username != identity:
-        return errors.not_auth_workflow()
+        return not_auth_workflow()
 
     stdout = backend.get_stdout(uid, iwd, None, None, workflow_id, None, instance_id)
     if stdout is None:
-        return errors.no_stdout()
+        return no_stdout()
     else:
         return stdout
 
@@ -156,13 +156,13 @@ def get_stderr_wf_jf(username, group, email, workflow_id, job, instance_id):
     backend = ProminenceBackend(app.config)
     (uid, identity, iwd, _, _, _, _) = backend.get_job_unique_id(workflow_id)
     if not identity:
-        return errors.no_such_workflow()
+        return no_such_workflow()
     if username != identity:
-        return errors.not_auth_workflow()
+        return not_auth_workflow()
 
     stderr = backend.get_stderr(uid, iwd, None, None, workflow_id, None, instance_id)
     if stderr is None:
-        return errors.no_stderr()
+        return no_stderr()
     else:
         return stderr
 
@@ -188,7 +188,7 @@ def delete_workflows(username, group, email):
     Delete the specified workflow(s)
     """
     if 'id' not in request.args:
-        return errors.workflow_id_required()
+        return workflow_id_required()
 
     app.logger.info('%s DeleteWorkflows user:%s group:%s id:%s' % (get_remote_addr(request), username, group, request.args.get('id')))
 
@@ -211,7 +211,7 @@ def submit_workflow(username, group, email):
     app.logger.info('%s WorkflowSubmission user:%s group:%s uid:%s' % (get_remote_addr(request), username, group, uid))
 
     # Validate the input JSON
-    (status, msg) = validate.validate_workflow(request.get_json())
+    (status, msg) = validate_workflow(request.get_json())
     if not status:
         return jsonify({'error': msg}), 400
 
