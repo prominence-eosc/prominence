@@ -284,7 +284,7 @@ def create_workflow(self, username, groups, email, uid, jjob):
 
     # Submit to DAGMan
     (return_code, stdout, stderr, timedout) = run(cmd, job_sandbox, 30)
-    m = re.search(r'submitted to cluster\s(\d+)', stdout)
+    m = re.search(r'submitted to cluster\s(\d+)', stdout.decode('utf-8'))
     data = {}
     if m:
         retval = 201
