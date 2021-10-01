@@ -512,7 +512,7 @@ def get_new_url(path, name):
     data = {'name': name}
     headers = {'Authorization': 'Bearer %s' % token}
     try:
-        resp = requests.post('%s/data/output' % url, headers=headers, json=data)
+        resp = requests.post('%s/data/output' % url, headers=headers, json=data, verify=False)
     except Exception as err:
         logging.error('Got exception when trying to get new presigned URL: %s', err)
         return None
@@ -992,7 +992,7 @@ def download_udocker(image, location, label, path, credential):
 
     return 0, False
 
-def run_udocker(image, cmd, workdir, env, path, mpi, mpi_processes, mpi_procs_per_node, artifacts, walltime_limit, is_batch):
+def run_udocker(image, cmd, workdir, env, path, mpi, mpi_processes, mpi_procs_per_node, artifacts, walltime_limit):
     """
     Execute a task using udocker
     """
@@ -1079,42 +1079,22 @@ def run_udocker(image, cmd, workdir, env, path, mpi, mpi_processes, mpi_procs_pe
     for artifact in artifacts:
         mounts = mounts + ' -v %s/%s:%s ' % (path, artifact, artifacts[artifact])
 
-    if not is_batch:
-        # Used on clouds
-        run_command = ("/usr/local/bin/udocker -q run %s"
-                       " --env=HOME=/home/user"
-                       " --env=USER=%s"
-                       " --env=TMP=/tmp"
-                       " --env=TEMP=/tmp"
-                       " --env=TMPDIR=/tmp"
-                       " --env=PROMINENCE_PWD=%s"
-                       " --env=UDOCKER_DIR=%s/.udocker"
-                       " --env=PROMINENCE_CONTAINER_RUNTIME=udocker"
-                       " --hostauth"
-                       " --user=%s"
-                       " -v %s/userhome:/home/user"
-                       " %s"
-                       " --workdir=%s"
-                       " -v %s:/tmp"
-                       " %s %s") % (extras, getpass.getuser(), workdir, path, getpass.getuser(), path, mounts, workdir, user_tmp_dir, image, cmd)
-    else:
-        # Used on existing HPC systems
-        run_command = ("udocker -q run %s"
-                       " --env=HOME=/home/user"
-                       " --env=TMP=/tmp"
-                       " --env=TEMP=/tmp"
-                       " --env=TMPDIR=/tmp"
-                       " --env=PROMINENCE_PWD=%s"
-                       " --env=UDOCKER_DIR=%s/.udocker"
-                       " --env=PROMINENCE_CONTAINER_RUNTIME=udocker"
-                       " --hostauth"
-                       " --user=%s"
-                       " --env=USER=%s"
-                       " -v %s/userhome:/home/user"
-                       " %s"
-                       " --workdir=%s"
-                       " -v %s:/tmp"
-                       " %s %s") % (extras, workdir, path, getpass.getuser(), getpass.getuser(), path, mounts, workdir, user_tmp_dir, image, cmd)
+    run_command = ("/usr/local/bin/udocker -q run %s"
+                   " --env=HOME=/home/user"
+                   " --env=USER=%s"
+                   " --env=TMP=/tmp"
+                   " --env=TEMP=/tmp"
+                   " --env=TMPDIR=/tmp"
+                   " --env=PROMINENCE_PWD=%s"
+                   " --env=UDOCKER_DIR=%s/.udocker"
+                   " --env=PROMINENCE_CONTAINER_RUNTIME=udocker"
+                   " --hostauth"
+                   " --user=%s"
+                   " -v %s/userhome:/home/user"
+                   " %s"
+                   " --workdir=%s"
+                   " -v %s:/tmp"
+                   " %s %s") % (extras, getpass.getuser(), workdir, path, getpass.getuser(), path, mounts, workdir, user_tmp_dir, image, cmd)
 
     logging.info('Running: "%s"', run_command)
 
@@ -1127,7 +1107,7 @@ def run_udocker(image, cmd, workdir, env, path, mpi, mpi_processes, mpi_procs_pe
 
     return return_code, timed_out
 
-def run_singularity(image, cmd, workdir, env, path, mpi, mpi_processes, mpi_procs_per_node, artifacts, walltime_limit, is_batch):
+def run_singularity(image, cmd, workdir, env, path, mpi, mpi_processes, mpi_procs_per_node, artifacts, walltime_limit):
     """
     Execute a task using Singularity
     """
@@ -1192,15 +1172,12 @@ def run_singularity(image, cmd, workdir, env, path, mpi, mpi_processes, mpi_proc
     # Set source directory for /tmp in container
     user_tmp_dir = path + '/usertmp'
 
-    if not is_batch:
-        run_command = ("singularity %s"
-                       " --bind /mnt"
-                       " --home %s/userhome:/home/user"
-                       " --bind %s:/tmp"
-                       " %s"
-                       " --pwd %s %s %s") % (command, path, user_tmp_dir, mounts, workdir, image, cmd)
-    else:
-        run_command = 'singularity %s --home %s/userhome:/home/user %s --pwd %s --bind %s:/tmp %s %s' % (command, path, mounts, workdir, user_tmp_dir, image, cmd)
+    run_command = ("singularity %s"
+                   " --bind /mnt"
+                   " --home %s/userhome:/home/user"
+                   " --bind %s:/tmp"
+                   " %s"
+                   " --pwd %s %s %s") % (command, path, user_tmp_dir, mounts, workdir, image, cmd)
 
     job_cpus = -1
     job_memory = -1
@@ -1231,7 +1208,7 @@ def run_singularity(image, cmd, workdir, env, path, mpi, mpi_processes, mpi_proc
 
     return return_code, timed_out
 
-def run_tasks(job, path, is_batch):
+def run_tasks(job, path):
     """
     Execute sequential tasks
     """
@@ -1273,7 +1250,7 @@ def run_tasks(job, path, is_batch):
                 artifacts[source] = dest
 
     # Check shared filesystem for multi-node jobs before doing anything
-    if num_nodes > 1 and not is_batch and os.path.isfile('/home/user/.beeond'):
+    if num_nodes > 1 and os.path.isfile('/home/user/.beeond'):
         if check_beeond():
             logging.info('BeeGFS shared filesystem is mounted on all nodes')
         else:
@@ -1397,8 +1374,7 @@ def run_tasks(job, path, is_batch):
                                            mpi_processes,
                                            procs_per_node,
                                            artifacts,
-                                           task_time_limit,
-                                           is_batch)
+                                           task_time_limit)
                     retry_count += 1
         else:
             # Pull image if necessary or use a previously pulled image
@@ -1429,8 +1405,7 @@ def run_tasks(job, path, is_batch):
                                            mpi_processes,
                                            procs_per_node,
                                            artifacts,
-                                           task_time_limit,
-                                           is_batch)
+                                           task_time_limit)
                     retry_count += 1
 
         task_u = {}
@@ -1475,11 +1450,6 @@ def create_parser():
     Create the arguments parser
     """
     parser = argparse.ArgumentParser(description='promlet')
-    parser.add_argument('--batch',
-                        dest='batch',
-                        default=False,
-                        action='store_true',
-                        help='Running on a batch system')
     parser.add_argument('--job',
                         dest='job',
                         help='JSON job description file')
@@ -1514,19 +1484,9 @@ if __name__ == "__main__":
     # Initial directory
     path = os.getcwd()
 
-    # Handle HPC systems
-    is_batch = False
-    if args.batch or (not os.path.isdir('/home/prominence') and not os.path.isdir('/mnt/beeond/prominence')):
-        if 'HOME' in os.environ:
-            path = os.environ['HOME']
-        is_batch = True
-
     # Setup logging
     logging.basicConfig(filename='%s/promlet.%d.log' % (path, args.id), level=logging.INFO, format='%(asctime)s %(message)s')
     logging.info('Started promlet using path "%s"' % path)
-
-    if is_batch:
-        logging.info('Assuming running on a batch system')
 
     # Write empty json job details, so no matter what happens next, at least an empty file exists
     try:
@@ -1592,7 +1552,7 @@ if __name__ == "__main__":
 
         # Run tasks
         try:
-            (success_tasks, json_tasks) = run_tasks(job, path, is_batch)
+            (success_tasks, json_tasks) = run_tasks(job, path)
         except OSError as exc:
             logging.critical('Got exception running tasks: %s', exc)
             success_tasks = False
