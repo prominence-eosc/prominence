@@ -228,6 +228,11 @@ def _create_htcondor_job(self, username, groups, email, uid, jjob, job_path, wor
                                                         self._config['S3_BUCKET'],
                                                         'scratch/%s/%s/%s' % (workflowuid, joblabel, os.path.basename(filename)),
                                                         864000)
+            elif joblabel:
+                url_put = self.create_presigned_url('put',
+                                                    self._config['S3_BUCKET'],
+                                                    'scratch/%s/%s/%s' % (workflowuid, joblabel, os.path.basename(filename)),
+                                                    864000)
             else:
                 url_put = filename
             output_locations_put.append(url_put)
@@ -252,6 +257,11 @@ def _create_htcondor_job(self, username, groups, email, uid, jjob, job_path, wor
                                                         self._config['S3_BUCKET'],
                                                         'scratch/%s/%s/%s.tgz' % (workflowuid, joblabel, os.path.basename(dirname)),
                                                         864000)
+            elif joblabel:
+                url_put = self.create_presigned_url('put',
+                                                    self._config['S3_BUCKET'],
+                                                    'scratch/%s/%s/%s.tgz' % (workflowuid, joblabel, os.path.basename(dirname)),
+                                                    864000)
             else:
                 url_put = dirname
             output_locations_put.append(url_put)
@@ -268,7 +278,11 @@ def _create_htcondor_job(self, username, groups, email, uid, jjob, job_path, wor
     cjob['+ProminenceMaxRunTime'] = str("%d" % (max_run_time/60))
 
     # Job token
-    token = create_job_token(username, groups, int(max_run_time*1.5), uid)
+    job_token_uid = uid
+    if workflowuid:
+        job_token_uid = workflowuid
+
+    token = create_job_token(username, groups, int(max_run_time*1.5), job_token_uid)
     cjob['+ProminenceJobToken'] = condor_str(token)
     cjob['+ProminenceURL'] = condor_str(self._config['URL'])
 
