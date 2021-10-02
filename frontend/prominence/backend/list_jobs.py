@@ -400,8 +400,13 @@ def list_jobs(self, job_ids, identity, active, completed, workflow, num, detail,
 
             fid = uid
             if 'ProminenceFactoryId' in job:
-                uid = job['Iwd'].split('/')[len(job['Iwd'].split('/'))-1]
-                fid = '%s/%s' % (uid, job['ProminenceFactoryId'])
+                uid = job['Iwd'].split('/')[len(job['Iwd'].split('/'))-2]
+                job_name = job['ProminenceName']
+                fid = '%s/%s/%s' % (uid, job_name, job['ProminenceFactoryId'])
+            elif 'ProminenceName' in job and 'DAGManJobId' in job:
+                uid = job['Iwd'].split('/')[len(job['Iwd'].split('/'))-2]
+                job_name = job['ProminenceName']
+                fid = '%s/%s' % (uid, job_name)
 
             if 'outputFiles' in job_json_file:
                 outputs = []
