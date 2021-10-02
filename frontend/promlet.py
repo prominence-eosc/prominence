@@ -724,17 +724,10 @@ def unmount_storage(job, path):
             process.wait()
     return True
 
-def get_storage_mountpoint():
+def get_storage_mountpoint(job):
     """
     Get mount point for fuse filesystem from job JSON
     """
-    try:
-        with open('.job.mapped.json', 'r') as json_file:
-            job = json.load(json_file)
-    except Exception as ex:
-        logging.critical('Unable to read .job.mapped.json due to %s', ex)
-        return None
-
     if 'storage' in job:
         return job['storage']['mountpoint']
 
@@ -992,7 +985,7 @@ def download_udocker(image, location, label, path, credential):
 
     return 0, False
 
-def run_udocker(image, cmd, workdir, env, path, mpi, mpi_processes, mpi_procs_per_node, artifacts, walltime_limit):
+def run_udocker(image, cmd, workdir, env, path, mpi, mpi_processes, mpi_procs_per_node, artifacts, walltime_limit, job):
     """
     Execute a task using udocker
     """
@@ -1066,7 +1059,7 @@ def run_udocker(image, cmd, workdir, env, path, mpi, mpi_processes, mpi_procs_pe
                " -launcher-exec %s %s") % (mpi_processes, mpi_per_node, mpi_env, mpi_ssh, cmd)
 
     # Get storage mountpoint
-    mountpoint = get_storage_mountpoint()
+    mountpoint = get_storage_mountpoint(job)
     mounts = ''
     if mountpoint is not None:
         logging.info('Mount point is %s', mountpoint)
@@ -1107,7 +1100,7 @@ def run_udocker(image, cmd, workdir, env, path, mpi, mpi_processes, mpi_procs_pe
 
     return return_code, timed_out
 
-def run_singularity(image, cmd, workdir, env, path, mpi, mpi_processes, mpi_procs_per_node, artifacts, walltime_limit):
+def run_singularity(image, cmd, workdir, env, path, mpi, mpi_processes, mpi_procs_per_node, artifacts, walltime_limit, job):
     """
     Execute a task using Singularity
     """
@@ -1159,7 +1152,7 @@ def run_singularity(image, cmd, workdir, env, path, mpi, mpi_processes, mpi_proc
         command = 'run'
 
     # Get storage mountpoint
-    mountpoint = get_storage_mountpoint()
+    mountpoint = get_storage_mountpoint(job)
     mounts = ''
     if mountpoint is not None:
         logging.info('Mount point is %s', mountpoint)
@@ -1374,7 +1367,8 @@ def run_tasks(job, path):
                                            mpi_processes,
                                            procs_per_node,
                                            artifacts,
-                                           task_time_limit)
+                                           task_time_limit,
+                                           job)
                     retry_count += 1
         else:
             # Pull image if necessary or use a previously pulled image
@@ -1405,7 +1399,8 @@ def run_tasks(job, path):
                                            mpi_processes,
                                            procs_per_node,
                                            artifacts,
-                                           task_time_limit)
+                                           task_time_limit,
+                                           job)
                     retry_count += 1
 
         task_u = {}
