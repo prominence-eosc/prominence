@@ -97,6 +97,24 @@ def get_cpu_info():
 
     return (dict['Vendor ID'], dict['Model name'], dict['CPU MHz'])
 
+def get_job_ids(path):
+    filename = '.job.ad'
+    job_id = None
+    workflow_id = None
+    try:
+        with open(filename, 'r') as fd:
+            for line in fd.readlines():
+                match = re.match(r'DAGManJobId = ([\d]+)', line)
+                if match:
+                    workflow_id = int(match.group(1))
+                match = re.match(r'ClusterId = ([\d]+)', line)
+                if match:
+                    job_id = int(match.group(1))
+    except Exception:
+        pass
+
+    return (job_id, workflow_id)
+
 def get_token(path):
     filename = '.job.ad'
     token = None
@@ -1013,6 +1031,12 @@ def run_udocker(image, cmd, workdir, env, path, mpi, mpi_processes, mpi_procs_pe
     if 'memory' in job_info:
         extras += " --env=PROMINENCE_MEMORY=%d" % job_info['memory']
 
+    (job_id, workflow_id) = get_job_ids(path)
+    if job_id:
+        extras += " --env=PROMINENCE_JOB_ID=%d" % job_id
+    if workflow_id:
+        extras += " --env=PROMINENCE_WORKFLOW_ID=%d" % workflow_id
+
     mpi_per_node = ''
 
     mpi_ssh = '/mnt/beeond/prominence/ssh_container'
@@ -1181,21 +1205,27 @@ def run_singularity(image, cmd, workdir, env, path, mpi, mpi_processes, mpi_proc
     if 'memory' in job_info:
         job_memory = job_info['memory']
 
+    (job_id, workflow_id) = get_job_ids(path)
+
     logging.info('Running: "%s"', run_command)
 
-    return_code, timed_out = run_with_timeout(run_command,
-                                              dict(env,
-                                                   PATH='/usr/local/bin:/usr/bin:/usr/local/sbin:/usr/sbin',
-                                                   TMP='/tmp',
-                                                   TEMP='/tmp',
-                                                   TMPDIR='/tmp',
-                                                   USER='%s' % getpass.getuser(),
-                                                   PROMINENCE_CONTAINER_LOCATION='%s' % os.path.dirname(image),
-                                                   PROMINENCE_CONTAINER_RUNTIME='singularity',
-                                                   PROMINENCE_PWD='%s' % workdir,
-                                                   PROMINENCE_CPUS='%d' % job_cpus,
-                                                   PROMINENCE_MEMORY='%d' % job_memory),
-                                              walltime_limit)
+    env_vars = dict(env,
+                    PATH='/usr/local/bin:/usr/bin:/usr/local/sbin:/usr/sbin',
+                    TMP='/tmp',
+                    TEMP='/tmp',
+                    TMPDIR='/tmp',
+                    USER='%s' % getpass.getuser(),
+                    PROMINENCE_CONTAINER_LOCATION='%s' % os.path.dirname(image),
+                    PROMINENCE_CONTAINER_RUNTIME='singularity',
+                    PROMINENCE_PWD='%s' % workdir,
+                    PROMINENCE_CPUS='%d' % job_cpus,
+                    PROMINENCE_MEMORY='%d' % job_memory,
+                    PROMINENCE_JOB_ID='%d' % job_id)
+
+    if workflow_id:
+        env_vars['PROMINENCE_WORKFLOW_ID'] = '%d' % workflow_id
+
+    return_code, timed_out = run_with_timeout(run_command, env_vars, walltime_limit)
 
     logging.info('Task had exit code %d', return_code)
 
