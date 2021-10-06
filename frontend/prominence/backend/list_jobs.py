@@ -7,6 +7,20 @@ import htcondor
 
 from .utilities import redact_storage_creds
 
+def convert_to_number(value):
+    """
+    Convert a string to a float or int if possible
+    """
+    try:
+        output = float(value)
+    except:
+        return value
+
+    if int(output) == output:
+        return int(output)
+
+    return output
+
 def list_jobs(self, job_ids, identity, active, completed, workflow, num, detail, constraint, name_constraint):
     """
     List jobs or describe a specified job
@@ -177,7 +191,7 @@ def list_jobs(self, job_ids, identity, active, completed, workflow, num, detail,
             matches = re.findall('--param ([\w]+)=([\w\.\/]+)', job['Args'])
             if matches:
                 for match in matches:
-                    parameters[match[0]] = match[1]
+                    parameters[match[0]] = convert_to_number(match[1])
             jobj['parameters'] = parameters
 
         # Return status as failed if any fuse mounts failed
