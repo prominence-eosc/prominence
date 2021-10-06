@@ -1304,6 +1304,16 @@ def run_tasks(job, path):
         elif not workdir.startswith('/'):
             workdir = '/home/user/' + workdir
 
+        (job_id, workflow_id) = get_job_ids(path)
+        if job_id:
+            workdir = Template(workdir).safe_substitute({"PROMINENCE_JOB_ID": job_id})
+            if cmd:
+                cmd = Template(cmd).safe_substitute({"PROMINENCE_JOB_ID": job_id})
+        if workflow_id:
+            workdir = Template(workdir).safe_substitute({"PROMINENCE_WORKFLOW_ID": workflow_id})
+            if cmd:
+                cmd = Template(cmd).safe_substitute({"PROMINENCE_WORKFLOW_ID": workflow_id})
+
         env = {}
         if 'env' in task:
             env = task['env']
