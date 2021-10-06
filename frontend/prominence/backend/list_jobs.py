@@ -213,14 +213,18 @@ def list_jobs(self, job_ids, identity, active, completed, workflow, num, detail,
                     jobj['statusReason'] = 'Artifact uncompress failed'
 
         # Return status as failed if stageout failed
-        for item in stageout_u:
-            if 'status' in item:
-                if item['status'] == 'failedNoSuchFile':
-                    jobj['status'] = 'failed'
-                    jobj['statusReason'] = 'Stageout failed due to no such file or directory'
-                if item['status'] == 'failedUpload':
-                    jobj['status'] = 'failed'
-                    jobj['statusReason'] = 'Unable to stageout output to object storage'
+        if 'files' in stageout_u and 'directories' in stageout_u:
+            for item in stageout_u['files'] + stageout_u['directories']:
+                if 'status' in item:
+                    if item['status'] == 'failedNoSuchFile':
+                        jobj['status'] = 'failed'
+                        jobj['statusReason'] = 'Stageout failed due to no such file or directory'
+                    if item['status'] == 'failedUpload':
+                        jobj['status'] = 'failed'
+                        jobj['statusReason'] = 'Unable to stageout output to object storage'
+                    if item['status'] == 'failedTarCreation':
+                        jobj['status'] = 'failed'
+                        jobj['statusReason'] = 'Stageout failed due to tarball creation failed'
 
         # Return status as failed if container image pull failed
         if 'ProminenceImagePullSuccess' in job:
