@@ -244,10 +244,10 @@ def download_artifacts(job, path):
         for artifact in job['artifacts']:
             logging.info('Downloading URL %s', artifact['url'])
 
-            if 'mountpoint' in artifact:
-                artifact_path = path
-            else:
-                artifact_path = os.path.join(path, 'userhome')
+            #if 'mountpoint' in artifact:
+            #    artifact_path = path
+            #else:
+            artifact_path = os.path.join(path, 'userhome')
 
             # Create filename
             urlpath = urlsplit(artifact['url']).path
@@ -1094,7 +1094,7 @@ def run_udocker(image, cmd, workdir, env, path, mpi, mpi_processes, mpi_procs_pe
 
     # Artifact mounts
     for artifact in artifacts:
-        mounts = mounts + ' -v %s/%s:%s ' % (path, artifact, artifacts[artifact])
+        mounts = mounts + ' -v %s/userhome/%s:%s ' % (path, artifact, artifacts[artifact])
 
     run_command = ("/usr/local/bin/udocker -q run %s"
                    " --env=HOME=/home/user"
@@ -1184,7 +1184,7 @@ def run_singularity(image, cmd, workdir, env, path, mpi, mpi_processes, mpi_proc
 
     # Artifact mounts
     for artifact in artifacts:
-        mounts = mounts + ' --bind %s/%s:%s ' % (path, artifact, artifacts[artifact])
+        mounts = mounts + ' --bind %s/userhome/%s:%s ' % (path, artifact, artifacts[artifact])
 
     # Set source directory for /tmp in container
     user_tmp_dir = path + '/usertmp'
