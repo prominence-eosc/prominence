@@ -24,11 +24,11 @@ def create_snapshot(self, uid, job_id, path, userhome):
 
     # Change directory if needed
     cwd = ''
-    if userhome:
-        cwd = 'cd userhome &&'
+    #if userhome:
+    cwd = 'cd userhome &&'
 
     # Create a tarball & upload to S3
-    cmd = 'condor_ssh_to_job %d "%s tar czf snapshot.tgz %s && curl --upload-file snapshot.tgz \\\"%s\\\""' % (job_id_routed, cwd, path, snapshot_url.encode('utf-8'))
+    cmd = 'condor_ssh_to_job %d "%s tar czf ../snapshot.tgz %s && curl --upload-file ../snapshot.tgz \\\"%s\\\""' % (job_id_routed, cwd, path, str(snapshot_url))
     process = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
     timeout = {"value": False}
     timer = threading.Timer(int(self._config['EXEC_TIMEOUT']), kill_proc, [process, timeout])
