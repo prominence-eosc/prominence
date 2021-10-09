@@ -702,7 +702,11 @@ def mount_storage(job, path):
             else:
                 logging.info('Mounts directory already exists, no need to create it')
 
-            cmd = '/usr/bin/oneclient -o allow_other -t %s -H %s %s/mounts%s' % (storage_token, storage_provider, path, storage_mountpoint)
+            options = ''
+            if 'options' in job['storage']['onedata']:
+                options = job['storage']['onedata']['options']
+
+            cmd = '/usr/bin/oneclient -o allow_other -t %s -H %s %s %s/mounts%s' % (storage_token, storage_provider, options, path, storage_mountpoint)
 
             count = 0
             return_code = -1
@@ -1239,9 +1243,12 @@ def run_tasks(job, path):
     (token, url) = get_token(path)
 
     num_retries = 0
+    ignore_failures = False
     if 'policies' in job:
         if 'maximumRetries' in job['policies']:
             num_retries = job['policies']['maximumRetries']
+        if 'ignoreTaskFailures' in job['policies']:
+            ignore_failures = job['policies']['ignoreTaskFailures']
 
     # Number of nodes
     if 'nodes' in job['resources']:
@@ -1458,7 +1465,13 @@ def run_tasks(job, path):
 
         count += 1
 
-        if metrics_task.exit_code != 0 or metrics_task.timed_out or FINISH_NOW:
+        # Stop now if task ran for too long or we are told to finish
+        if metrics_task.timed_out or FINISH_NOW:
+            success = False
+            break
+
+        # Stop now if task had non-zero exit code, but continue if user wants to ignore failures
+        if not ignore_failures and metrics_task.exit_code != 0:
             success = False
             break
 
