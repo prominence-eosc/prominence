@@ -458,8 +458,11 @@ def validate_job(job):
             return (False, 'storage type must be either b2drop, webdav or onedata')
         if 'mountpoint' not in job['storage']:
             return (False, 'a mount point must be defined')
-        if not job['storage']['mountpoint'].startswith('/'):
+        if not job['storage']['mountpoint'].startswith('/') and job['storage']['mountpoint']:
             return (False, 'the mountpoint must be an absolute path')
+        if 'default' in job['storage']:
+            if not isinstance(job['storage']['default'], bool):
+                return (False, 'default must be either true or false')
 
         if job['storage']['type'] == 'b2drop':
             if 'b2drop' not in job['storage']:
