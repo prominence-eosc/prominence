@@ -279,7 +279,8 @@ def validate_job(job):
                        'maximumIdleTimePerResource',
                        'leaveInQueue',
                        'placement',
-                       'autoScalingType']
+                       'autoScalingType',
+                       'ignoreTaskFailures' ]
 
     valid_events = ['jobFinished']
 
@@ -494,6 +495,10 @@ def validate_job(job):
             (status, msg) = validate_placement(job['policies']['placement'])
             if not status:
                 return (status, msg)
+
+        if 'ignoreTaskFailures' in job['policies']:
+            if not isinstance(job['policies']['ignoreTaskFailures'], bool):
+                return (False, 'ignoreTaskFailures must be either true or false')
 
         if 'maximumRetries' in job['policies']:
             if not str(job['policies']['maximumRetries']).isdigit():
