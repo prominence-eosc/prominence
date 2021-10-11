@@ -26,11 +26,74 @@ try:
 except ImportError: # Python 3
     from urllib.parse import urlsplit, unquote
 
+import urllib3
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+
 CURRENT_SUBPROCS = set()
 FINISH_NOW = False
 DOWNLOAD_CONN_TIMEOUT = 10
 DOWNLOAD_MAX_RETRIES = 2
 DOWNLOAD_BACKOFF = 1
+
+def create_directories(token, base_url, directory, job_id, workflow_id):
+    headers = {}
+    headers['X-Auth-Token'] = token
+    headers['X-CDMI-Specification-Version'] = '1.1.1'
+
+    if job_id:
+        directory = Template(directory).safe_substitute({"PROMINENCE_JOB_ID": job_id})
+    if workflow_id:
+        directory = Template(directory).safe_substitute({"PROMINENCE_WORKFLOW_ID": workflow_id})
+
+    if directory[0] == '/':
+        new_directory = directory[1:]
+    else:
+        new_directory = directory
+
+    pieces = new_directory.split('/')
+    combined = ''
+    count = 0
+    for piece in pieces:
+        combined = '%s/%s' % (combined, piece)
+        check = '%s%s/' % (base_url, combined)
+        if count > 0:
+            try:
+                resp = requests.get(check, headers=headers, verify=False)
+            except Exception as err:
+                logging.info('Got exception trying to check for dirctory existence: %s', err)
+                return None
+            if resp.status_code == 404:
+                logging.info('Directory %s doesnt exist, creating it...', check)
+                # Create directory
+                try:
+                    resp_dir = requests.put(check, headers=headers, verify=False)
+                except Exception as err:
+                    logging.error('Got exception trying to create directory: %s', err)
+                    return None
+                if resp_dir.status_code != 201:
+                    logging.error('Unable to create directory %s', check)
+                    return None
+
+        count = count + 1
+
+    return '%s%s' % (base_url, directory)
+
+def get_base_url(job):
+    """
+    If a storage system is defined and set as the default, return the default base URL
+    to be used to gets/puts
+    """
+    base_url = None
+    token = None
+    directory = None
+
+    if 'storage' in job:
+        if 'default' in job['storage']:
+            if 'onedata' in job['storage']:
+                base_url = 'https://%s/cdmi' % job['storage']['onedata']['provider']
+                token = str(job['storage']['onedata']['token'])
+                directory = str(job['storage']['directory'])
+    return (token, base_url, directory)
 
 def create_dirs(path):
     """
@@ -161,7 +224,7 @@ def create_sif_from_archive(image_out, image_in):
 
     return False
 
-def download_from_url_with_retries(url, filename, max_retries=DOWNLOAD_MAX_RETRIES, backoff=DOWNLOAD_BACKOFF):
+def download_from_url_with_retries(url, filename, token=None, max_retries=DOWNLOAD_MAX_RETRIES, backoff=DOWNLOAD_BACKOFF):
     """
     Download a file from a URL with retries and backoff
     """
@@ -169,7 +232,7 @@ def download_from_url_with_retries(url, filename, max_retries=DOWNLOAD_MAX_RETRI
     success = False
 
     while count < 1 + max_retries and not success:
-        success = download_from_url(url, filename)
+        success = download_from_url(url, filename, token)
 
         # Delete anything if necessary
         if not success and os.path.exists(filename):
@@ -183,12 +246,16 @@ def download_from_url_with_retries(url, filename, max_retries=DOWNLOAD_MAX_RETRI
 
     return success, count
         
-def download_from_url(url, filename):
+def download_from_url(url, filename, token=None):
     """
     Download from a URL to a file
     """
+    headers = {}
+    if token:
+        headers['X-Auth-Token'] = token
+
     try:
-        response = requests.get(url, allow_redirects=True, stream=True, timeout=DOWNLOAD_CONN_TIMEOUT)
+        response = requests.get(url, allow_redirects=True, stream=True, headers=headers, timeout=DOWNLOAD_CONN_TIMEOUT, verify=False)
         if response.status_code == 200:
             with open(filename, 'wb') as tar_file:
                 for chunk in response.iter_content(chunk_size=1024*1024):
@@ -240,13 +307,15 @@ def download_artifacts(job, path):
     json_artifacts = []
     success = True
 
+    (token, base_url, _) = get_base_url(job)
+
     if 'artifacts' in job:
         for artifact in job['artifacts']:
+            if base_url and not artifact['url'].startswith('http'):
+                artifact['url'] = '%s%s' % (base_url, artifact['url'])
+
             logging.info('Downloading URL %s', artifact['url'])
 
-            #if 'mountpoint' in artifact:
-            #    artifact_path = path
-            #else:
             artifact_path = os.path.join(path, 'userhome')
 
             # Create filename
@@ -259,7 +328,7 @@ def download_artifacts(job, path):
             json_artifact['status'] = 'success'
             time_begin = time.time()
 
-            (success, attempts) = download_from_url_with_retries(artifact['url'], filename)
+            (success, attempts) = download_from_url_with_retries(artifact['url'], filename, token)
             logging.info('Number of attempts to download file %s was %d', filename, attempts)
             if not success:
                 json_artifact['status'] = 'failedDownload'
@@ -485,21 +554,25 @@ def retry(tries=4, delay=3, backoff=2):
     return deco_retry
 
 @retry(tries=3, delay=2, backoff=2)
-def upload(filename, url):
+def upload(filename, url, token=None):
     """
     Upload a file to a URL
     """
+    headers = {}
+    if token:
+        headers['X-Auth-Token'] = token
+
     try:
         with open(filename, 'rb') as file_obj:
-            response = requests.put(url, data=file_obj, timeout=120)
-    except requests.exceptions.RequestException:
-        logging.warning('RequestException when trying to upload file %s', filename)
+            response = requests.put(url, data=file_obj, timeout=120, headers=headers, verify=False)
+    except requests.exceptions.RequestException as err:
+        logging.warning('RequestException when trying to upload file %s: %s', filename, err)
         return None
-    except IOError:
-        logging.warning('IOError when trying to upload file %s', filename)
+    except IOError as err:
+        logging.warning('IOError when trying to upload file %s: %s', filename, err)
         return None
 
-    if response.status_code == 200:
+    if response.status_code == 200 or response.status_code == 201:
         return True
     return None
 
@@ -563,6 +636,9 @@ def stageout(job, path):
     """
     success = True
 
+    (token, base_url, directory) = get_base_url(job)
+    (job_id, workflow_id) = get_job_ids(path)
+
     # Change directory to the userhome directory
     os.chdir('%s/userhome' % path)
 
@@ -580,17 +656,27 @@ def stageout(job, path):
                 out_file = None   
                 success = False
             if out_file:
-                url = output['url']
-                if not check_url(url):
-                    url = get_new_url(path, os.path.basename(output['name']))
+                if 'url' in output:
+                    url = output['url']
+                    if not check_url(url):
+                        url = get_new_url(path, os.path.basename(out_file))
+                elif token and base_url and directory:
+                    url = create_directories(token, base_url, directory, job_id, workflow_id)
+                    if not url:
+                        logging.error('Unable to upload file %s to cloud storage with url %s', out_file, url)
+                        json_out_file['status'] = 'failedUpload'
+                        success = False
+                    else:
+                        url = '%s/%s' % (url, out_file)
 
-                if upload(out_file, url):
-                    logging.info('Successfully uploaded file %s to cloud storage', out_file)
-                    json_out_file['status'] = 'success'
-                else:
-                    logging.error('Unable to upload file %s to cloud storage with url %s', out_file, url)
-                    json_out_file['status'] = 'failedUpload'
-                    success = False
+                if url:
+                    if upload(out_file, url, token):
+                        logging.info('Successfully uploaded file %s to cloud storage', out_file)
+                        json_out_file['status'] = 'success'
+                    else:
+                        logging.error('Unable to upload file %s to cloud storage with url %s', out_file, url)
+                        json_out_file['status'] = 'failedUpload'
+                        success = False
             json_out_files.append(json_out_file)
 
     # Upload any output directories
@@ -609,17 +695,27 @@ def stageout(job, path):
                 success = False
                 tar_file_created = False
             if tar_file_created and os.path.isfile(output_filename):
-                url = output['url']
-                if not check_url(url):
-                    url = get_new_url(path, output_filename)
+                if 'url' in output:
+                    url = output['url']
+                    if not check_url(url):
+                        url = get_new_url(path, output_filename)
+                elif token and base_url and directory:
+                    url = create_directories(token, base_url, directory, job_id, workflow_id)
+                    if not url:
+                        logging.error('Unable to upload directory %s to cloud storage with url %s', output['name'], url)
+                        json_out_dir['status'] = 'failedUpload'
+                        success = False
+                    else:
+                        url = '%s/%s.tgz' % (url, output['name'])
 
-                if upload(output_filename, url):
-                    logging.info('Successfully uploaded directory %s to cloud storage', output['name'])
-                    json_out_dir['status'] = 'success'
-                else:
-                    logging.error('Unable to upload directory %s to cloud storage with url %s', output['name'], url)
-                    json_out_dir['status'] = 'failedUpload'
-                    success = False
+                if url:
+                    if upload(output_filename, url, token):
+                        logging.info('Successfully uploaded directory %s to cloud storage', output['name'])
+                        json_out_dir['status'] = 'success'
+                    else:
+                        logging.error('Unable to upload directory %s to cloud storage with url %s', output['name'], url)
+                        json_out_dir['status'] = 'failedUpload'
+                        success = False
             json_out_dirs.append(json_out_dir)
 
     # Change directory back to the original
@@ -686,6 +782,10 @@ def mount_storage(job, path):
     if 'storage' in job:
         storage_type = job['storage']['type']
         storage_mountpoint = job['storage']['mountpoint']
+        if not storage_mountpoint:
+            logging.info('No need to mount storage')
+            return True
+
         storage_provider = None
         storage_token = None
         if storage_type == 'onedata':
@@ -729,6 +829,10 @@ def unmount_storage(job, path):
     if 'storage' in job:
         storage_type = job['storage']['type']
         storage_mountpoint = job['storage']['mountpoint']
+        if not storage_mountpoint:
+            logging.info('No need to unmount storage')
+            return True
+
         storage_provider = None
         storage_token = None
         if storage_type == 'onedata':
@@ -755,11 +859,15 @@ def get_storage_mountpoint(job):
 
     return None
 
-def download_singularity(image, image_new, location, path, credential):
+def download_singularity(image, image_new, location, path, credential, job):
     """
     Download a Singularity image from a URL or pull an image from Docker Hub
     """
     logging.info('Pulling Singularity image for task')
+
+    (token, base_url, _) = get_base_url(job)
+    if base_url:
+        image = '%s%s' % (base_url, image)
 
     if re.match(r'^http', image):
         if image_name(image).endswith('.tar') or image_name(image).endswith('.tgz'):
@@ -769,7 +877,7 @@ def download_singularity(image, image_new, location, path, credential):
             else:
                 image_new_tmp = image_new.replace('image.simg', 'image.tgz')
 
-            (success, attempts) = download_from_url_with_retries(image, image_new_tmp)
+            (success, attempts) = download_from_url_with_retries(image, image_new_tmp, token)
             logging.info('Number of attempts to download file %s was %d', image, attempts)
 
             if not success:
@@ -788,13 +896,13 @@ def download_singularity(image, image_new, location, path, credential):
                 pass
 
         else:
-            (success, attempts) = download_from_url_with_retries(image, image_new)
+            (success, attempts) = download_from_url_with_retries(image, image_new, token)
             logging.info('Number of attempts to download file %s was %d', image, attempts)
             if not success:
                 return 1, False
 
         logging.info('Singularity image downloaded from URL and written to file %s', image_new)
-    elif image.startswith('/'):
+    elif image.startswith('/') and os.path.exists(image):
         # Handle image stored on attached POSIX-like storage
 
         if image.endswith('.tar') or image.endswith('.tgz'):
@@ -1424,7 +1532,7 @@ def run_tasks(job, path):
                 image_pull_status = 'cached'
             elif not FINISH_NOW:
                 image_new = '%s/image.simg' % location
-                metrics_download = monitor(download_singularity, image, image_new, location, path, credential)
+                metrics_download = monitor(download_singularity, image, image_new, location, path, credential, job)
                 if metrics_download.time_wall > 0:
                     total_pull_time += metrics_download.time_wall
                 if metrics_download.exit_code != 0:
