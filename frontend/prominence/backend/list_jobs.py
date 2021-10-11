@@ -110,6 +110,13 @@ def list_jobs(self, job_ids, identity, active, completed, workflow, num, detail,
         jobj['status'] = jobs_state_map[job['JobStatus']]
         jobj['tasks'] = job_json_file['tasks']
 
+        # Use provided storage if necessary
+        use_default_object_storage = True
+        if 'storage' in job_json_file:
+            if 'default' in job_json_file['storage']:
+                if job_json_file['storage']['default']:
+                    use_default_object_storage = False
+
         # Job name - for jobs from workflows, use the name "<workflow name>/<job name>/(<number>)"
         jobj['name'] = ''
         if 'name' in job_json_file:
@@ -435,7 +442,7 @@ def list_jobs(self, job_ids, identity, active, completed, workflow, num, detail,
                     size = None
                     if 'files' in stageout_u:
                         for file in stageout_u['files']:
-                            if file['name'] == output_file and file['status'] == 'success':
+                            if file['name'] == output_file and file['status'] == 'success' and use_default_object_storage:
                                 url = self.create_presigned_url('get',
                                                                 self._config['S3_BUCKET'],
                                                                 'scratch/%s/%s' % (fid, filename),
@@ -459,7 +466,7 @@ def list_jobs(self, job_ids, identity, active, completed, workflow, num, detail,
                     size = None
                     if 'directories' in stageout_u:
                         for directory in stageout_u['directories']:
-                            if directory['name'] == output_dir and directory['status'] == 'success':
+                            if directory['name'] == output_dir and directory['status'] == 'success' and use_default_object_storage:
                                 url = self.create_presigned_url('get',
                                                                 self._config['S3_BUCKET'],
                                                                 'scratch/%s/%s.tgz' % (fid, dirname_base),
