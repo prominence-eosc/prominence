@@ -219,7 +219,12 @@ def _create_htcondor_job(self, username, groups, email, uid, jjob, job_path, wor
         jjob_mapped['artifacts'] = artifacts
 
     # Output files
-    if 'outputFiles' in jjob:
+    if 'outputFiles' in jjob and not use_default_object_storage:
+        output_files_new = []
+        for filename in jjob['outputFiles']:
+            output_files_new.append({'name':filename})
+        jjob_mapped['outputFiles'] = output_files_new
+    elif 'outputFiles' in jjob:
         output_files_new = []
         output_locations_put = []
 
@@ -248,7 +253,12 @@ def _create_htcondor_job(self, username, groups, email, uid, jjob, job_path, wor
         jjob_mapped['outputFiles'] = output_files_new
 
     # Output directories
-    if 'outputDirs' in jjob:
+    if 'outputDirs' in jjob and not use_default_object_storage:
+        output_dirs_new = []
+        for dirname in jjob['outputDirs']:
+            output_dirs_new.append({'name':dirname})
+        jjob_mapped['outputDirs'] = output_dirs_new
+    elif 'outputDirs' in jjob:
         output_dirs_new = []
         output_locations_put = []
 
