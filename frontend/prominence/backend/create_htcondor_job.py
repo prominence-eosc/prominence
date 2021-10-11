@@ -63,6 +63,13 @@ def _create_htcondor_job(self, username, groups, email, uid, jjob, job_path, wor
     except IOError:
         return (1, {"error":"Unable to write .job.json"}, cjob)
 
+    # Use provided storage if necessary
+    use_default_object_storage = True
+    if 'storage' in jjob:
+        if 'default' in jjob['storage']:
+            if jjob['storage']['default']:
+                use_default_object_storage = False
+
     # Replace image identifiers with S3 presigned URLs if necessary
     tasks_mapped = []
     count_task = 0
@@ -190,13 +197,13 @@ def _create_htcondor_job(self, username, groups, email, uid, jjob, job_path, wor
                 if 'sites' in jjob['policies']['placement']['requirements']:
                     sites = ",".join(jjob['policies']['placement']['requirements']['sites'])
                     cjob['Requirements'] = 'stringListMember(TARGET.ProminenceCloud, "%s")' % sites
- 
+
     # Artifacts
     artifacts = []
     if 'artifacts' in jjob:
         for artifact in jjob['artifacts']:
             artifact_url = artifact['url']
-            if 'http' not in artifact_url:
+            if 'http' not in artifact_url and use_default_object_storage:
                 artifact_original = artifact_url
                 if '/' in artifact_url:
                     path = artifact_url
