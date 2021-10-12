@@ -1061,7 +1061,7 @@ def download_udocker(image, location, label, path, credential):
         logging.info('Loading udocker image')
         # Load image
         process = subprocess.Popen('udocker load -i %s/image.tar' % location,
-                                   env=dict(PATH='/usr/local/bin:/usr/bin',
+                                   env=dict(PATH='/usr/local/bin:/usr/bin:/bin',
                                             UDOCKER_DIR='%s/.udocker' % udocker_location),
                                    shell=True,
                                    stdout=subprocess.PIPE,
@@ -1085,7 +1085,7 @@ def download_udocker(image, location, label, path, credential):
     else:
         # Pull image
         process = subprocess.Popen('udocker pull %s' % image,
-                                   env=dict(PATH='/usr/local/bin:/usr/bin',
+                                   env=dict(PATH='/usr/local/bin:/usr/bin:/bin',
                                             UDOCKER_DIR='%s/.udocker' % udocker_location),
                                    shell=True,
                                    stdout=subprocess.PIPE,
@@ -1099,7 +1099,7 @@ def download_udocker(image, location, label, path, credential):
     # Create container
     logging.info('Creating udocker container')
     process = subprocess.Popen('udocker create --name=image%d %s' % (label, image),
-                               env=dict(PATH='/usr/local/bin:/usr/bin',
+                               env=dict(PATH='/usr/local/bin:/usr/bin:/bin',
                                         UDOCKER_DIR='%s/.udocker' % udocker_location),
                                shell=True,
                                stdout=subprocess.PIPE,
@@ -1228,7 +1228,7 @@ def run_udocker(image, cmd, workdir, env, path, mpi, mpi_processes, mpi_procs_pe
     logging.info('Running: "%s"', run_command)
 
     return_code, timed_out = run_with_timeout(run_command,
-                                              dict(PATH='/usr/local/bin:/usr/bin',
+                                              dict(PATH='/usr/local/bin:/usr/bin:/bin',
                                                    UDOCKER_DIR='%s/.udocker' % udocker_location),
                                               walltime_limit)
 
