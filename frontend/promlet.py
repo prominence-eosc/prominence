@@ -1,6 +1,7 @@
 #!/usr/bin/python
 from __future__ import print_function
 import argparse
+import distutils.spawn
 import getpass
 import glob
 import json
@@ -34,6 +35,24 @@ FINISH_NOW = False
 DOWNLOAD_CONN_TIMEOUT = 10
 DOWNLOAD_MAX_RETRIES = 2
 DOWNLOAD_BACKOFF = 1
+
+def generate_path():
+    """
+    Generate PATH to use for running udocker
+    """
+    use_path = '/usr/local/bin:/usr/bin:/bin'
+
+    # Get path to Python
+    path = distutils.spawn.find_executable('python')
+    if 'path' not in use_path.split(':'):
+        use_path = '%s:%s' % (path, use_path)
+
+    # Get path to udocker
+    path = distutils.spawn.find_executable('udocker')
+    if 'path' not in use_path.split(':'):
+        use_path = '%s:%s' % (path, use_path)
+
+    return use_path
 
 def create_directories(token, base_url, directory, job_id, workflow_id):
     headers = {}
@@ -1047,6 +1066,8 @@ def download_udocker(image, location, label, path, credential):
         if not success:
             return 1, False
 
+    udocker_path = generate_path()
+
     if image.startswith('/') and image.endswith('.tar'):
         # Handle image stored on attached POSIX-like storage
         logging.info('Copying udocker image from source (%s) on attached storage', image)
@@ -1061,7 +1082,7 @@ def download_udocker(image, location, label, path, credential):
         logging.info('Loading udocker image')
         # Load image
         process = subprocess.Popen('udocker load -i %s/image.tar' % location,
-                                   env=dict(PATH='/usr/local/bin:/usr/bin:/bin',
+                                   env=dict(PATH=udocker_path,
                                             UDOCKER_DIR='%s/.udocker' % udocker_location),
                                    shell=True,
                                    stdout=subprocess.PIPE,
@@ -1085,7 +1106,7 @@ def download_udocker(image, location, label, path, credential):
     else:
         # Pull image
         process = subprocess.Popen('udocker pull %s' % image,
-                                   env=dict(PATH='/usr/local/bin:/usr/bin:/bin',
+                                   env=dict(PATH=udocker_path,
                                             UDOCKER_DIR='%s/.udocker' % udocker_location),
                                    shell=True,
                                    stdout=subprocess.PIPE,
@@ -1099,7 +1120,7 @@ def download_udocker(image, location, label, path, credential):
     # Create container
     logging.info('Creating udocker container')
     process = subprocess.Popen('udocker create --name=image%d %s' % (label, image),
-                               env=dict(PATH='/usr/local/bin:/usr/bin:/bin',
+                               env=dict(PATH=udocker_path,
                                         UDOCKER_DIR='%s/.udocker' % udocker_location),
                                shell=True,
                                stdout=subprocess.PIPE,
@@ -1228,7 +1249,7 @@ def run_udocker(image, cmd, workdir, env, path, mpi, mpi_processes, mpi_procs_pe
     logging.info('Running: "%s"', run_command)
 
     return_code, timed_out = run_with_timeout(run_command,
-                                              dict(PATH='/usr/local/bin:/usr/bin:/bin',
+                                              dict(PATH=generate_path(),
                                                    UDOCKER_DIR='%s/.udocker' % udocker_location),
                                               walltime_limit)
 
