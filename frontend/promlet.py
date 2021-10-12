@@ -177,6 +177,10 @@ def get_cpu_info():
         pieces = line.split(':')
         dict[pieces[0]] = pieces[1].lstrip()
 
+    # Some older systems report "Model" not "Model name"
+    if 'Model name' not in dict:
+        return (dict['Vendor ID'], dict['Model'], dict['CPU MHz'])
+
     return (dict['Vendor ID'], dict['Model name'], dict['CPU MHz'])
 
 def get_job_ids(path):
