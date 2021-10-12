@@ -36,23 +36,31 @@ DOWNLOAD_CONN_TIMEOUT = 10
 DOWNLOAD_MAX_RETRIES = 2
 DOWNLOAD_BACKOFF = 1
 
-def generate_path():
+def generate_envs():
     """
-    Generate PATH to use for running udocker
+    Generate PATH & any other env variables to use for running udocker
     """
     use_path = '/usr/local/bin:/usr/bin:/bin'
 
     # Get path to Python
-    path = distutils.spawn.find_executable('python')
+    path = os.path.dirname(distutils.spawn.find_executable('python'))
     if 'path' not in use_path.split(':'):
         use_path = '%s:%s' % (path, use_path)
 
     # Get path to udocker
     path = distutils.spawn.find_executable('udocker')
+    if path:
+        path = os.path.dirname(path)
+
     if 'path' not in use_path.split(':'):
         use_path = '%s:%s' % (path, use_path)
 
-    return use_path
+    additional_envs = {}
+    for key in os.environ:
+        if key.startswith('UDOCKER'):
+            additional_envs[key] = os.environ[key]
+
+    return (use_path, additional_envs)
 
 def create_directories(token, base_url, directory, job_id, workflow_id):
     headers = {}
@@ -177,7 +185,6 @@ def get_cpu_info():
         pieces = line.split(':')
         dict[pieces[0]] = pieces[1].lstrip()
 
-    # Some older systems report "Model" not "Model name"
     if 'Model name' not in dict:
         return (dict['Vendor ID'], dict['Model'], dict['CPU MHz'])
 
@@ -1009,6 +1016,7 @@ def install_udocker(location):
     """
     Install  udocker if necessary
     """
+    (udocker_path, additional_envs) = generate_envs()
     if not os.path.exists('%s/.udocker/bin/proot-x86_64' % location):
         logging.info('Installing udockertools in %s', location)
 
@@ -1023,10 +1031,13 @@ def install_udocker(location):
                     logging.error('Unable to create .udocker directory due to: %s', ex)
                     return False
 
+            envs = dict(PATH=udocker_path, UDOCKER_DIR='%s/.udocker' % location)
+            if additional_envs:
+                envs.update(additional_envs)
+
             # Install udocker if necessary
-            process = subprocess.Popen('udocker install',
-                                       env=dict(PATH=generate_path(),
-                                                UDOCKER_DIR='%s/.udocker' % location),
+            process = subprocess.Popen('udocker --debug install',
+                                       env=envs,
                                        shell=True,
                                        stdout=subprocess.PIPE,
                                        stderr=subprocess.STDOUT)
@@ -1051,7 +1062,7 @@ def install_udocker(location):
 
     return True
 
-def download_udocker(image, location, label, path, credential):
+def download_udocker(image, location, label, path, credential, job):
     """
     Download an image from a URL and create a udocker container named 'image'
     """
@@ -1060,17 +1071,21 @@ def download_udocker(image, location, label, path, credential):
         logging.error('Unable to install udockertools')
         return 1, False
 
+    (token, base_url, _) = get_base_url(job)
+    if base_url:
+        image = '%s%s' % (base_url, image)
+
     logging.info('Getting udocker image: %s', image)
 
     if re.match(r'^http', image):
         # Download tarball
         logging.info('Downloading udocker image from URL')
-        (success, attempts) = download_from_url_with_retries(image, '%s/image.tar' % location)
+        (success, attempts) = download_from_url_with_retries(image, '%s/image.tar' % location, token)
         logging.info('Number of attempts to download file %s was %d', '%s/image.tar' % location, attempts)
         if not success:
             return 1, False
 
-    udocker_path = generate_path()
+    (udocker_path, additional_envs) = generate_envs()
 
     if image.startswith('/') and image.endswith('.tar'):
         # Handle image stored on attached POSIX-like storage
@@ -1252,8 +1267,9 @@ def run_udocker(image, cmd, workdir, env, path, mpi, mpi_processes, mpi_procs_pe
 
     logging.info('Running: "%s"', run_command)
 
+    (udocker_path, additional_envs) = generate_envs()
     return_code, timed_out = run_with_timeout(run_command,
-                                              dict(PATH=generate_path(),
+                                              dict(PATH=udocker_path,
                                                    UDOCKER_DIR='%s/.udocker' % udocker_location),
                                               walltime_limit)
 
@@ -1523,7 +1539,7 @@ def run_tasks(job, path):
                 image = 'image%d' % image_count
                 image_pull_status = 'cached'
             elif not FINISH_NOW:
-                metrics_download = monitor(download_udocker, image, location, count, path, credential)
+                metrics_download = monitor(download_udocker, image, location, count, path, credential, job)
                 if metrics_download.time_wall > 0:
                     total_pull_time += metrics_download.time_wall
                 if metrics_download.exit_code != 0:
