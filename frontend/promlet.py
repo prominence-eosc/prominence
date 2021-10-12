@@ -1025,7 +1025,7 @@ def install_udocker(location):
 
             # Install udocker if necessary
             process = subprocess.Popen('udocker install',
-                                       env=dict(PATH='/usr/local/bin:/usr/bin',
+                                       env=dict(PATH=generate_path(),
                                                 UDOCKER_DIR='%s/.udocker' % location),
                                        shell=True,
                                        stdout=subprocess.PIPE,
