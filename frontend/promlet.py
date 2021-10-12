@@ -1208,7 +1208,7 @@ def run_udocker(image, cmd, workdir, env, path, mpi, mpi_processes, mpi_procs_pe
     for artifact in artifacts:
         mounts = mounts + ' -v %s/userhome/%s:%s ' % (path, artifact, artifacts[artifact])
 
-    run_command = ("/usr/local/bin/udocker -q run %s"
+    run_command = ("udocker -q run %s"
                    " --env=HOME=/home/user"
                    " --env=USER=%s"
                    " --env=TMP=/tmp"
