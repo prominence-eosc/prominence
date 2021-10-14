@@ -430,11 +430,17 @@ def validate_job(job):
     if 'outputFiles' in job:
         if not isinstance(job['outputFiles'], list):
             return (False, 'an array of outputFiles must be provided')
+        for item in job['outputFiles']:
+            if not isinstance(item, str):
+                 return (False, 'outputFiles must be a list of strings')
 
     # Output directories
     if 'outputDirs' in job:
         if not isinstance(job['outputDirs'], list):
             return (False, 'an array of outputDirs must be provided')
+        for item in job['outputDirs']:
+            if not isinstance(item, str):
+                 return (False, 'outputDirs must be a list of strings')
 
     # Inputs
     if 'inputs' in job:
