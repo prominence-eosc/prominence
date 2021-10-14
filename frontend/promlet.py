@@ -432,6 +432,11 @@ def replace_output_urls(job, outfiles, outdirs):
     """
     Replace output file & directory URLs if necessary
     """
+    # With user-provided storage, don't need to update URLs
+    (storage, _, _) = get_base_url(job)
+    if storage:
+        return
+
     logging.info('Checking if we need to update any output file & directories URLs')
 
     if outfiles and 'outputFiles' in job:
