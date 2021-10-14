@@ -43,17 +43,26 @@ def generate_envs():
     use_path = '/usr/local/bin:/usr/bin:/bin'
 
     # Get path to Python
-    path = os.path.dirname(distutils.spawn.find_executable('python'))
-    if 'path' not in use_path.split(':'):
-        use_path = '%s:%s' % (path, use_path)
+    path = None
+    try:
+        path = os.path.dirname(distutils.spawn.find_executable('python'))
+    except:
+        pass
+    else:
+        if path not in use_path.split(':'):
+            use_path = '%s:%s' % (path, use_path)
 
     # Get path to udocker
-    path = distutils.spawn.find_executable('udocker')
-    if path:
-        path = os.path.dirname(path)
-
-    if 'path' not in use_path.split(':'):
-        use_path = '%s:%s' % (path, use_path)
+    path = None
+    try:
+        path = distutils.spawn.find_executable('udocker')
+    except:
+        pass
+    else:
+        if path:
+            path = os.path.dirname(path)
+            if path not in use_path.split(':'):
+                use_path = '%s:%s' % (path, use_path)
 
     additional_envs = {}
     for key in os.environ:
