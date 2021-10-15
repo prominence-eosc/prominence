@@ -57,7 +57,15 @@ def _output_urls(self, workflow, uid, job_name, label):
     count = 0
 
     for job in workflow['jobs']:
-        if 'outputFiles' in job:
+
+        # Use provided storage if necessary
+        use_default_object_storage = True
+        if 'storage' in job:
+            if 'default' in job['storage']:
+                if job['storage']['default']:
+                    use_default_object_storage = False
+
+        if 'outputFiles' in job and use_default_object_storage:
             for filename in job['outputFiles']:
                 url_put = self.create_presigned_url('put',
                                                     self._config['S3_BUCKET'],
@@ -66,7 +74,7 @@ def _output_urls(self, workflow, uid, job_name, label):
                 lists = lists + ' prominenceout%d="%s" ' % (count, url_put)
                 count += 1
 
-        if 'outputDirs' in job:
+        if 'outputDirs' in job and use_default_object_storage:
             for dirname in job['outputDirs']:
                 url_put = self.create_presigned_url('put',
                                                     self._config['S3_BUCKET'],
