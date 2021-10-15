@@ -183,6 +183,13 @@ def move_inputs(job, path):
                     logging.critical('Unable to move input file %s', filename)
                     return False
 
+            if 'executable' in input_file:
+                if input_file['executable']:
+                    try:
+                        os.chmod('%s/userhome/%s' % (path, filename), 0o775)
+                    except IOError:
+                        pass
+
     return True
 
 def get_cpu_info():
