@@ -15,7 +15,8 @@ def get_health():
     app.logger.info('%s GetHealth' % get_remote_addr(request))
 
     backend = ProminenceBackend(app.config)
-    if not backend.get_health():
-        return jsonify(), 409
+    (status, msg) = backend.get_health()
+    if not status:
+        return jsonify(msg), 409
 
-    return jsonify(), 204
+    return jsonify(msg), 204
