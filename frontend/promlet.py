@@ -128,7 +128,8 @@ def get_base_url(job):
             if 'onedata' in job['storage']:
                 base_url = 'https://%s/cdmi' % job['storage']['onedata']['provider']
                 token = str(job['storage']['onedata']['token'])
-                directory = str(job['storage']['directory'])
+                if 'directory' in job['storage']:
+                    directory = str(job['storage']['directory'])
     return (token, base_url, directory)
 
 def create_dirs(path):
