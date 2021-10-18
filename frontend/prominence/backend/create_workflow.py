@@ -24,9 +24,9 @@ def write_parameter_value(value):
     if isinstance(value, int) or int(value) == value:
         output = '%d' % value
     elif isinstance(value, float):
-        output = '%f' % value
+        output = str(value)
     elif isinstance(value, basestring):
-        output = '%s' % value
+        output = value
     return output
 
 def output_params(workflow):
