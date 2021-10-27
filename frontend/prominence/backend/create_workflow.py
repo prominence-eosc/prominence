@@ -21,11 +21,14 @@ def write_parameter_value(value):
     Write a parameter value, taking into account its type
     """
     output = None
-    if isinstance(value, int) or int(value) == value:
-        output = '%d' % value
-    elif isinstance(value, float):
-        output = str(value)
-    elif isinstance(value, basestring):
+    try:
+        if isinstance(value, int) or int(value) == value:
+            output = '%d' % value
+        elif isinstance(value, float):
+            output = str(value)
+        elif isinstance(value, basestring):
+            output = value
+    except:
         output = value
     return output
 
