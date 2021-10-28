@@ -190,7 +190,7 @@ def validate_workflow(workflow):
                     else:
                         return (False, 'each parameter must have a unique name')
 
-    # Polices
+    # Policies
     if 'policies' in workflow:
         for item in workflow['policies']:
             if item not in policies_workflow_valids:
