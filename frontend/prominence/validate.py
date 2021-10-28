@@ -511,16 +511,6 @@ def validate_job(job):
             if not isinstance(job['policies']['ignoreTaskFailures'], bool):
                 return (False, 'ignoreTaskFailures must be either true or false')
 
-        if 'maximumRetries' in job['policies']:
-            if not str(job['policies']['maximumRetries']).isdigit():
-                return (False, 'the number of retries must be an integer')
-
-            if job['policies']['maximumRetries'] < 1:
-                return (False, 'the number of retries must be greater than 0')
-
-            if job['policies']['maximumRetries'] > 6:
-                return (False, 'the number of retries must be less than 6')
-
         if 'maximumTimeInQueue' in job['policies']:
             if not str(job['policies']['maximumTimeInQueue']).isdigit():
                 return (False, 'the maximum time in queue must be an integer')
