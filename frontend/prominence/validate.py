@@ -80,21 +80,22 @@ def validate_workflow(workflow):
     else:
         return (False, 'a workflow must contain jobs')
 
+    # Check job names are unique
+    jobs = []
+    for job in workflow['jobs']:
+        if 'name' in job:
+            if job['name'] in jobs:
+                return (False, 'all jobs must have unique names: "%s" is used more than once' % job['name'])
+            jobs.append(job['name'])
+            if job['name'] == '':
+                return (False, 'names of jobs in workflows cannot be empty')
+        else:
+            return (False, 'all jobs must have names')
+
     # Dependencies
     if 'dependencies' in workflow:
         if not isinstance(workflow['dependencies'], dict):
             return (False, 'dependencies must be a dict')
-
-        jobs = []
-        for job in workflow['jobs']:
-            if 'name' in job:
-                if job['name'] in jobs:
-                    return (False, 'all jobs must have unique names: "%s" is used more than once' % job['name'])
-                jobs.append(job['name'])
-                if job['name'] == '':
-                    return (False, 'names of jobs in workflows cannot be empty')
-            else:
-                return (False, 'all jobs must have names')
 
         for dependency in workflow['dependencies']:
             children = workflow['dependencies'][dependency]
