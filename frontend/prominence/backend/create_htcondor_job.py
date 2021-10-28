@@ -174,7 +174,7 @@ def _create_htcondor_job(self, username, groups, email, uid, jjob, job_path, wor
     disable_router = False
     if 'policies' in jjob:
         if 'autoScalingType' in jjob['policies']:
-            if jjob['policies']['autoScalingType'] == 'none':
+            if jjob['policies']['autoScalingType'] == 'none' or not jjob['policies']['autoScalingType']:
                 disable_router = True
 
     if disable_router:
