@@ -196,7 +196,21 @@ def create_workflow(self, username, groups, email, uid, jwf):
 
             exec_copy_dirs = []
 
-            if job_factory['type'] == 'zip':
+            if job_factory['type'] == 'repeat':
+                cjob['extra_args'] = output_params(jwf)
+
+                for index in range(job_factory['number']):
+                    dir_name = create_dir_structure(job['name'], index, job_factory['number'])
+                    if dir_name not in exec_copy_dirs:
+                        exec_copy_dirs.append(dir_name)
+
+                    dag.append('JOB %s_%d job.jdl DIR %s' % (job['name'], index, dir_name))
+                    dag.append('VARS %s_%d prominencecount="%d" %s' % (job['name'], index,
+                                                                          index,
+                                                                          self._output_urls(jwf, uid, job['name'], index)))
+                    jobs_in_dag.append('%s_%d' % (job['name'], index))
+
+            elif job_factory['type'] == 'zip':
                 cjob['extra_args'] = output_params(jwf) + ' '
                 for index in range(len(job_factory['parameters'])):
                     cjob['extra_args'] += '--param %s=$(prominencevalue%d) ' % (job_factory['parameters'][index]['name'], index)

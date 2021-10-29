@@ -134,10 +134,18 @@ def validate_workflow(workflow):
                             'factory %s references a job %s which is not defined' % (factory['name'],
                                                                                      factory_job_name))
 
-            if factory['type'] not in ['parameterSweep', 'zip']:
+            if factory['type'] not in ['parameterSweep', 'zip', 'repeat']:
                 return (False, 'invalid factory type')
 
-            if factory['type'] == 'parameterSweep':
+            if factory['type'] == 'repeat':
+                if 'number' not in factory:
+                    return (False, 'a factory of type repeat must have number specified')
+                if not str(factory['number']).isdigit():
+                    return (False, 'number of repeats must be an integer')
+                if factory['number'] < 1:
+                    return (False, 'number of repeats must be at least 1')
+
+            elif factory['type'] == 'parameterSweep':
                 if 'parameters' not in factory:
                     return (False, 'a factory of type parameterSweep must have parameters specified')
 
