@@ -192,14 +192,17 @@ def _create_htcondor_job(self, username, groups, email, uid, jjob, job_path, wor
  
     cjob['leave_in_queue'] = '(JobStatus == 4 || JobStatus == 3) && ProminenceRemoveFromQueue =?= False'
 
-    # Site requirements
+    # Site & region requirements
     cjob['Requirements'] = 'True'
     if 'policies' in jjob:
         if 'placement' in jjob['policies']:
             if 'requirements' in jjob['policies']['placement']:
                 if 'sites' in jjob['policies']['placement']['requirements']:
                     sites = ",".join(jjob['policies']['placement']['requirements']['sites'])
-                    cjob['Requirements'] = 'stringListMember(TARGET.ProminenceCloud, "%s")' % sites
+                    cjob['Requirements'] = '$(Requirements) && stringListMember(TARGET.ProminenceCloud, "%s")' % sites
+                if 'regions' in jjob['policies']['placement']['requirements']:
+                    regions = ",".join(jjob['policies']['placement']['requirements']['regions'])
+                    cjob['Requirements'] = '$(Requirements) && stringListMember(TARGET.ProminenceRegion, "%s")' % regions
 
     # Artifacts
     artifacts = []
@@ -321,8 +324,6 @@ def _create_htcondor_job(self, username, groups, email, uid, jjob, job_path, wor
     cpus_per_task = jjob['resources']['cpus']
     memory_per_cpu = jjob['resources']['memory']*1000
     cjob['+remote_cerequirements_default'] = condor_str("RequiredTasks == %d && RequiredMemoryPerCpu == %d && RequiredCpusPerTask == %d && RequiredTime == %d" % (tasks, memory_per_cpu, cpus_per_task, max_run_time))
-
-    #cjob['Requirements'] = 'false'
 
     # Set max idle time per resource
     max_idle_time = 0

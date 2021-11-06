@@ -1808,7 +1808,15 @@ if __name__ == "__main__":
     # Unmount user-specified storage if necessary
     unmount_storage(job, path)
 
-    # Return appropriate exit code - necessary for retries of DAG nodes
+    # Return appropriate exit code - necessary for retries of DAG nodes. If reportJobSuccessOnTaskFailure
+    # is set to True the job will be reported as successful even if tasks failed
+    rjsotf = False
+    if 'policies' in job:
+        if 'reportJobSuccessOnTaskFailure' in job['policies']:
+            if job['policies']['reportJobSuccessOnTaskFailure'] and not success_tasks:
+                logger.info('Will report job as successful even though task had non-zero exit code')
+                success_tasks = True
+
     if not success_tasks or not success_stageout or not success_stagein:
         logging.info('Exiting promlet with failure')
         exit(1)
