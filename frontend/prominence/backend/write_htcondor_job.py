@@ -27,6 +27,8 @@ RequestDisk = %(reqdisk)s
 +ProminenceMaxTimeInQueue = %(maxtimeinqueue)s
 +ProminenceWantMPI = %(wantmpi)s
 +ProminenceType = "job"
++ProminenceJobToken = %(jobtoken)s
++ProminenceURL = %(joburl)s
 +WantIOProxy = true
 %(extras)s
 %(extras_metadata)s
@@ -65,6 +67,8 @@ def write_htcondor_job(cjob, filename):
     else:
         info['extra_args'] = ''
     info['requirements'] = cjob['Requirements']
+    info['jobtoken'] = cjob['+ProminenceJobToken']
+    info['joburl'] = cjob['+ProminenceURL']
 
     # Add any labels
     extras_metadata = ''
