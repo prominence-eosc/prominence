@@ -18,6 +18,7 @@ def list_workflows(self, workflow_ids, identity, active, completed, num, detail,
                       'RemoveReason',
                       'QDate',
                       'JobStartDate',
+                      'CompletionDate',
                       'Cmd',
                       'Iwd'
                       ]
@@ -94,7 +95,13 @@ def list_workflows(self, workflow_ids, identity, active, completed, num, detail,
         except IOError:
             pass
 
-        if 'end_time' in dag_metrics:
+        end_time = 0
+        if 'CompletionDate' in wf:
+            end_time = int(wf['CompletionDate'])
+            if end_time > 0:
+                events['endTime'] = end_time
+
+        if 'end_time' in dag_metrics and end_time == 0:
             events['endTime'] = int(dag_metrics['end_time'])
 
             # For rescue DAGs, end_time might already exist, but it's from the original workflow
