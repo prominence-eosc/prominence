@@ -62,7 +62,7 @@ def rerun_workflow(self, username, groups, email, workflow_id):
 
     (return_code, stdout, stderr, timedout) = run(cmd, iwd, 30)
 
-    m = re.search(r'submitted to cluster\s(\d+)', stdout)
+    m = re.search(r'submitted to cluster\s(\d+)', str(stdout))
     data = {}
     if m:
         retval = 0
