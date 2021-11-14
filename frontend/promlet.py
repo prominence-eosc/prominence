@@ -698,12 +698,16 @@ def stageout(job, path):
     json_out_files = []
     if 'outputFiles' in job:
         for output in job['outputFiles']:
+            use_name = output['name']
+            if 'revname' in output:
+                use_name = output['revname']
+
             json_out_file = {'name':output['name']}
-            out_files = glob.glob(output['name'])
+            out_files = glob.glob(use_name)
             if out_files: 
                 out_file = out_files[0]
             else:
-                logging.error('Output file %s does not exist', output['name'])
+                logging.error('Output file %s does not exist', use_name)
                 json_out_file['status'] = 'failedNoSuchFile'
                 out_file = None   
                 success = False
@@ -711,7 +715,7 @@ def stageout(job, path):
                 if 'url' in output:
                     url = output['url']
                     if not check_url(url):
-                        url = get_new_url(path, os.path.basename(out_file))
+                        url = get_new_url(path, os.path.basename(output['name']))
                 elif token and base_url and directory:
                     url = create_directories(token, base_url, directory, job_id, workflow_id)
                     if not url:
@@ -735,14 +739,18 @@ def stageout(job, path):
     json_out_dirs = []
     if 'outputDirs' in job:
         for output in job['outputDirs']:
+            use_name = output['name']
+            if 'revname' in output:
+                use_name = output['revname']
+
             tar_file_created = True
-            output_filename = os.path.basename(output['name']) + ".tgz"
+            output_filename = os.path.basename(use_name) + ".tgz"
             json_out_dir = {'name':output['name']}
             try:
                 with tarfile.open(output_filename, "w:gz") as tar:
-                    tar.add(output['name'])
+                    tar.add(use_name)
             except Exception as exc:
-                logging.error('Got exception on tar creation for directory %s: %s', output['name'], exc)
+                logging.error('Got exception on tar creation for directory %s: %s', use_name, exc)
                 json_out_dir['status'] = 'failedTarCreation'
                 success = False
                 tar_file_created = False
@@ -750,7 +758,7 @@ def stageout(job, path):
                 if 'url' in output:
                     url = output['url']
                     if not check_url(url):
-                        url = get_new_url(path, output_filename)
+                        url = get_new_url(path, os.path.basename(output['name']))
                 elif token and base_url and directory:
                     url = create_directories(token, base_url, directory, job_id, workflow_id)
                     if not url:
@@ -1507,6 +1515,12 @@ def run_tasks(job, path):
                 env['PROMINENCE_PARAMETER_%s' % key] = value
                 if cmd:
                     cmd = Template(cmd).safe_substitute({key:value})
+                if 'outputFiles' in job:
+                    for output in job['outputFiles']:
+                        output['revname'] = Template(output['name']).safe_substitute({key:value})
+                if 'outputDirs' in job:
+                    for output in job['outputDirs']:
+                        output['revname'] = Template(output['name']).safe_substitute({key:value})
 
         location = '%s/images/%d' % (path, count)
         try:
