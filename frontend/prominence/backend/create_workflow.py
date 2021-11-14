@@ -189,7 +189,9 @@ def create_workflow(self, username, groups, email, uid, jwf):
                                                      job,
                                                      '%s/%s' % (job_sandbox, job['name']),
                                                      True,
-                                                     True)
+                                                     True,
+                                                     uid,
+                                                     job['name'])
 
             cjob['+ProminenceWorkflowName'] = condor_str(wf_name)
             cjob['+ProminenceFactoryId'] = '$(prominencecount)'
