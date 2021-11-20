@@ -16,6 +16,7 @@ from string import Template
 import subprocess
 import tarfile
 import time
+from urllib import unquote
 from functools import wraps
 from resource import getrusage, RUSAGE_CHILDREN
 from threading import Timer
@@ -230,7 +231,7 @@ def get_token(path):
     token = None
     url = None
     try:
-        with open(filename, 'r') as fd:
+        with open('%s/.job.ad' % path, 'r') as fd:
             for line in fd.readlines():
                 match = re.match(r'ProminenceJobToken = "([\w\.\-]+)"', line)
                 if match:
@@ -238,8 +239,11 @@ def get_token(path):
                 match = re.match(r'ProminenceURL = "([\w\.\-:\/]+)"', line)
                 if match:
                     url = match.group(1)
-    except Exception:
+    except Exception as err:
+        logging.error('Got exception reading job ad: %s', err)
         pass
+
+    logging.info('Read token: %s, URL: %s', token, url)
 
     return (token, url)
 
@@ -614,6 +618,8 @@ def upload(filename, url, token=None):
     if token:
         headers['X-Auth-Token'] = token
 
+    logging.info('Uploading to URL: %s', url)
+
     try:
         with open(filename, 'rb') as file_obj:
             response = requests.put(url, data=file_obj, timeout=120, headers=headers, verify=False)
@@ -682,6 +688,14 @@ def check_url(url):
             return False
     return None
 
+def get_name_from_url(url):
+    """
+    Return name of object
+    """
+    new_url = unquote(url).decode('utf8')
+    path = new_url.split('/')[5]
+    return new_url.split('?AWSAccessKeyId')[0].split(path)[1][1:]
+
 def stageout(job, path):
     """
     Copy any required output files and/or directories to S3 storage
@@ -715,7 +729,7 @@ def stageout(job, path):
                 if 'url' in output:
                     url = output['url']
                     if not check_url(url):
-                        url = get_new_url(path, os.path.basename(output['name']))
+                        url = get_new_url(path, get_name_from_url(url))
                 elif token and base_url and directory:
                     url = create_directories(token, base_url, directory, job_id, workflow_id)
                     if not url:
@@ -758,7 +772,7 @@ def stageout(job, path):
                 if 'url' in output:
                     url = output['url']
                     if not check_url(url):
-                        url = get_new_url(path, os.path.basename(output['name']))
+                        url = get_new_url(path, get_name_from_url(url))
                 elif token and base_url and directory:
                     url = create_directories(token, base_url, directory, job_id, workflow_id)
                     if not url:
@@ -1828,7 +1842,7 @@ if __name__ == "__main__":
     if 'policies' in job:
         if 'reportJobSuccessOnTaskFailure' in job['policies']:
             if job['policies']['reportJobSuccessOnTaskFailure'] and not success_tasks:
-                logger.info('Will report job as successful even though task had non-zero exit code')
+                logging.info('Will report job as successful even though task had non-zero exit code')
                 success_tasks = True
 
     if not success_tasks or not success_stageout or not success_stagein:
