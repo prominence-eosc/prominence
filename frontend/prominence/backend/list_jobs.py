@@ -442,6 +442,8 @@ def list_jobs(self, job_ids, identity, active, completed, workflow, num, detail,
                     size = None
                     if 'files' in stageout_u:
                         for file in stageout_u['files']:
+                            if 'status' not in file:
+                                continue
                             if file['name'] == output_file and file['status'] == 'success' and use_default_object_storage:
                                 url = self.create_presigned_url('get',
                                                                 self._config['S3_BUCKET'],
@@ -466,6 +468,8 @@ def list_jobs(self, job_ids, identity, active, completed, workflow, num, detail,
                     size = None
                     if 'directories' in stageout_u:
                         for directory in stageout_u['directories']:
+                            if 'status' not in directory:
+                                continue
                             if directory['name'] == output_dir and directory['status'] == 'success' and use_default_object_storage:
                                 url = self.create_presigned_url('get',
                                                                 self._config['S3_BUCKET'],
