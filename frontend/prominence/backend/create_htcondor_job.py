@@ -199,10 +199,10 @@ def _create_htcondor_job(self, username, groups, email, uid, jjob, job_path, wor
             if 'requirements' in jjob['policies']['placement']:
                 if 'sites' in jjob['policies']['placement']['requirements']:
                     sites = ",".join(jjob['policies']['placement']['requirements']['sites'])
-                    cjob['Requirements'] = '$(Requirements) && stringListMember(TARGET.ProminenceCloud, "%s")' % sites
+                    cjob['Requirements'] = '%s && stringListMember(TARGET.ProminenceCloud, "%s")' % (cjob['Requirements'], sites)
                 if 'regions' in jjob['policies']['placement']['requirements']:
                     regions = ",".join(jjob['policies']['placement']['requirements']['regions'])
-                    cjob['Requirements'] = '$(Requirements) && stringListMember(TARGET.ProminenceRegion, "%s")' % regions
+                    cjob['Requirements'] = '%s && stringListMember(TARGET.ProminenceRegion, "%s")' % (cjob['Requirements'], regions)
 
     # Artifacts
     artifacts = []
