@@ -1,4 +1,4 @@
-"""Routes for managing key and  values"""
+"""Routes for the key-value store"""
 import etcd
 from flask import Blueprint, jsonify, request
 from flask import current_app as app
@@ -8,10 +8,10 @@ from .utilities import get_remote_addr, object_access_allowed
 
 from .auth import requires_auth
 
-data = Blueprint('kv', __name__)
+kv = Blueprint('kv', __name__)
 
-@data.route("/prominence/v1/kv", methods=['GET'])
-@data.route("/prominence/v1/kv/<path:path>", methods=['GET'])
+@kv.route("/prominence/v1/kv", methods=['GET'])
+@kv.route("/prominence/v1/kv/<path:path>", methods=['GET'])
 @requires_auth
 def list_keys(username, group, email, path=None):
     """
@@ -38,7 +38,7 @@ def list_keys(username, group, email, path=None):
     data['keys'] = keys
     return jsonify(data), 200
 
-@data.route("/prominence/v1/kv/<path:key>", methods=['GET'])
+@kv.route("/prominence/v1/kv/<path:key>", methods=['GET'])
 @requires_auth
 def get_value(username, group, email, key=None):
     """
@@ -62,7 +62,7 @@ def get_value(username, group, email, key=None):
 
     return value.decode('utf-8')
 
-@data.route("/prominence/v1/kv/<path:key>", methods=['POST'])
+@kv.route("/prominence/v1/kv/<path:key>", methods=['POST'])
 @requires_auth
 def set_value(username, group, email, key=None):
     """
@@ -91,7 +91,7 @@ def set_value(username, group, email, key=None):
 
     return jsonify({}), 201
 
-@data.route("/prominence/v1/kv/<path:key>", methods=['DELETE'])
+@kv.route("/prominence/v1/kv/<path:key>", methods=['DELETE'])
 @requires_auth
 def delete_key(username, group, email, key=None):
     """
