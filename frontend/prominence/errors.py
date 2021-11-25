@@ -114,6 +114,13 @@ def no_value_provided():
     with app.app_context():
         return jsonify({'error':'No value provided'}), 400
 
+def value_too_big():
+    """
+    Value too large
+    """
+    with app.app_context():
+        return jsonify({'error':'Content of value too large'}), 400
+
 def auth_failure():
     """
     Authentication failure
