@@ -93,6 +93,27 @@ def usage_data_error():
     with app.app_context():
         return jsonify({'error':'Unable to retrieve usage data'}), 400
 
+def kv_error():
+    """
+    There is a problem with the kv store
+    """
+    with app.app_context():
+        return jsonify({'error':'Unable to access key-value store'}), 400
+
+def key_not_specified():
+    """
+    Key not specified
+    """
+    with app.app_context():
+        return jsonify({'error':'Key not specified'}), 400
+
+def no_value_provided():
+    """
+    No value provided
+    """
+    with app.app_context():
+        return jsonify({'error':'No value provided'}), 400
+
 def auth_failure():
     """
     Authentication failure
@@ -141,3 +162,4 @@ def snapshot_invalid_path():
     """
     with app.app_context():
         return jsonify({'error':'Invalid path'}), 400
+
