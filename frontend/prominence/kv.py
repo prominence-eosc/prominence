@@ -1,4 +1,5 @@
 """Routes for the key-value store"""
+import base64
 import sys
 import etcd
 from flask import Blueprint, jsonify, request
@@ -31,7 +32,9 @@ def list_keys(username, group, email, path=None):
     try:
         etcd = etcd3.client()
         for item in etcd.get_prefix('/%s%s' % (username, prefix)):
-            keys.append(item[0].decode('utf-8'))
+            key = item[0].decode('utf-8')
+            if '_internal_' not in key:
+                keys.append(key)
         etcd.close()
     except:
         return kv_error()
@@ -62,7 +65,7 @@ def get_value(username, group, email, key=None):
     if not value:
         return ''
 
-    return value.decode('utf-8')
+    return base64.b64decode(value).decode('utf-8')
 
 @kv.route("/prominence/v1/kv/<path:key>", methods=['POST'])
 @requires_auth
@@ -78,16 +81,15 @@ def set_value(username, group, email, key=None):
     if not key:
         return key_not_specified()
 
-    data = request.get_data()
-    if not data:
+    if not request.get_data():
         return no_value_provided()
 
-    if sys.getsizeof(data) > app.config['KV_MAX_BYTES']:
+    if sys.getsizeof(request.get_data()) > app.config['KV_MAX_BYTES']:
         return value_too_big()
 
     try:
         etcd = etcd3.client()
-        value = etcd.set('/%s/%s' % (username, key), data)
+        value = etcd.set('/%s/%s' % (username, key, base64.b64encode(request.get_data()))
         etcd.close()
     except:
         return kv_error()
