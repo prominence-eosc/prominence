@@ -1,10 +1,11 @@
 """Routes for the key-value store"""
+import sys
 import etcd
 from flask import Blueprint, jsonify, request
 from flask import current_app as app
 
-from .errors import func_disabled, kv_error, key_not_specified, no_value_provided
-from .utilities import get_remote_addr, object_access_allowed
+from .errors import func_disabled, kv_error, key_not_specified, no_value_provided, value_too_big
+from .utilities import get_remote_addr
 
 from .auth import requires_auth
 
@@ -31,6 +32,7 @@ def list_keys(username, group, email, path=None):
         etcd = etcd3.client()
         for item in etcd.get_prefix('/%s%s' % (username, prefix)):
             keys.append(item[0].decode('utf-8'))
+        etcd.close()
     except:
         return kv_error()
 
@@ -76,11 +78,12 @@ def set_value(username, group, email, key=None):
     if not key:
         return key_not_specified()
 
-    data = list((request.form).keys())
-    if data:
-        data = data[0]
-    else:
+    data = request.get_data()
+    if not data:
         return no_value_provided()
+
+    if sys.getsizeof(data) > app.config['KV_MAX_BYTES']:
+        return value_too_big()
 
     try:
         etcd = etcd3.client()
