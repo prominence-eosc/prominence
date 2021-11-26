@@ -13,6 +13,8 @@ COPY README.md /tmp/prominence/.
 COPY prominence /tmp/prominence/prominence/
 COPY bin /tmp/prominence/bin/
 
+RUN pip3 install --upgrade pip
+
 RUN cd /tmp/prominence && \
     pip3 install . && \
     rm -rf /tmp/prominence
