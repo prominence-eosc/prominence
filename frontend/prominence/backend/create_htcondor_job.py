@@ -125,7 +125,7 @@ def _create_htcondor_job(self, username, groups, email, uid, jjob, job_path, wor
     cjob['when_to_transfer_output'] = 'ON_EXIT_OR_EVICT'
     cjob['skip_filechecks'] = 'true'
     cjob['transfer_output_files'] = 'promlet.0.log,promlet.0.json'
-    cjob['+WantIOProxy'] = 'true'
+    #cjob['+WantIOProxy'] = 'true'
     cjob['+ProminenceType'] = condor_str('job')
 
     cjob['stream_error'] = 'true'
@@ -151,6 +151,10 @@ def _create_htcondor_job(self, username, groups, email, uid, jjob, job_path, wor
         cjob['+ProminenceGroup'] = condor_str(groups)
     else:
         cjob['+ProminenceGroup'] = condor_str('')
+
+    # Accounting groups
+    cjob['accounting_group_user'] = username
+    cjob['accounting_group'] = groups
 
     # Email
     if email:
