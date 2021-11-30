@@ -45,6 +45,7 @@ def list_jobs(self, job_ids, identity, active, completed, workflow, num, detail,
                       'JobFinishedHookDone',
                       'RemoveReason',
                       'HoldReason',
+                      'LastHoldReason',
                       'RemoteWallClockTime',
                       'ProminenceUserEnvironment',
                       'ProminenceUserMetadata',
@@ -302,7 +303,13 @@ def list_jobs(self, job_ids, identity, active, completed, workflow, num, detail,
                     jobj['status'] = 'failed'
                 if 'Job has gone over memory limit' in job['HoldReason']:
                     reason = 'Job used too much memory'
-                    jobj['status'] = 'failed'
+                    jobj['status'] = 'killed'
+
+            # Handle job using too much memory
+            if 'LastHoldReason' in job:
+                if 'Job has gone over memory limit' in job['LastHoldReason']:
+                    jobj['status'] = 'killed'
+                    reason = 'Job used too much memory'
 
             jobj['statusReason'] = reason
 
