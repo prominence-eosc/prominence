@@ -152,10 +152,6 @@ def _create_htcondor_job(self, username, groups, email, uid, jjob, job_path, wor
     else:
         cjob['+ProminenceGroup'] = condor_str('')
 
-    # Accounting groups
-    cjob['accounting_group_user'] = username
-    cjob['accounting_group'] = groups
-
     # Email
     if email:
         cjob['+ProminenceEmail'] = condor_str(email)
