@@ -37,6 +37,20 @@ DOWNLOAD_CONN_TIMEOUT = 10
 DOWNLOAD_MAX_RETRIES = 2
 DOWNLOAD_BACKOFF = 1
 
+def create_logs_dir(path):
+    """
+    Create logs & json directories
+    """
+    try:
+        os.mkdir(path + '/logs')
+    except:
+        pass
+
+    try:
+        os.mkdir(path + '/json')
+    except:
+        pass
+
 def generate_envs():
     """
     Generate PATH & any other env variables to use for running udocker
@@ -1731,13 +1745,16 @@ if __name__ == "__main__":
     # Initial directory
     path = os.getcwd()
 
+    # Create logs directory
+    create_logs_dir(path)
+
     # Setup logging
-    logging.basicConfig(filename='%s/promlet.%d.log' % (path, args.id), level=logging.INFO, format='%(asctime)s %(message)s')
+    logging.basicConfig(filename='%s/logs/promlet.%d.log' % (path, args.id), level=logging.INFO, format='%(asctime)s %(message)s')
     logging.info('Started promlet using path "%s"' % path)
 
     # Write empty json job details, so no matter what happens next, at least an empty file exists
     try:
-        with open('promlet.%d.json' % args.id, 'w') as file:
+        with open('%s/json/promlet.%d.json' % (path, args.id), 'w') as file:
             json.dump({}, file)
     except Exception as exc:
         logging.critical('Unable to write promlet.json due to: %s', exc)
@@ -1828,7 +1845,7 @@ if __name__ == "__main__":
     json_output['cpu_clock'] = cpu_clock
 
     try:
-        with open('%s/promlet.%d.json' % (path, args.id), 'w') as file:
+        with open('%s/json/promlet.%d.json' % (path, args.id), 'w') as file:
             json.dump(json_output, file)
     except Exception as exc:
         logging.critical('Unable to write promlet.json due to: %s', exc)
