@@ -1,3 +1,4 @@
+import glob
 import json
 import os
 import re
@@ -173,6 +174,20 @@ def list_jobs(self, job_ids, identity, active, completed, workflow, num, detail,
         if not os.path.isfile(promlet_json_filename) and os.path.isfile('%s/promlet.json' % job['Iwd']):
             promlet_json_filename = '%s/promlet.json' % job['Iwd']
 
+        # Handle new jobs where promlet JSON is in a directory named json
+        multiple_nodes = False
+        if not os.path.isfile(promlet_json_filename) and os.path.exists('%s/json' % job['Iwd']):
+            promlet_json_filename = '%s/json/promlet.0.json' % job['Iwd']
+            if 'ProminenceFactoryId' in job:
+                promlet_json_filename = '%s/json/promlet.%d.json' % (job['Iwd'], int(job['ProminenceFactoryId']))
+
+            if not os.path.isfile(promlet_json_filename):
+                # For multi-node jobs
+                promlet_json_filename = '%s/json/promlet.0-0.json' % job['Iwd']
+                if 'ProminenceFactoryId' in job:
+                    promlet_json_filename = '%s/json/promlet.%d-0.json' % (job['Iwd'], int(job['ProminenceFactoryId']))
+                multiple_nodes = True
+
         # Read in promlet.json
         job_u = {}
         try:
@@ -180,6 +195,20 @@ def list_jobs(self, job_ids, identity, active, completed, workflow, num, detail,
                 job_u = json.load(promlet_json_file)
         except:
             pass
+
+        # For multi-node jobs we read in all promlet.json files
+        job_u_m = []
+        if multiple_nodes:
+            files = glob.glob('%s/json/promlet.0-*.json' % job['Iwd'])
+            if 'ProminenceFactoryId' in job:
+                files = glob.glob('%s/json/promlet.%d-*.json' % (job['Iwd'], int(job['ProminenceFactoryId'])))
+
+            for jfile in files:
+                try:
+                    with open(jfile) as fh:
+                        job_u_m.append(json.load(fh))
+                except:
+                    pass
 
         tasks_u = []
         if 'tasks' in job_u:
