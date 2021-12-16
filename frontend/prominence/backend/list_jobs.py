@@ -330,13 +330,13 @@ def list_jobs(self, job_ids, identity, active, completed, workflow, num, detail,
                 if job['HoldReason'] == 'Job was queued for too long':
                     reason = 'Maximum time queued was exceeded'
                     jobj['status'] = 'failed'
-                if 'Job has gone over memory limit' in job['HoldReason']:
+                if 'Job has gone over memory limit' in job['HoldReason'] or 'Job has encountered an out-of-memory event' in job['HoldReason']:
                     reason = 'Job used too much memory'
                     jobj['status'] = 'killed'
 
             # Handle job using too much memory
             if 'LastHoldReason' in job:
-                if 'Job has gone over memory limit' in job['LastHoldReason']:
+                if 'Job has gone over memory limit' in job['LastHoldReason'] or 'Job has encountered an out-of-memory event' in job['LastHoldReason']:
                     jobj['status'] = 'killed'
                     reason = 'Job used too much memory'
 
