@@ -9,6 +9,7 @@ import logging
 import os
 import posixpath
 import re
+import socket
 import shlex
 import shutil
 import signal
@@ -37,19 +38,190 @@ DOWNLOAD_CONN_TIMEOUT = 10
 DOWNLOAD_MAX_RETRIES = 2
 DOWNLOAD_BACKOFF = 1
 
-def create_logs_dir(path):
+MPI_SSH_SCRIPT = \
+"""#!/bin/bash
+_LOCALHOST='localhost'
+_LOCALIP='127.0.0.1'
+_HAS_PARAMS="bcDeFIiLlmOopRSWw"
+
+while (( "$#" )); do
+        _ONE=`echo $@|cut -f1 -d' '`
+        _TWO=`echo $@|cut -f2 -d' '`
+        # easy. if a word starts with an hyphen it's an option and it might come with a parameter
+        if [ "`echo $_ONE | cut -b1`" == "-" ]; then
+                _PARAM=$_PARAM' '$_ONE
+                _PREV='option'
+                if [ "$(echo $_HAS_PARAMS | grep `echo $_ONE | cut -b2`)" ] && [ "`echo $_ONE | cut -b3`" == "" ]; then
+                        _PARAM=$_PARAM' '$_TWO
+                        shift
+                fi
+        else
+                # if the current word does not have a hyphen (no option) then we have two possibilities
+                #  a: previous word wasn't an option (hyphen)
+                #  b: or the second word doesn't have a hyphen (part of command)
+                # both cases then assume that the host must be the first word
+                if [ "$_PREV" != "option" ] || [ "`echo $_TWO | cut -b1`" != "-" ]; then
+                        _HOST=$_ONE
+                        shift
+                        _COMMAND=$@
+                        break
+                else
+                        _PARAM=$_PARAM' '$_ONE
+                        _PREV=''
+                fi
+        fi
+        shift
+done
+
+_COMMAND=`echo $_COMMAND | tr '"' "'"`
+
+curl -s -H "Authorization: Bearer $PROMINENCE_TOKEN" -X POST -d "$_COMMAND" $PROMINENCE_URL/kv/_internal_/$PROMINENCE_JOB_ID/$_HOST
+"""
+
+def retry(tries=4, delay=3, backoff=2):
     """
-    Create logs & json directories
+    Retry calling the decorated function using an exponential backoff
     """
-    try:
-        os.mkdir(path + '/logs')
-    except:
-        pass
+    def deco_retry(f):
+        @wraps(f)
+        def f_retry(*args, **kwargs):
+            mtries, mdelay = tries, delay
+            while mtries > 1:
+                rv = f(*args, **kwargs)
+                if not rv:
+                    time.sleep(mdelay)
+                    mtries -= 1
+                    mdelay *= backoff
+                else:
+                    return rv
+            return f(*args, **kwargs)
+        return f_retry
+    return deco_retry
+
+def write_mpi_hosts(path, cpus):
+    """
+    Write MPI hosts files
+    """
+    hosts = get_hosts(path)
+    if not hosts:
+        return
+
+    with open('%s/userhome/.hosts-openmpi' % path, 'w') as fh:
+        for host in hosts:
+            fh.write('%s slots=%d max-slots=%d\n' % (host, cpus, cpus))
+
+    with open('%s/userhome/.hosts-mpich' % path, 'w') as fh:
+        for host in hosts:
+            fh.write('%s:%d\n' % (host, cpus))
+
+def get_nodes():
+    """
+    Return number of nodes and node number
+    """
+    node_num = 0
+    num_nodes = 1
+
+    if '_CONDOR_PROCNO' in os.environ and '_CONDOR_NPROCS' in os.environ:
+        node_num = int(os.environ['_CONDOR_PROCNO'])
+        num_nodes = int(os.environ['_CONDOR_NPROCS'])
+
+    return (num_nodes, node_num)
+
+def setup_mpi(runtime, path, mpi, cmd, env, mpi_processes, mpi_procs_per_node):
+    """
+    Setup MPI & create MPI command to be executed on machine with node number zero
+    """
+    (num_nodes, node_num) = get_nodes()
+
+    # Create ssh command if necessary
+    if mpi and num_nodes > 1:
+        logging.info('This is a multi-node MPI task, so writing ssh_container script')
+        mpi_ssh = '/home/user/ssh_container'
+        with open('%s/userhome/ssh_container' % path, "w") as text_file:
+            text_file.write(MPI_SSH_SCRIPT)
+        os.chmod('%s/userhome/ssh_container' % path, 0o775)
+
+    # Nodes other than node 0 need to retrieve the command from the kv store
+    if node_num > 0:
+        cmd = get_command(path)
+        return cmd
+
+    # Node 0 needs to execute mpirun
+    mpi_per_node = ''
+    if mpi == 'openmpi':
+        if mpi_procs_per_node > 0:
+            mpi_per_node = '-N %d --bind-to none' % mpi_procs_per_node
+        mpi_env = " -x HOME -x TEMP -x TMP "
+        mpi_env += " ".join('-x %s' % key for key in env)
+        cmd = ("mpirun --hostfile /home/user/.hosts-openmpi"
+               " -np %d"
+               " %s"
+               " %s"
+               " -mca btl_base_warn_component_unused 0"
+               " -mca orte_startup_timeout 120"
+               " -mca plm_rsh_no_tree_spawn 1"
+               " -mca plm_rsh_agent %s %s") % (mpi_processes, mpi_per_node, mpi_env, mpi_ssh, cmd)
+    elif mpi == 'intelmpi':
+        if mpi_procs_per_node > 0:
+            mpi_per_node = '-perhost %d' % mpi_procs_per_node
+        env_list = ['HOME', 'TMP', 'TEMP', 'TMPDIR']
+        env_list.extend(env.keys())
+        mpi_env = ",".join('%s' % item for item in env_list)
+        cmd = ("mpirun -machine /home/user/.hosts-mpich"
+               " -np %d"
+               " %s"
+               " -envlist %s"
+               " -bootstrap-exec %s %s") % (mpi_processes, mpi_per_node, mpi_env, mpi_ssh, cmd)
+    elif mpi == 'mpich':
+        env_list = ['HOME', 'TMP', 'TEMP']
+        env_list.extend(env.keys())
+        mpi_env = ",".join('%s' % item for item in env_list)
+        cmd = ("mpirun -f /home/user/.hosts-mpich"
+               " -np %d"
+               " -envlist %s"
+               " -launcher ssh"
+               " -launcher-exec %s %s") % (mpi_processes, mpi_env, mpi_ssh, cmd)
+
+    return cmd
+
+@retry(tries=8, delay=2, backoff=2)
+def get_command(path):
+    """
+    Get command from kv store
+    """
+    (token, url) = get_token(path)
+    (job_id, _) = get_job_ids(path)
+    url = '%s/kv/_internal_/%d/%s' % (url, job_id, socket.gethostname())
+    logging.info('Getting command from: %s', url)
+    headers = {'Authorization': 'Bearer %s' % token}
 
     try:
-        os.mkdir(path + '/json')
-    except:
-        pass
+        response = requests.get(url, headers=headers, verify=False)
+    except Exception as err:
+        logging.error('Unable to get command from kv store due to: %s', err)
+        return None
+
+    if response.status_code == 200:
+        # TODO: can we supply an option to mpirun instead of doing this?
+        cmd = response.text.replace('--daemonize', '')
+        return cmd
+
+    logging.error('Got status code %d while trying to get command from kv store', response.status_code)
+
+    return None
+
+def get_job(filename):
+    """
+    Read job description
+    """
+    try:
+        with open(filename, 'r') as json_file:
+            job = json.load(json_file)
+    except Exception as ex:
+        logging.critical('Unable to read job description due to %s', ex)
+        return None
+
+    return job
 
 def generate_envs():
     """
@@ -147,6 +319,20 @@ def get_base_url(job):
                     directory = str(job['storage']['directory'])
     return (token, base_url, directory)
 
+def create_logs_dir(path):
+    """
+    Create logs & json directories
+    """
+    try:
+        os.mkdir(path + '/logs')
+    except:
+        pass
+
+    try:
+        os.mkdir(path + '/json')
+    except:
+        pass
+
 def create_dirs(path):
     """
     Create the empty user home and tmp directories
@@ -223,6 +409,9 @@ def get_cpu_info():
     return (dict['Vendor ID'], dict['Model name'], dict['CPU MHz'])
 
 def get_job_ids(path):
+    """
+    Get the job id and associated workflow id if applicable
+    """
     filename = '.job.ad'
     job_id = None
     workflow_id = None
@@ -240,8 +429,29 @@ def get_job_ids(path):
 
     return (job_id, workflow_id)
 
+def get_hosts(path):
+    """
+    Get list of hosts for multi-node jobs from job ad
+    """
+    hosts = []
+    try:
+        with open('.job.ad', 'r') as fd:
+            for line in fd.readlines():
+                match = re.match(r'AllRemoteHosts = "([\w_@,.]+)"', line)
+                if match:
+                    slots = match.group(1)
+                    for slot in slots.split(','):
+                        hosts.append(slot.split('@')[1])
+                    return hosts
+    except:
+        pass
+
+    return hosts
+
 def get_token(path):
-    filename = '.job.ad'
+    """
+    Get token & REST API URL from job ad
+    """
     token = None
     url = None
     try:
@@ -505,69 +715,6 @@ def url2filename(url):
         raise ValueError
     return basename
 
-def check_beeond():
-    """
-    Ensure each host in a multi-node job has BeeGFS mounted
-    """
-    beeond_valid_hosts = 0
-    total_hosts = 0
-    with open('/home/user/.hosts-openmpi', 'r') as hosts:
-        for mpi_host in hosts.readlines():
-            host = mpi_host.split(' ')[0]
-            process = subprocess.Popen('ssh -i /home/user/.ssh/id_rsa -o LogLevel=quiet -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null %s "df -h | grep beeond"' % host, shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
-            output = process.communicate()[0]
-            if 'beegfs_ondemand' in output:
-                beeond_valid_hosts += 1
-            total_hosts += 1
-
-    if beeond_valid_hosts != total_hosts:
-        return False
-    return True
-
-def create_mpi_files(path):
-    """
-    Create MPI hosts file if necessary
-    """
-    if 'PBS_NODEFILE' in os.environ:
-        logging.info('Environment variable PBS_NODEFILE detected')
-        try:
-            with open(os.environ['PBS_NODEFILE'], 'r') as pbs_nodefile:
-                pbs_lines = pbs_nodefile.readlines()
-        except IOError as exc:
-            logging.critical('Unable to open PBS_NODEFILE due to: %s', exc)
-            return False
-  
-        try:
-            with open(os.path.join(path, '.hosts-openmpi'), 'w') as mpi_file:
-                for line in pbs_lines:
-                    mpi_file.write(line)
-        except IOError as exc:
-            logging.critical('Unable to write MPI hosts file')
-            return False
-
-        return True
-
-    elif 'SLURM_JOB_NODELIST' in os.environ:
-        logging.info('Environment variable SLURM_JOB_NODELIST detected')
-        process = subprocess.Popen('scontrol show hostnames $SLURM_JOB_NODELIST',
-                                   env=os.environ,
-                                   shell=True,
-                                   stdout=subprocess.PIPE,
-                                   stderr=subprocess.PIPE)
-        stdout, stderr = process.communicate()
-    
-        try:
-            with open(os.path.join(path, '.hosts-openmpi'), 'w') as mpi_file:
-                for line in stdout.split('/n'):
-                    mpi_file.write(line)
-        except IOError as exc:
-            logging.critical('Unable to write MPI hosts file')
-            return False
-
-        return True
-
-    return False
-
 def handle_signal(signum, frame):
     """
     Send signal to current subprocesses
@@ -602,26 +749,6 @@ def run_with_timeout(cmd, env, timeout_sec, capture_std=False):
     CURRENT_SUBPROCS.remove(proc)
     timer.cancel()
     return proc.returncode, timeout["value"]
-
-def retry(tries=4, delay=3, backoff=2):
-    """
-    Retry calling the decorated function using an exponential backoff
-    """
-    def deco_retry(f):
-        @wraps(f)
-        def f_retry(*args, **kwargs):
-            mtries, mdelay = tries, delay
-            while mtries > 1:
-                rv = f(*args, **kwargs)
-                if not rv:
-                    time.sleep(mdelay)
-                    mtries -= 1
-                    mdelay *= backoff
-                else:
-                    return rv
-            return f(*args, **kwargs)
-        return f_retry
-    return deco_retry
 
 @retry(tries=3, delay=2, backoff=2)
 def upload(filename, url, token=None):
@@ -1236,61 +1363,19 @@ def run_udocker(image, cmd, workdir, env, path, mpi, mpi_processes, mpi_procs_pe
     extras += " ".join('--env=%s=%s' % (key, env[key]) for key in env)
 
     job_info = get_info()
+    (num_nodes, node_num) = get_nodes()
     if 'cpus' in job_info:
         extras += " --env=PROMINENCE_CPUS=%d" % job_info['cpus']
     if 'memory' in job_info:
         extras += " --env=PROMINENCE_MEMORY=%d" % job_info['memory']
+    extras += " --env=PROMINENCE_NODES=%d" % num_nodes
+    extras += " --env=PROMINENCE_NODE_NUM=%d" % node_num
 
     (job_id, workflow_id) = get_job_ids(path)
     if job_id:
         extras += " --env=PROMINENCE_JOB_ID=%d" % job_id
     if workflow_id:
         extras += " --env=PROMINENCE_WORKFLOW_ID=%d" % workflow_id
-
-    mpi_per_node = ''
-
-    mpi_ssh = '/mnt/beeond/prominence/ssh_container'
-    if '_PROMINENCE_SSH_CONTAINER' in os.environ:
-        mpi_ssh = os.environ['_PROMINENCE_SSH_CONTAINER']
-
-    mpi_hosts = '/home/user'
-    if create_mpi_files(path):
-        mpi_hosts = path
-
-    if mpi == 'openmpi':
-        if mpi_procs_per_node > 0:
-            mpi_per_node = '-N %d --bind-to none' % mpi_procs_per_node
-        mpi_env = " -x UDOCKER_DIR -x PROMINENCE_PWD -x TMP -x TEMP -x TMPDIR "
-        mpi_env += " ".join('-x %s' % key for key in env)
-        cmd = ("mpirun --hostfile %s/.hosts-openmpi"
-               " -np %d"
-               " %s"
-               " %s"
-               " -mca btl_base_warn_component_unused 0"
-               " -mca plm_rsh_agent %s %s") % (mpi_hosts, mpi_processes, mpi_per_node, mpi_env, mpi_ssh, cmd)
-    elif mpi == 'intelmpi':
-        if mpi_procs_per_node > 0:
-            mpi_per_node = '-N %d' % mpi_procs_per_node
-        env_list = ['PROMINENCE_PWD', 'UDOCKER_DIR', 'TMP', 'TEMP', 'TMPDIR']
-        env_list.extend(env.keys())
-        mpi_env = ",".join('%s' % item for item in env_list)
-        cmd = ("mpirun -machine /home/user/.hosts-mpich"
-               " -np %d"
-               " %s"
-               " -envlist %s"
-               " -bootstrap-exec %s %s") % (mpi_processes, mpi_per_node, mpi_env, mpi_ssh, cmd)
-    elif mpi == 'mpich':
-        if mpi_procs_per_node > 0:
-            mpi_per_node = '-ppn %d' % mpi_procs_per_node
-        env_list = ['PROMINENCE_PWD', 'UDOCKER_DIR', 'TMP', 'TEMP', 'TMPDIR']
-        env_list.extend(env.keys())
-        mpi_env = ",".join('%s' % item for item in env_list)
-        cmd = ("mpirun -f /home/user/.hosts-mpich"
-               " -np %d"
-               " %s"
-               " -envlist %s"
-               " -launcher ssh"
-               " -launcher-exec %s %s") % (mpi_processes, mpi_per_node, mpi_env, mpi_ssh, cmd)
 
     # Get storage mountpoint
     mountpoint = get_storage_mountpoint(job)
@@ -1312,7 +1397,6 @@ def run_udocker(image, cmd, workdir, env, path, mpi, mpi_processes, mpi_procs_pe
                    " --env=TMP=/tmp"
                    " --env=TEMP=/tmp"
                    " --env=TMPDIR=/tmp"
-                   " --env=PROMINENCE_PWD=%s"
                    " --env=UDOCKER_DIR=%s/.udocker"
                    " --env=PROMINENCE_CONTAINER_RUNTIME=udocker"
                    " --hostauth"
@@ -1321,7 +1405,7 @@ def run_udocker(image, cmd, workdir, env, path, mpi, mpi_processes, mpi_procs_pe
                    " %s"
                    " --workdir=%s"
                    " -v %s:/tmp"
-                   " %s %s") % (extras, getpass.getuser(), workdir, path, getpass.getuser(), path, mounts, workdir, user_tmp_dir, image, cmd)
+                   " %s %s") % (extras, getpass.getuser(), path, getpass.getuser(), path, mounts, workdir, user_tmp_dir, image, cmd)
 
     logging.info('Running: "%s"', run_command)
 
@@ -1339,48 +1423,6 @@ def run_singularity(image, cmd, workdir, env, path, mpi, mpi_processes, mpi_proc
     """
     Execute a task using Singularity
     """
-    mpi_ssh = '/mnt/beeond/prominence/ssh_container'
-    if '_PROMINENCE_SSH_CONTAINER' in os.environ:
-        mpi_ssh = os.environ['_PROMINENCE_SSH_CONTAINER']
-
-    mpi_hosts = '/home/user'
-    if create_mpi_files(path):
-        mpi_hosts = path
-
-    mpi_per_node = ''
-    if mpi == 'openmpi':
-        if mpi_procs_per_node > 0:
-            mpi_per_node = '-N %d --bind-to none' % mpi_procs_per_node
-        mpi_env = " -x PROMINENCE_CONTAINER_LOCATION -x PROMINENCE_PWD -x HOME -x TEMP -x TMP -x TMPDIR "
-        mpi_env += " ".join('-x %s' % key for key in env)
-        cmd = ("mpirun --hostfile %s/.hosts-openmpi"
-               " -np %d"
-               " %s"
-               " %s"
-               " -mca btl_base_warn_component_unused 0"
-               " -mca plm_rsh_no_tree_spawn 1"
-               " -mca plm_rsh_agent %s %s") % (mpi_hosts, mpi_processes, mpi_per_node, mpi_env, mpi_ssh, cmd)
-    elif mpi == 'intelmpi':
-        if mpi_procs_per_node > 0:
-            mpi_per_node = '-perhost %d' % mpi_procs_per_node
-        env_list = ['PROMINENCE_CONTAINER_LOCATION', 'PROMINENCE_PWD', 'HOME', 'TMP', 'TEMP', 'TMPDIR']
-        env_list.extend(env.keys())
-        mpi_env = ",".join('%s' % item for item in env_list)
-        cmd = ("mpirun -machine /home/user/.hosts-mpich"
-               " -np %d"
-               " %s"
-               " -envlist %s"
-               " -bootstrap-exec %s %s") % (mpi_processes, mpi_per_node, mpi_env, mpi_ssh, cmd)
-    elif mpi == 'mpich':
-        env_list = ['PROMINENCE_CONTAINER_LOCATION', 'PROMINENCE_PWD', 'HOME', 'TMP', 'TEMP', 'TMPDIR']
-        env_list.extend(env.keys())
-        mpi_env = ",".join('%s' % item for item in env_list)
-        cmd = ("mpirun -f /home/user/.hosts-mpich"
-               " -np %d"
-               " -envlist %s"
-               " -launcher ssh"
-               " -launcher-exec %s %s") % (mpi_processes, mpi_env, mpi_ssh, cmd)
-
     command = 'exec'
     if cmd is None:
         cmd = ''
@@ -1417,6 +1459,7 @@ def run_singularity(image, cmd, workdir, env, path, mpi, mpi_processes, mpi_proc
         job_memory = job_info['memory']
 
     (job_id, workflow_id) = get_job_ids(path)
+    (num_nodes, node_num) = get_nodes()
 
     logging.info('Running: "%s"', run_command)
 
@@ -1428,10 +1471,11 @@ def run_singularity(image, cmd, workdir, env, path, mpi, mpi_processes, mpi_proc
                     USER='%s' % getpass.getuser(),
                     PROMINENCE_CONTAINER_LOCATION='%s' % os.path.dirname(image),
                     PROMINENCE_CONTAINER_RUNTIME='singularity',
-                    PROMINENCE_PWD='%s' % workdir,
                     PROMINENCE_CPUS='%d' % job_cpus,
                     PROMINENCE_MEMORY='%d' % job_memory,
-                    PROMINENCE_JOB_ID='%d' % job_id)
+                    PROMINENCE_JOB_ID='%d' % job_id,
+                    PROMINENCE_NODES='%d' % num_nodes,
+                    PROMINENCE_NODE_NUM='%d' % node_num)
 
     if workflow_id:
         env_vars['PROMINENCE_WORKFLOW_ID'] = '%d' % workflow_id
@@ -1485,14 +1529,6 @@ def run_tasks(job, path):
                 source = artifact['mountpoint'].split(':')[0]
                 dest = artifact['mountpoint'].split(':')[1]
                 artifacts[source] = dest
-
-    # Check shared filesystem for multi-node jobs before doing anything
-    if num_nodes > 1 and os.path.isfile('/home/user/.beeond'):
-        if check_beeond():
-            logging.info('BeeGFS shared filesystem is mounted on all nodes')
-        else:
-            logging.critical('BeeGFS shared filesystem is not mounted on all nodes')
-            return False, {}
 
     count = 0
     tasks_u = []
@@ -1568,11 +1604,19 @@ def run_tasks(job, path):
 
         if 'procsPerNode' in task:
             procs_per_node = task['procsPerNode']
+            procs_per_node_mpi = task['procsPerNode']
         else:
             procs_per_node = 0
+            procs_per_node_mpi = num_cpus
  
-        if procs_per_node > 0:
-            mpi_processes = procs_per_node*num_nodes
+        mpi_processes = procs_per_node_mpi*num_nodes
+
+        # Setup for MPI
+        if mpi:
+            logging.info('This is an MPI task, setting up using %d procs per node', procs_per_node_mpi)
+            write_mpi_hosts(path, procs_per_node_mpi)
+            cmd = setup_mpi(task['runtime'], path, mpi, cmd, env, mpi_processes, procs_per_node)
+            cmd = '/bin/bash -c "%s"' % cmd
 
         metrics_download = ProcessMetrics()
         metrics_task = ProcessMetrics()
@@ -1745,17 +1789,29 @@ if __name__ == "__main__":
     # Initial directory
     path = os.getcwd()
 
+    # Get number of nodes & node number
+    (num_nodes, node_num) = get_nodes()
+    if num_nodes > 1 and node_num > 0:
+        main_node = False
+    else:
+        main_node = True
+
     # Create logs directory
     create_logs_dir(path)
 
     # Setup logging
-    logging.basicConfig(filename='%s/logs/promlet.%d.log' % (path, args.id), level=logging.INFO, format='%(asctime)s %(message)s')
-    logging.info('Started promlet using path "%s"' % path)
+    filename = '%s/logs/promlet.%d.log' % (path, args.id)
+    if num_nodes > 1:
+        filename = '%s/logs/promlet.%d-%d.log' % (path, args.id, node_num)
+
+    logging.basicConfig(filename=filename, level=logging.INFO, format='%(asctime)s %(message)s')
+    logging.info('Started promlet using path "%s"', path)
+    logging.info('This is node %d of %d nodes', node_num, num_nodes)
 
     # Write empty json job details, so no matter what happens next, at least an empty file exists
     try:
-        with open('%s/json/promlet.%d.json' % (path, args.id), 'w') as file:
-            json.dump({}, file)
+        with open('%s/json/promlet.%d-%d.json' % (path, args.id, node_num), 'w') as fh:
+            json.dump({}, fh)
     except Exception as exc:
         logging.critical('Unable to write promlet.json due to: %s', exc)
         exit(1)
@@ -1776,19 +1832,20 @@ if __name__ == "__main__":
     create_dirs(path)
 
     # Read job description
-    try:
-        with open(args.job, 'r') as json_file:
-            job = json.load(json_file)
-    except Exception as ex:
-        logging.critical('Unable to read job description due to %s', ex)
+    job = get_job(args.job)
+    if not job:
         exit(1)
 
     # Replace output file/dir URL addresses if necessary
-    if args.outfile or args.outdir:
-        replace_output_urls(job, args.outfile, args.outdir)
+    if main_node:
+        if args.outfile or args.outdir:
+            replace_output_urls(job, args.outfile, args.outdir)
 
     # Mount user-specified storage if necessary
-    success_mount = mount_storage(job, path)
+    if main_node:
+        success_mount = mount_storage(job, path)
+    else:
+        success_mount = True
     
     json_mounts = []
     
@@ -1808,11 +1865,14 @@ if __name__ == "__main__":
     success_stageout = False
 
     if success_mount:
-        # Download any artifacts
-        logging.info('Stagein any input files if necessary')
-        (success_stagein, json_stagein) = download_artifacts(job, path)
-        if not success_stagein:
-            logging.error('Got error downloading artifact')
+        if main_node:
+            # Download any artifacts
+            logging.info('Stagein any input files if necessary')
+            (success_stagein, json_stagein) = download_artifacts(job, path)
+            if not success_stagein:
+                logging.error('Got error downloading artifact')
+        else:
+            success_stagein = True
 
         # Run tasks
         try:
@@ -1823,8 +1883,11 @@ if __name__ == "__main__":
             json_tasks = {}
 
         # Upload output files if necessary
-        logging.info('Stageout any output files/dirs if necessary')
-        (success_stageout, json_stageout) = stageout(job, path)
+        if main_node:
+            logging.info('Stageout any output files/dirs if necessary')
+            (success_stageout, json_stageout) = stageout(job, path)
+        else:
+            success_stageout = True
 
     # Write json job details
     json_output = {}
@@ -1844,18 +1907,19 @@ if __name__ == "__main__":
     json_output['cpu_model'] = cpu_model
     json_output['cpu_clock'] = cpu_clock
 
+    # Write promlet JSON file
     try:
-        with open('%s/json/promlet.%d.json' % (path, args.id), 'w') as file:
-            json.dump(json_output, file)
+        with open('%s/json/promlet.%d-%d.json' % (path, args.id, node_num), 'w') as fh:
+            json.dump(json_output, fh)
     except Exception as exc:
         logging.critical('Unable to write promlet.json due to: %s', exc)
 
     # Unmount user-specified storage if necessary
-    unmount_storage(job, path)
+    if main_node:
+        unmount_storage(job, path)
 
     # Return appropriate exit code - necessary for retries of DAG nodes. If reportJobSuccessOnTaskFailure
     # is set to True the job will be reported as successful even if tasks failed
-    rjsotf = False
     if 'policies' in job:
         if 'reportJobSuccessOnTaskFailure' in job['policies']:
             if job['policies']['reportJobSuccessOnTaskFailure'] and not success_tasks:
