@@ -313,6 +313,9 @@ def _create_htcondor_job(self, username, groups, email, uid, jjob, job_path, wor
     cjob['+ProminenceWantMPI'] = 'false'
     if jjob['resources']['nodes'] > 1:
         cjob['+ProminenceWantMPI'] = 'true'
+        cjob['+WantParallelSchedulingGroups'] = 'True'
+        cjob['machine_count'] = jjob['resources']['nodes']
+        cjob['universe'] = 'parallel'
     if 'tasks' in jjob:
         for task in jjob['tasks']:
             if 'type' in task:
