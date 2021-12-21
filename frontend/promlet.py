@@ -103,16 +103,24 @@ def write_mpi_hosts(path, cpus):
     Write MPI hosts files
     """
     hosts = get_hosts(path)
+    logging.info('Writing hosts files in %s using hosts: %s', path, ','.join(hosts))
     if not hosts:
         return
 
+    hosts_slots = {}
+    for host in hosts:
+        if host not in hosts_slots:
+            hosts_slots[host] = cpus
+        else:
+            hosts_slots[host] = hosts_slots[host] + cpus
+
     with open('%s/userhome/.hosts-openmpi' % path, 'w') as fh:
-        for host in hosts:
-            fh.write('%s slots=%d max-slots=%d\n' % (host, cpus, cpus))
+        for host in hosts_slots:
+            fh.write('%s slots=%d max-slots=%d\n' % (host, hosts_slots[host], hosts_slots[host]))
 
     with open('%s/userhome/.hosts-mpich' % path, 'w') as fh:
-        for host in hosts:
-            fh.write('%s:%d\n' % (host, cpus))
+        for host in hosts_slots:
+            fh.write('%s:%d\n' % (host, hosts_slots[host]))
 
 def get_nodes():
     """
@@ -437,7 +445,7 @@ def get_hosts(path):
     try:
         with open('.job.ad', 'r') as fd:
             for line in fd.readlines():
-                match = re.match(r'AllRemoteHosts = "([\w_@,.]+)"', line)
+                match = re.match(r'AllRemoteHosts = "([\w_@,.-]+)"', line)
                 if match:
                     slots = match.group(1)
                     for slot in slots.split(','):
