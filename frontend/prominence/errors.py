@@ -114,6 +114,13 @@ def lease_not_found():
     with app.app_context():
         return jsonify({'error':'Lease not found'}), 400
 
+def no_such_key():
+    """
+    No such key
+    """
+    with app.app_context():
+        return jsonify({'error':'No such key'}), 404
+
 def key_not_specified():
     """
     Key not specified
