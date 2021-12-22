@@ -5,7 +5,7 @@ import etcd3
 from flask import Blueprint, jsonify, request
 from flask import current_app as app
 
-from .errors import func_disabled, kv_error, key_not_specified, no_value_provided, value_too_big, ttl_not_specified, lease_not_found
+from .errors import func_disabled, kv_error, key_not_specified, no_value_provided, value_too_big, ttl_not_specified, lease_not_found, no_such_key
 from .utilities import get_remote_addr
 
 from .auth import requires_auth
@@ -58,9 +58,9 @@ def get_keys(username, group, email, path=None):
         return kv_error()
 
     if not value:
-        return ''
+        return no_such_key()
     if not value[0]:
-        return ''
+        return no_such_key()
 
     return base64.b64decode(value[0]).decode('utf-8')
 
