@@ -1494,7 +1494,7 @@ def run_singularity(image, cmd, workdir, env, path, mpi, mpi_processes, mpi_proc
 
     return return_code, timed_out
 
-def run_tasks(job, path):
+def run_tasks(job, path, main_node):
     """
     Execute sequential tasks
     """
@@ -1531,7 +1531,8 @@ def run_tasks(job, path):
 
     # Artifact mounts
     artifacts = {}
-    if 'artifacts' in job:
+    if 'artifacts' in job and main_node:
+        logging.info('Defining any artifact mounts if necessary')
         for artifact in job['artifacts']:
             if 'mountpoint' in artifact:
                 source = artifact['mountpoint'].split(':')[0]
@@ -1884,7 +1885,7 @@ if __name__ == "__main__":
 
         # Run tasks
         try:
-            (success_tasks, json_tasks) = run_tasks(job, path)
+            (success_tasks, json_tasks) = run_tasks(job, path, main_node)
         except OSError as exc:
             logging.critical('Got exception running tasks: %s', exc)
             success_tasks = False
