@@ -100,6 +100,20 @@ def kv_error():
     with app.app_context():
         return jsonify({'error':'Unable to access key-value store'}), 400
 
+def ttl_not_specified():
+    """
+    TTL not specified when creating lease
+    """
+    with app.app_context():
+        return jsonify({'error':'TTL not specified'}), 400
+
+def lease_not_found():
+    """
+    Lease not found
+    """
+    with app.app_context():
+        return jsonify({'error':'Lease not found'}), 400
+
 def key_not_specified():
     """
     Key not specified
