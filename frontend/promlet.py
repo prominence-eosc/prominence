@@ -75,7 +75,7 @@ done
 
 _COMMAND=`echo $_COMMAND | tr '"' "'"`
 
-curl -s -H "Authorization: Bearer $PROMINENCE_TOKEN" -X POST -d "$_COMMAND" $PROMINENCE_URL/kv/_internal_/$PROMINENCE_JOB_ID/$_HOST
+curl -s -H "Authorization: Bearer $PROMINENCE_TOKEN" -X POST -d "$_COMMAND" $PROMINENCE_URL/kv/_internal_/$PROMINENCE_JOB_ID/$_HOST > /dev/null 2>&1
 """
 
 def retry(tries=4, delay=3, backoff=2):
