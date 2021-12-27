@@ -1394,6 +1394,8 @@ def run_udocker(image, cmd, workdir, env, path, mpi, mpi_processes, mpi_procs_pe
         extras += " --env=PROMINENCE_JOB_ID=%d" % job_id
     if workflow_id:
         extras += " --env=PROMINENCE_WORKFLOW_ID=%d" % workflow_id
+    if mpi == 'intelmpi':
+        extras += " --env=I_MPI_JOB_STARTUP_TIMEOUT=120"
 
     # Get storage mountpoint
     mountpoint = get_storage_mountpoint(job)
@@ -1497,6 +1499,8 @@ def run_singularity(image, cmd, workdir, env, path, mpi, mpi_processes, mpi_proc
 
     if workflow_id:
         env_vars['PROMINENCE_WORKFLOW_ID'] = '%d' % workflow_id
+    if mpi == 'intelmpi':
+        env_vars['I_MPI_JOB_STARTUP_TIMEOUT='] = '120'
 
     return_code, timed_out = run_with_timeout(run_command, env_vars, walltime_limit)
 
