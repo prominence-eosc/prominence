@@ -156,39 +156,49 @@ def setup_mpi(runtime, path, mpi, cmd, env, mpi_processes, mpi_procs_per_node):
 
     # Node 0 needs to execute mpirun
     mpi_per_node = ''
+    hostfile = ''
+    mpi_ssh_cmd = ''
     if mpi == 'openmpi':
         if mpi_procs_per_node > 0:
             mpi_per_node = '-N %d --bind-to none' % mpi_procs_per_node
+        if num_nodes > 1:
+            hostfile = '--hostfile /home/user/.hosts-openmpi'
+            mpi_ssh_cmd = '-mca plm_rsh_agent %s' % mpi_ssh
         mpi_env = " -x HOME -x TEMP -x TMP "
         mpi_env += " ".join('-x %s' % key for key in env)
-        cmd = ("mpirun --hostfile /home/user/.hosts-openmpi"
+        cmd = ("mpirun %s"
                " -np %d"
                " %s"
                " %s"
                " -mca btl_base_warn_component_unused 0"
                " -mca orte_startup_timeout 120"
                " -mca plm_rsh_no_tree_spawn 1"
-               " -mca plm_rsh_agent %s %s") % (mpi_processes, mpi_per_node, mpi_env, mpi_ssh, cmd)
+               " %s %s") % (hostfile, mpi_processes, mpi_per_node, mpi_env, mpi_ssh_cmd, cmd)
     elif mpi == 'intelmpi':
         if mpi_procs_per_node > 0:
             mpi_per_node = '-perhost %d' % mpi_procs_per_node
+            mpi_ssh_cmd = '-bootstrap-exec %s' % mpi_ssh
+        if num_nodes > 1:
+            hostfile = '-machine /home/user/.hosts-mpich'
         env_list = ['HOME', 'TMP', 'TEMP', 'TMPDIR']
         env_list.extend(env.keys())
         mpi_env = ",".join('%s' % item for item in env_list)
-        cmd = ("mpirun -machine /home/user/.hosts-mpich"
+        cmd = ("mpirun %s"
                " -np %d"
                " %s"
                " -envlist %s"
-               " -bootstrap-exec %s %s") % (mpi_processes, mpi_per_node, mpi_env, mpi_ssh, cmd)
+               " %s %s") % (hostfile, mpi_processes, mpi_per_node, mpi_env, mpi_ssh_cmd, cmd)
     elif mpi == 'mpich':
         env_list = ['HOME', 'TMP', 'TEMP']
         env_list.extend(env.keys())
         mpi_env = ",".join('%s' % item for item in env_list)
-        cmd = ("mpirun -f /home/user/.hosts-mpich"
+        if num_nodes > 1:
+            hostfile = '-f /home/user/.hosts-mpich'
+            mpi_ssh_cmd = '-launcher ssh -launcher-exec %s' % mpi_ssh
+        cmd = ("mpirun %s"
                " -np %d"
                " -envlist %s"
-               " -launcher ssh"
-               " -launcher-exec %s %s") % (mpi_processes, mpi_env, mpi_ssh, cmd)
+               " %s %s") % (hostfile, mpi_processes, mpi_env, mpi_ssh_cmd, cmd)
 
     return cmd
 
