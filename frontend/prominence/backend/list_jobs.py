@@ -231,54 +231,65 @@ def list_jobs(self, job_ids, identity, active, completed, workflow, num, detail,
                     parameters[match[0]] = convert_to_number(match[1])
             jobj['parameters'] = parameters
 
-        # Return status as failed if any fuse mounts failed
-        if 'mounts' in job_u:
-            for mount in job_u['mounts']:
-                if 'status' in mount:
-                    if mount['status'] == 'failed':
-                        jobj['status'] = 'failed'
-                        jobj['statusReason'] = 'Unable to mount storage volume'
+        # For jobs which are not idle or running, check for various failed states in the
+        # promlet json file
+        if job['JobStatus'] != 1 and job['JobStatus'] != 2:
 
-        # Return status as failed if artifact download failed
-        for item in stagein_u:
-            if 'status' in item:
-                if item['status'] == 'failedDownload':
-                    jobj['status'] = 'failed'
-                    jobj['statusReason'] = 'Artifact download failed'
-                if item['status'] == 'failedUncompress':
-                    jobj['status'] = 'failed'
-                    jobj['statusReason'] = 'Artifact uncompress failed'
+            # Return status as failed if any fuse mounts failed
+            if 'mounts' in job_u:
+                for mount in job_u['mounts']:
+                    if 'status' in mount:
+                        if mount['status'] == 'failed':
+                            jobj['status'] = 'failed'
+                            jobj['statusReason'] = 'Unable to mount storage volume'
 
-        # Return status as failed if stageout failed
-        if 'files' in stageout_u and 'directories' in stageout_u:
-            for item in stageout_u['files'] + stageout_u['directories']:
+            # Return status as failed if artifact download failed
+            for item in stagein_u:
                 if 'status' in item:
-                    if item['status'] == 'failedNoSuchFile':
+                    if item['status'] == 'failedDownload':
                         jobj['status'] = 'failed'
-                        jobj['statusReason'] = 'Stageout failed due to no such file or directory'
-                    if item['status'] == 'failedUpload':
+                        jobj['statusReason'] = 'Artifact download failed'
+                    if item['status'] == 'failedUncompress':
                         jobj['status'] = 'failed'
-                        jobj['statusReason'] = 'Unable to stageout output to object storage'
-                    if item['status'] == 'failedTarCreation':
-                        jobj['status'] = 'failed'
-                        jobj['statusReason'] = 'Stageout failed due to tarball creation failed'
+                        jobj['statusReason'] = 'Artifact uncompress failed'
 
-        # Return status as failed if container image pull failed
-        if 'ProminenceImagePullSuccess' in job:
-            if job['ProminenceImagePullSuccess'] == 1:
-                jobj['status'] = 'failed'
-                jobj['statusReason'] = 'Container image pull failed'
+            # Return status as failed if stageout failed
+            if 'files' in stageout_u and 'directories' in stageout_u:
+                for item in stageout_u['files'] + stageout_u['directories']:
+                    if 'status' in item:
+                        if item['status'] == 'failedNoSuchFile':
+                            jobj['status'] = 'failed'
+                            jobj['statusReason'] = 'Stageout failed due to no such file or directory'
+                        if item['status'] == 'failedUpload':
+                            jobj['status'] = 'failed'
+                            jobj['statusReason'] = 'Unable to stageout output to object storage'
+                        if item['status'] == 'failedTarCreation':
+                            jobj['status'] = 'failed'
+                            jobj['statusReason'] = 'Stageout failed due to tarball creation failed'
 
-        for task in tasks_u:
-            if 'imagePullStatus' in task:
-                if task['imagePullStatus'] == 'failed':
+            # Return status as failed if container image pull failed
+            if 'ProminenceImagePullSuccess' in job:
+                if job['ProminenceImagePullSuccess'] == 1:
                     jobj['status'] = 'failed'
                     jobj['statusReason'] = 'Container image pull failed'
 
-        if 'JobRunCount' in job:
-            if job['JobStatus'] == 1 and job['JobRunCount'] > 0:
-                jobj['status'] = 'failed'
-                jobj['statusReason'] = ''
+            for task in tasks_u:
+                if 'imagePullStatus' in task:
+                    if task['imagePullStatus'] == 'failed':
+                        jobj['status'] = 'failed'
+                        jobj['statusReason'] = 'Container image pull failed'
+
+            if 'JobRunCount' in job:
+                if job['JobStatus'] == 1 and job['JobRunCount'] > 0:
+                    jobj['status'] = 'failed'
+                    jobj['statusReason'] = ''
+
+            # Return status as killed if walltime limit execeed
+            if tasks_u:
+                for task_u in tasks_u:
+                    if 'error' in task_u:
+                        jobj['status'] = 'killed'
+                        jobj['statusReason'] = 'Walltime limit exceeded'
 
         if job['JobStatus'] == 3:
             reason = ''
@@ -341,13 +352,6 @@ def list_jobs(self, job_ids, identity, active, completed, workflow, num, detail,
                     reason = 'Job used too much memory'
 
             jobj['statusReason'] = reason
-
-        # Return status as killed if walltime limit execeed
-        if tasks_u:
-            for task_u in tasks_u:
-                if 'error' in task_u:
-                    jobj['status'] = 'killed'
-                    jobj['statusReason'] = 'Walltime limit exceeded'
 
         if 'ProminencePreemptible' in job:
             jobj['preemptible'] = True
