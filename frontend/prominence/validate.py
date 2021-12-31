@@ -418,7 +418,7 @@ def validate_job(job):
                     if 'cmd' in task:
                         if task['cmd'].startswith('mpirun -n'):
                             return (False, 'it is not necessary to include mpirun in the cmd if an MPI flavour has been specified')
-                
+
     else:
         return (False, 'a job must contain tasks')
 
@@ -452,7 +452,7 @@ def validate_job(job):
             return (False, 'an array of outputFiles must be provided')
         for item in job['outputFiles']:
             if not isinstance(item, str):
-                 return (False, 'outputFiles must be a list of strings')
+                return (False, 'outputFiles must be a list of strings')
 
     # Output directories
     if 'outputDirs' in job:
@@ -460,7 +460,7 @@ def validate_job(job):
             return (False, 'an array of outputDirs must be provided')
         for item in job['outputDirs']:
             if not isinstance(item, str):
-                 return (False, 'outputDirs must be a list of strings')
+                return (False, 'outputDirs must be a list of strings')
 
     # Inputs
     if 'inputs' in job:
