@@ -134,6 +134,7 @@ def rerun_workflow(self, username, groups, email, workflow_id):
     # Create command to submit to DAGMan
     dag_appends.append("'+ProminenceType=\"workflow\"'")
     dag_appends.append("'+ProminenceIdentity=\"%s\"'" % username)
+    dag_appends.append("'+ProminenceGroup=\"%s\"'" % groups)
     dag_appends.append("'+ProminenceJobUniqueIdentifier=\"%s\"'" % str(uuid.uuid4()))
 
     if email:
