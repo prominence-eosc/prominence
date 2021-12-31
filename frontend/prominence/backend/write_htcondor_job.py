@@ -29,8 +29,6 @@ RequestDisk = %(reqdisk)s
 +ProminenceType = "job"
 +ProminenceJobToken = %(jobtoken)s
 +ProminenceURL = %(joburl)s
-accounting_group_user = %(name)s
-accounting_group = %(group)s
 %(extras)s
 %(extras_metadata)s
 queue 1
