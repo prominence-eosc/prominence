@@ -1,11 +1,39 @@
 import json
+import os
 import re
 import shutil
 import uuid
 
+import jwt
+import classad
 import htcondor
 
 from .utilities import run
+from .create_job_token import create_job_token
+
+def get_failed_node_dirs(iwd):
+    """
+    Create list of failed nodes
+    """
+    failed_jobs = []
+    filename = '%s/workflow.dag.status' % iwd
+    with open(filename, 'r') as fd:
+        ads = classad.parseAds(fd)
+        for ad in ads:
+            if 'Type' in ad:
+                if ad['Type'] == "NodeStatus":
+                    if 'NodeStatus' in ad:
+                        node_status = int(ad['NodeStatus'])
+                        if node_status == 6:
+                            node = ad['Node']
+                            if os.path.isdir(node):
+                                failed_jobs.append(node)
+                            else:
+                                base_dir = node.rsplit('_', 1)[0]
+                                if os.path.isdir('%s/%s' % (iwd, base_dir)):
+                                    if base_dir not in failed_jobs:
+                                        failed_jobs.append(base_dir)
+    return failed_jobs
 
 def rerun_workflow(self, username, groups, email, workflow_id):
     """
@@ -39,6 +67,62 @@ def rerun_workflow(self, username, groups, email, workflow_id):
             jjob = json.load(json_file)
     except IOError:
         pass
+
+    # Get list of failed jobs
+    failed_job_dirs = get_failed_node_dirs(iwd)
+
+    # Write new token into job description files of failed jobs
+    for job_dir in failed_job_dirs:
+        filename = '%s/%s/job.jdl' % (iwd, job_dir)
+        job_idl = None
+        try:
+            with open(filename, 'r') as fh:
+                job_idl = fh.readlines()
+        except IOError:
+            pass
+
+        if job_idl:
+            new_token = None
+            job_json_file = None
+
+            try:
+                with open('%s/%s/.job.json' % (iwd, job_dir), 'r') as json_file:
+                    job_json_file = json.load(json_file)
+            except:
+                pass
+
+            walltime = 0
+            if job_json_file:
+                if 'resources' in job_json_file:
+                    if 'walltime' in job_json_file['resources']:
+                        walltime = job_json_file['resources']['walltime']
+
+            for line in job_idl:
+                match = re.search(r'ProminenceJobToken\s=\s"(.*)"', line)
+                if match:
+                    old_token = match.group(1)
+                    decoded_old_token = jwt.decode(old_token, options={"verify_signature": False})
+                    new_token = create_job_token(decoded_old_token['username'],
+                                                 decoded_old_token['groups'],
+                                                 decoded_old_token['job'],
+                                                 email,
+                                                 10*24*60*60 + walltime*2*60*3)
+
+            if not os.path.isfile('%s/%s/job.jdl.old' % (iwd, job_dir)) and new_token:
+                try:
+                    os.rename(filename, '%s/%s/job.jdl.old' % (iwd, job_dir))
+                except IOError:
+                    pass
+
+            if new_token:
+                with open(filename, 'w') as fh:
+                    for line in job_idl:
+                        if 'ProminenceJobToken = ' not in line:
+                            fh.write(line)
+                        else:
+                            fh.write('+ProminenceJobToken = "%s"\n' % new_token)
+
+    # Write new presigned URLs into workflow description file
 
     # Handle labels
     dag_appends = []
