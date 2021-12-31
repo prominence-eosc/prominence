@@ -21,10 +21,13 @@ def validate_token(token):
         app.logger.warning('Got exception checking for job token: %s', err)
 
     if decoded:
-        if 'username' in decoded and 'groups' in decoded:
-            return (str(decoded['username']), str(decoded['groups']))
+        if 'username' in decoded and 'groups' in decoded and 'email' in decoded:
+            return (str(decoded['username']), str(decoded['groups']), str(decoded['email']))
 
-    return (None, None)
+        if 'username' in decoded and 'groups' in decoded:
+            return (str(decoded['username']), str(decoded['groups']), None)
+
+    return (None, None, None)
 
 def get_expiry(token):
     """
@@ -125,11 +128,10 @@ def requires_auth(function):
 
         # Firstly check if token is a job token
         success = False
-        (username, group) = validate_token(token)
+        (username, group, email) = validate_token(token)
         if username and group:
             success = True
             allowed = True
-            email = ''
 
         # Query OIDC server if necessary
         if not success:
