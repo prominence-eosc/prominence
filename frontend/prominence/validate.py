@@ -54,7 +54,8 @@ def validate_workflow(workflow):
                        'notifications']
 
     policies_workflow_valids = ['maximumRetries',
-                                'placement']
+                                'placement',
+                                'maximumReruns']
 
     valid_events = ['workflowFinished']
 
@@ -208,11 +209,20 @@ def validate_workflow(workflow):
             if not str(workflow['policies']['maximumRetries']).isdigit():
                 return (False, 'the number of retries must be an integer')
 
+            if not str(workflow['policies']['maximumReruns']).isdigit():
+                return (False, 'the number of reruns must be an integer')
+
             if workflow['policies']['maximumRetries'] < 1:
                 return (False, 'the number of retries must be greater than 0')
 
-            if workflow['policies']['maximumRetries'] > 6:
-                return (False, 'the number of retries must be less than 6')
+            if workflow['policies']['maximumRetries'] > 10:
+                return (False, 'the number of retries must be less than 10')
+
+            if workflow['policies']['maximumReruns'] < 1:
+                return (False, 'the number of reruns must be greater than 0')
+
+            if workflow['policies']['maximumReruns'] > 10:
+                return (False, 'the number of reruns must be less than 10')
 
     # Retries
     if 'maximumRetries' in workflow:
