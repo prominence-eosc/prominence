@@ -305,7 +305,11 @@ def _create_htcondor_job(self, username, groups, email, uid, jjob, job_path, wor
     if workflowuid:
         job_token_uid = workflowuid
 
-    token = create_job_token(username, groups, 10*24*60*60 + int(max_run_time*2), job_token_uid)
+    token = create_job_token(username,
+                             groups,
+                             job_token_uid,
+                             email,
+                             10*24*60*60 + int(max_run_time*2))
     cjob['+ProminenceJobToken'] = condor_str(token)
     cjob['+ProminenceURL'] = condor_str(self._config['URL'])
 
