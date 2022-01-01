@@ -789,7 +789,7 @@ def upload(filename, url, token=None):
         logging.warning('IOError when trying to upload file %s: %s', filename, err)
         return None
 
-    if response.status_code == 200 or response.status_code == 201:
+    if response.status_code == 200 or response.status_code == 201 or response.status_code == 204:
         return True
 
     logging.warning('Got status code %d uploading file %s to url %s', response.status_code, filename, url)
