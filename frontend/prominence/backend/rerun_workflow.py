@@ -13,7 +13,7 @@ from .create_job_token import create_job_token
 
 def get_failed_node_dirs(iwd):
     """
-    Create list of failed nodes
+    Create list of directories containing failed nodes
     """
     failed_jobs = []
     filename = '%s/workflow.dag.status' % iwd
@@ -33,6 +33,7 @@ def get_failed_node_dirs(iwd):
                                 if os.path.isdir('%s/%s' % (iwd, base_dir)):
                                     if base_dir not in failed_jobs:
                                         failed_jobs.append(base_dir)
+
     return failed_jobs
 
 def rerun_workflow(self, username, groups, email, workflow_id):
@@ -122,7 +123,7 @@ def rerun_workflow(self, username, groups, email, workflow_id):
                         else:
                             fh.write('+ProminenceJobToken = "%s"\n' % new_token)
 
-    # Write new presigned URLs into workflow description file
+    # TODO: Write new presigned URLs into workflow description file
 
     # Handle labels
     dag_appends = []
@@ -145,13 +146,13 @@ def rerun_workflow(self, username, groups, email, workflow_id):
         cmd += " -append %s " % dag_append
     cmd += " job.dag "
 
-    (return_code, stdout, stderr, timedout) = run(cmd, iwd, 30)
+    (return_code, stdout, _, _) = run(cmd, iwd, 30)
 
-    m = re.search(r'submitted to cluster\s(\d+)', str(stdout))
     data = {}
-    if m:
+    match = re.search(r'submitted to cluster\s(\d+)', str(stdout))
+    if match:
         retval = 0
-        data['id'] = int(m.group(1))
+        data['id'] = int(match.group(1))
     else:
         retval = 1
         data = {"error":"Workflow resubmission failed"}
