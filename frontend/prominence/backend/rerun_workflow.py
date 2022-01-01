@@ -36,53 +36,20 @@ def get_failed_node_dirs(iwd):
 
     return failed_jobs
 
-def rerun_workflow(self, username, groups, email, workflow_id):
+def write_new_job_token(iwd, email, failed_job_dirs):
     """
-    Re-run any failed jobs from a completed workflow
+    Write new token into job description files of failed jobs
     """
-    schedd = htcondor.Schedd()
-
-    constraint = 'ProminenceIdentity =?= "%s" && ClusterId == %d' % (username, workflow_id)
-    wfs = schedd.history('RoutedBy =?= undefined && ProminenceType == "workflow" && %s' % constraint,
-                         ['JobStatus', 'Iwd', 'JobBatchName'],
-                         1)
-
-    job_status = None
-    iwd = None
-    name = ''
-
-    for wf in wfs:
-        if 'JobStatus' in wf:
-            job_status = wf['JobStatus']
-        if 'Iwd' in wf:
-            iwd = wf['Iwd']
-        if 'JobBatchName' in wf:
-            name = wf['JobBatchName']
-
-    if job_status != 3 and job_status != 4:
-        return (1, {"error":"Unable to find re-run workflow as the original workflow is not in a suitable state"})
-
-    # Read the workflow json description
-    try:
-        with open('%s/workflow.json' % iwd, 'r') as json_file:
-            jjob = json.load(json_file)
-    except IOError:
-        pass
-
-    # Get list of failed jobs
-    failed_job_dirs = get_failed_node_dirs(iwd)
-
-    # Write new token into job description files of failed jobs
     for job_dir in failed_job_dirs:
         filename = '%s/%s/job.jdl' % (iwd, job_dir)
-        job_idl = None
+        job_jdl = None
         try:
             with open(filename, 'r') as fh:
-                job_idl = fh.readlines()
+                job_jdl = fh.readlines()
         except IOError:
             pass
 
-        if job_idl:
+        if job_jdl:
             new_token = None
             job_json_file = None
 
@@ -98,7 +65,7 @@ def rerun_workflow(self, username, groups, email, workflow_id):
                     if 'walltime' in job_json_file['resources']:
                         walltime = job_json_file['resources']['walltime']
 
-            for line in job_idl:
+            for line in job_jdl:
                 match = re.search(r'ProminenceJobToken\s=\s"(.*)"', line)
                 if match:
                     old_token = match.group(1)
@@ -109,6 +76,7 @@ def rerun_workflow(self, username, groups, email, workflow_id):
                                                  email,
                                                  10*24*60*60 + walltime*2*60*3)
 
+            # Write backup file the first time the workflow is re-run
             if not os.path.isfile('%s/%s/job.jdl.old' % (iwd, job_dir)) and new_token:
                 try:
                     os.rename(filename, '%s/%s/job.jdl.old' % (iwd, job_dir))
@@ -116,12 +84,50 @@ def rerun_workflow(self, username, groups, email, workflow_id):
                     pass
 
             if new_token:
+                # Write new file with updated token
                 with open(filename, 'w') as fh:
-                    for line in job_idl:
+                    for line in job_jdl:
                         if 'ProminenceJobToken = ' not in line:
                             fh.write(line)
                         else:
                             fh.write('+ProminenceJobToken = "%s"\n' % new_token)
+
+    return
+
+def rerun_workflow(self, username, groups, email, workflow_id):
+    """
+    Re-run any failed jobs from a completed workflow
+    """
+    schedd = htcondor.Schedd()
+
+    constraint = 'ProminenceIdentity =?= "%s" && ClusterId == %d' % (username, workflow_id)
+    workflows = schedd.history('RoutedBy =?= undefined && ProminenceType == "workflow" && %s' % constraint,
+                               ['JobStatus', 'Iwd', 'JobBatchName'], 1)
+
+    job_status = None
+    iwd = None
+    name = ''
+
+    for workflow in workflows:
+        if 'JobStatus' in workflow:
+            job_status = workflow['JobStatus']
+        if 'Iwd' in workflow:
+            iwd = workflow['Iwd']
+        if 'JobBatchName' in workflow:
+            name = workflow['JobBatchName']
+
+    if job_status not in (3, 4):
+        return (1, {"error":"Unable to find re-run workflow as the original workflow is not in a suitable state"})
+
+    # Read the workflow json description
+    try:
+        with open('%s/workflow.json' % iwd, 'r') as json_file:
+            jjob = json.load(json_file)
+    except IOError:
+        pass
+
+    # Write new token into job description files of failed jobs
+    write_new_job_token(iwd, email, get_failed_node_dirs(iwd))
 
     # TODO: Write new presigned URLs into workflow description file
 
