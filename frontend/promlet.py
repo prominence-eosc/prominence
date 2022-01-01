@@ -1100,9 +1100,10 @@ def download_singularity(image, image_new, location, path, credential, job):
     """
     logging.info('Pulling Singularity image for task')
 
-    (token, base_url, _) = get_base_url(job)
-    if base_url:
-        image = '%s%s' % (base_url, image)
+    if image.startswith('/'):
+        (token, base_url, _) = get_base_url(job)
+        if base_url:
+            image = '%s%s' % (base_url, image)
 
     if re.match(r'^http', image):
         if image_name(image).endswith('.tar') or image_name(image).endswith('.tgz'):
@@ -1276,9 +1277,10 @@ def download_udocker(image, location, label, path, credential, job):
         logging.error('Unable to install udockertools')
         return 1, False
 
-    (token, base_url, _) = get_base_url(job)
-    if base_url:
-        image = '%s%s' % (base_url, image)
+    if image.startswith('/'):
+        (token, base_url, _) = get_base_url(job)
+        if base_url:
+            image = '%s%s' % (base_url, image)
 
     logging.info('Getting udocker image: %s', image)
 
