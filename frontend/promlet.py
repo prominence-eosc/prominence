@@ -791,6 +791,8 @@ def upload(filename, url, token=None):
 
     if response.status_code == 200 or response.status_code == 201:
         return True
+
+    logging.warning('Got status code %d uploading file %s to url %s', response.status_code, filename, url)
     return None
 
 def test_upload(url):
