@@ -33,7 +33,7 @@ def get_health(self):
 
     # Check etcd
     try:
-        resp = requests.get('127.0.0.1:2379/health')
+        resp = requests.get('http://127.0.0.1:2379/health')
         if resp.status_code != 200:
             errors.append('ETCD_STATUS')
     except:
