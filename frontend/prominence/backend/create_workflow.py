@@ -159,16 +159,20 @@ def create_workflow(self, username, groups, email, uid, jwf):
 
         if not job_factory:
             # Create dict containing HTCondor job
-            (_, _, cjob) = self._create_htcondor_job(username,
-                                                  groups,
-                                                  email,
-                                                  str(uuid.uuid4()),
-                                                  job,
-                                                  '%s/%s' % (job_sandbox, job['name']),
-                                                  True,
-                                                  False,
-                                                  uid,
-                                                  job['name'])
+            (cjs, msg, cjob) = self._create_htcondor_job(username,
+                                                         groups,
+                                                         email,
+                                                         str(uuid.uuid4()),
+                                                         job,
+                                                         '%s/%s' % (job_sandbox, job['name']),
+                                                         True,
+                                                         False,
+                                                         uid,
+                                                         job['name'])
+
+            if cjs != 0:
+                return (1, msg)
+
             cjob['+ProminenceWorkflowName'] = condor_str(wf_name)
 
             # Write JDL
@@ -182,16 +186,19 @@ def create_workflow(self, username, groups, email, uid, jwf):
 
         else:
             # Create dict containing HTCondor job
-            (_, _, cjob) = self._create_htcondor_job(username,
-                                                     groups,
-                                                     email,
-                                                     str(uuid.uuid4()),
-                                                     job,
-                                                     '%s/%s' % (job_sandbox, job['name']),
-                                                     True,
-                                                     True,
-                                                     uid,
-                                                     job['name'])
+            (cjs, msg, cjob) = self._create_htcondor_job(username,
+                                                         groups,
+                                                         email,
+                                                         str(uuid.uuid4()),
+                                                         job,
+                                                         '%s/%s' % (job_sandbox, job['name']),
+                                                         True,
+                                                         True,
+                                                         uid,
+                                                         job['name'])
+
+            if cjs != 0:
+                return (1, msg)
 
             cjob['+ProminenceWorkflowName'] = condor_str(wf_name)
             cjob['+ProminenceFactoryId'] = '$(prominencecount)'
