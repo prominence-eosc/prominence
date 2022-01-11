@@ -45,10 +45,10 @@ def get_user_details_with_retries(token):
     success = False
     count = 0
     while not success and count < 5:
-        (success, a1, a2, a3, a4) = get_user_details(token)
+        (success, username, group, email, allowed) = get_user_details(token)
         count = count + 1
         time.sleep(count*0.2)
-    return (success, a1, a2, a3, a4)
+    return (success, username, group, email, allowed)
 
 def get_user_details(token):
     """
