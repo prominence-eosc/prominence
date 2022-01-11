@@ -100,7 +100,7 @@ def list_objects(self, user, groups, path=None):
         return None
 
     if keys is None:
-        return None
+        return objects
 
     for key in keys:
         name = key['Key']
