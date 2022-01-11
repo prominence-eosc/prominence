@@ -209,14 +209,15 @@ def validate_workflow(workflow):
             if not str(workflow['policies']['maximumRetries']).isdigit():
                 return (False, 'the number of retries must be an integer')
 
-            if not str(workflow['policies']['maximumReruns']).isdigit():
-                return (False, 'the number of reruns must be an integer')
-
             if workflow['policies']['maximumRetries'] < 1:
                 return (False, 'the number of retries must be greater than 0')
 
             if workflow['policies']['maximumRetries'] > 10:
                 return (False, 'the number of retries must be less than 10')
+
+        if 'maximumReruns' in workflow['policies']:
+            if not str(workflow['policies']['maximumReruns']).isdigit():
+                return (False, 'the number of reruns must be an integer')
 
             if workflow['policies']['maximumReruns'] < 1:
                 return (False, 'the number of reruns must be greater than 0')
