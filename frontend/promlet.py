@@ -755,7 +755,7 @@ def run_with_timeout(cmd, env, timeout_sec, capture_std=False):
     Run a process with a timeout
     """
     if capture_std:
-        proc = subprocess.Popen(shlex.split(cmd), env=env, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        proc = subprocess.Popen(shlex.split(cmd), env=env, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
     else:
         proc = subprocess.Popen(shlex.split(cmd), env=env)
 
@@ -766,7 +766,8 @@ def run_with_timeout(cmd, env, timeout_sec, capture_std=False):
     proc.wait()
     CURRENT_SUBPROCS.remove(proc)
     timer.cancel()
-    return proc.returncode, timeout["value"]
+
+    return proc.returncode, timeout["value"], proc.stdout
 
 @retry(tries=3, delay=2, backoff=2)
 def upload(filename, url, token=None):
@@ -1041,18 +1042,22 @@ def mount_storage(job, path):
             if 'options' in job['storage']['onedata']:
                 options = job['storage']['onedata']['options']
 
-            cmd = '/usr/bin/oneclient -o allow_other -t %s -H %s %s %s/mounts%s' % (storage_token, storage_provider, options, path, storage_mountpoint)
+            log_dir = '%s/logs' % path
+            cmd = '/usr/bin/oneclient -l %s -o allow_other -t %s -H %s %s %s/mounts%s' % (log_dir, storage_token, storage_provider, options, path, storage_mountpoint)
 
             count = 0
             return_code = -1
+            stdout = None
             while count < 3 and return_code != 0:
-                return_code, timed_out = run_with_timeout(cmd, os.environ, 60, True)
+                return_code, timed_out, stdout = run_with_timeout(cmd, os.environ, 60, True)
                 if timed_out:
                     logging.error('Timeout running oneclient')
                 count = count + 1
 
             logging.info('Return code from oneclient is %d', return_code)
             if return_code != 0:
+                if stdout:
+                    logging.error('Oneclient error: %s', stdout)
                 return False
 
     return True
@@ -1083,6 +1088,28 @@ def unmount_storage(job, path):
                                        stdout=subprocess.PIPE,
                                        stderr=subprocess.PIPE)
             process.wait()
+
+            # Cleanup log files
+            logs = glob.glob('%s/logs/oneclient.*.log.INFO.*' % path)
+            for log in logs:
+                try:
+                    os.remove(log)
+                except:
+                    pass
+
+            logs = glob.glob('%s/logs/oneclient.*.log.WARNING.*' % path)
+            for log in logs:
+                try:
+                    os.remove(log)
+                except:
+                    pass
+
+            try:
+                os.remove('%s/logs/oneclient.INFO' % path)
+                os.remove('%s/logs/oneclient.WARNING' % path)
+            except:
+                pass
+
     return True
 
 def get_storage_mountpoint(job):
@@ -1438,10 +1465,10 @@ def run_udocker(image, cmd, workdir, env, path, mpi, mpi_processes, mpi_procs_pe
     logging.info('Running: "%s"', run_command)
 
     (udocker_path, additional_envs) = generate_envs()
-    return_code, timed_out = run_with_timeout(run_command,
-                                              dict(PATH=udocker_path,
-                                                   UDOCKER_DIR='%s/.udocker' % udocker_location),
-                                              walltime_limit)
+    return_code, timed_out, _ = run_with_timeout(run_command,
+                                                 dict(PATH=udocker_path,
+                                                      UDOCKER_DIR='%s/.udocker' % udocker_location),
+                                                 walltime_limit)
 
     logging.info('Task had exit code %d', return_code)
 
@@ -1510,7 +1537,7 @@ def run_singularity(image, cmd, workdir, env, path, mpi, mpi_processes, mpi_proc
     if mpi == 'intelmpi':
         env_vars['I_MPI_JOB_STARTUP_TIMEOUT='] = '120'
 
-    return_code, timed_out = run_with_timeout(run_command, env_vars, walltime_limit)
+    return_code, timed_out, _ = run_with_timeout(run_command, env_vars, walltime_limit)
 
     logging.info('Task had exit code %d', return_code)
 
