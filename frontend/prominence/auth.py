@@ -54,6 +54,9 @@ def get_user_details(token):
     """
     Get the username and group from a token
     """
+    if not app.config['OIDC_URL']:
+        return (False, None, None, False)
+
     headers = {'Authorization':'Bearer %s' % token}
     try:
         response = requests.get(app.config['OIDC_URL']+'/userinfo', timeout=app.config['OIDC_TIMEOUT'], headers=headers)
