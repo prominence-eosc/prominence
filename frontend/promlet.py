@@ -858,6 +858,15 @@ def get_name_from_url(url):
     path = new_url.split('/')[5]
     return new_url.split('?AWSAccessKeyId')[0].split(path)[1][1:]
 
+def get_actual_filename(path):
+    """
+    Extract filename from path if necessary
+    """
+    if '/' not in path:
+        return path
+    
+    return path.rsplit('/', 1)[1]
+
 def stageout(job, path):
     """
     Copy any required output files and/or directories to S3 storage
@@ -899,15 +908,18 @@ def stageout(job, path):
                         json_out_file['status'] = 'failedUpload'
                         success = False
                     else:
-                        url = '%s/%s' % (url, out_file)
+                        url = '%s/%s' % (url, get_actual_filename(out_file))
 
                 if url:
+                    time_begin = time.time()
                     if upload(out_file, url, token):
                         logging.info('Successfully uploaded file %s to cloud storage', out_file)
                         json_out_file['status'] = 'success'
+                        json_out_file['time'] = time.time() - time_begin
                     else:
                         logging.error('Unable to upload file %s to cloud storage with url %s', out_file, url)
                         json_out_file['status'] = 'failedUpload'
+                        json_out_file['time'] = time.time() - time_begin
                         success = False
             json_out_files.append(json_out_file)
 
@@ -945,12 +957,15 @@ def stageout(job, path):
                         url = '%s/%s.tgz' % (url, output['name'])
 
                 if url:
+                    time_begin = time.time()
                     if upload(output_filename, url, token):
                         logging.info('Successfully uploaded directory %s to cloud storage', output['name'])
                         json_out_dir['status'] = 'success'
+                        json_out_dir['time'] = time.time() - time_begin
                     else:
                         logging.error('Unable to upload directory %s to cloud storage with url %s', output['name'], url)
                         json_out_dir['status'] = 'failedUpload'
+                        json_out_dir['time'] = time.time() - time_begin
                         success = False
             json_out_dirs.append(json_out_dir)
 
@@ -1180,12 +1195,12 @@ def download_singularity(image, image_new, location, path, credential, job):
             if not success:
                 return 1, False
         else:
-            logging.info('Copying Singularity image from source on attached storage')
+            logging.info('Creating symlink to Singularity image from source on attached storage')
             try:
                 # TODO: Mountpoint needs to be specified
-                shutil.copyfile('%s/mounts/%s' % (path, image), image_new)
+                os.symlink('%s/mounts/%s' % (path, image), image_new)
             except:
-                logging.error('Unable to copy container image from source location on attached storage')
+                logging.error('Unable to create symlink for container image from source location on attached storage')
                 return 1, False
     else:
         # Handle both Singularity Hub & Docker Hub, with Docker Hub the default
@@ -1327,12 +1342,12 @@ def download_udocker(image, location, label, path, credential, job):
 
     if image.startswith('/') and image.endswith('.tar'):
         # Handle image stored on attached POSIX-like storage
-        logging.info('Copying udocker image from source (%s) on attached storage', image)
+        logging.info('Creating symlink to udocker image from source (%s) on attached storage', image)
         try:
             # TODO: Mountpoint needs to be specified
-            shutil.copyfile('%s/mounts/%s' % (path, image), '%s/image.tar' % location)
+            os.symlink('%s/mounts/%s' % (path, image), '%s/image.tar' % location)
         except Exception as err:
-            logging.error('Unable to copy container image from source location on attached storage due to "%s"', err)
+            logging.error('Unable to create symlink to container image from source location on attached storage due to "%s"', err)
             return 1, False
 
     if re.match(r'^http', image) or (image.startswith('/') and image.endswith('.tar')):
@@ -1498,7 +1513,6 @@ def run_singularity(image, cmd, workdir, env, path, mpi, mpi_processes, mpi_proc
     user_tmp_dir = path + '/usertmp'
 
     run_command = ("singularity %s"
-                   " --bind /mnt"
                    " --home %s/userhome:/home/user"
                    " --bind %s:/tmp"
                    " %s"
