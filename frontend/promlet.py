@@ -1150,6 +1150,7 @@ def download_singularity(image, image_new, location, path, credential, job):
         token = None
 
     if re.match(r'^http', image):
+        logging.info('Image needs to be downloaded from URL')
         if image_name(image).endswith('.tar') or image_name(image).endswith('.tgz'):
             # We need to download the Docker tarball then convert it to the Singularity format
             if image_name(image).endswith('.tar'):
@@ -1182,7 +1183,8 @@ def download_singularity(image, image_new, location, path, credential, job):
                 return 1, False
 
         logging.info('Singularity image downloaded from URL and written to file %s', image_new)
-    elif image.startswith('/') and os.path.exists(image):
+    elif image.startswith('/') and os.path.exists('%s/mounts/%s' % (path, image)):
+        logging.info('Image exists on attached storage')
         # Handle image stored on attached POSIX-like storage
 
         if image.endswith('.tar') or image.endswith('.tgz'):
@@ -1203,6 +1205,8 @@ def download_singularity(image, image_new, location, path, credential, job):
                 logging.error('Unable to create symlink for container image from source location on attached storage')
                 return 1, False
     else:
+        logging.info('Image needs to be pulled from registry')
+
         # Handle both Singularity Hub & Docker Hub, with Docker Hub the default
         if re.match(r'^shub:', image):
             cmd = 'singularity pull --name "image.simg" %s' % image
