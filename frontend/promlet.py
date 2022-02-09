@@ -177,9 +177,9 @@ def setup_mpi(runtime, path, mpi, cmd, env, mpi_processes, mpi_procs_per_node):
     elif mpi == 'intelmpi':
         if mpi_procs_per_node > 0:
             mpi_per_node = '-perhost %d' % mpi_procs_per_node
-            mpi_ssh_cmd = '-bootstrap-exec %s' % mpi_ssh
         if num_nodes > 1:
             hostfile = '-machine /home/user/.hosts-mpich'
+            mpi_ssh_cmd = '-bootstrap-exec %s' % mpi_ssh
         env_list = ['HOME', 'TMP', 'TEMP', 'TMPDIR']
         env_list.extend(env.keys())
         mpi_env = ",".join('%s' % item for item in env_list)
@@ -1553,7 +1553,7 @@ def run_singularity(image, cmd, workdir, env, path, mpi, mpi_processes, mpi_proc
     if workflow_id:
         env_vars['PROMINENCE_WORKFLOW_ID'] = '%d' % workflow_id
     if mpi == 'intelmpi':
-        env_vars['I_MPI_JOB_STARTUP_TIMEOUT='] = '120'
+        env_vars['I_MPI_JOB_STARTUP_TIMEOUT'] = '120'
 
     return_code, timed_out, _ = run_with_timeout(run_command, env_vars, walltime_limit)
 
@@ -1688,11 +1688,11 @@ def run_tasks(job, path, main_node):
         mpi_processes = procs_per_node_mpi*num_nodes
 
         # Setup for MPI
-        if mpi:
-            logging.info('This is an MPI task, setting up using %d procs per node', procs_per_node_mpi)
-            write_mpi_hosts(path, procs_per_node_mpi)
-            cmd = setup_mpi(task['runtime'], path, mpi, cmd, env, mpi_processes, procs_per_node)
-            cmd = '/bin/bash -c "%s"' % cmd
+        #if mpi:
+        #    logging.info('This is an MPI task, setting up using %d procs per node', procs_per_node_mpi)
+        #    write_mpi_hosts(path, procs_per_node_mpi)
+        #    cmd = setup_mpi(task['runtime'], path, mpi, cmd, env, mpi_processes, procs_per_node)
+        #    cmd = '/bin/bash -c "%s"' % cmd
 
         metrics_download = ProcessMetrics()
         metrics_task = ProcessMetrics()
@@ -1731,6 +1731,14 @@ def run_tasks(job, path, main_node):
                     image_pull_status = 'failed'
                 else:
                     image = 'image%d' % count
+
+            # Setup for MPI
+            if mpi:
+                logging.info('This is an MPI task, setting up using %d procs per node', procs_per_node_mpi)
+                write_mpi_hosts(path, procs_per_node_mpi)
+                cmd = setup_mpi(task['runtime'], path, mpi, cmd, env, mpi_processes, procs_per_node)
+                cmd = '/bin/bash -c "%s"' % cmd
+
             # Run task
             if (found_image or metrics_download.exit_code == 0) and not FINISH_NOW:
                 task_was_run = True
@@ -1763,6 +1771,14 @@ def run_tasks(job, path, main_node):
                 if metrics_download.exit_code != 0:
                     logging.error('Unable to pull image')
                     image_pull_status = 'failed'
+
+            # Setup for MPI
+            if mpi:
+                logging.info('This is an MPI task, setting up using %d procs per node', procs_per_node_mpi)
+                write_mpi_hosts(path, procs_per_node_mpi)
+                cmd = setup_mpi(task['runtime'], path, mpi, cmd, env, mpi_processes, procs_per_node)
+                cmd = '/bin/bash -c "%s"' % cmd
+
             # Run task
             if (found_image or metrics_download.exit_code == 0) and not FINISH_NOW:
                 task_was_run = True
@@ -1881,7 +1897,7 @@ if __name__ == "__main__":
         filename = '%s/logs/promlet.%d-%d.log' % (path, args.id, node_num)
 
     logging.basicConfig(filename=filename, level=logging.INFO, format='%(asctime)s %(message)s')
-    logging.info('Started promlet using path "%s"', path)
+    logging.info('Started promlet using path "%s" on host %s', path, socket.gethostname())
     logging.info('This is node %d of %d nodes', node_num, num_nodes)
 
     # Write empty json job details, so no matter what happens next, at least an empty file exists
