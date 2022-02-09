@@ -179,11 +179,11 @@ def setup_mpi(runtime, path, mpi, cmd, env, mpi_processes, mpi_procs_per_node):
             mpi_per_node = '-perhost %d' % mpi_procs_per_node
         if num_nodes > 1:
             hostfile = '-machine /home/user/.hosts-mpich'
-            mpi_ssh_cmd = '-bootstrap-exec %s' % mpi_ssh
+            mpi_ssh_cmd = ' -launcher ssh -bootstrap-exec %s' % mpi_ssh
         env_list = ['HOME', 'TMP', 'TEMP', 'TMPDIR']
         env_list.extend(env.keys())
         mpi_env = ",".join('%s' % item for item in env_list)
-        cmd = ("mpirun %s"
+        cmd = ("env -u SINGULARITY_BIND -u SINGULARITY_COMMAND -u SINGULARITY_CONTAINER -u SINGULARITY_ENVIRONMENT -u SINGULARITY_NAME mpirun %s"
                " -np %d"
                " %s"
                " -envlist %s"
@@ -202,6 +202,19 @@ def setup_mpi(runtime, path, mpi, cmd, env, mpi_processes, mpi_procs_per_node):
 
     return cmd
 
+def get_ip():
+    s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    s.settimeout(0)
+    try:
+        # doesn't even have to be reachable
+        s.connect(('10.255.255.255', 1))
+        IP = s.getsockname()[0]
+    except Exception:
+        IP = '127.0.0.1'
+    finally:
+        s.close()
+    return IP
+
 @retry(tries=8, delay=2, backoff=2)
 def get_command(path):
     """
@@ -209,7 +222,7 @@ def get_command(path):
     """
     (token, url) = get_token(path)
     (job_id, _) = get_job_ids(path)
-    url = '%s/kv/_internal_/%d/%s' % (url, job_id, socket.gethostname())
+    url = '%s/kv/_internal_/%d/%s' % (url, job_id, get_ip())
     logging.info('Getting command from: %s', url)
     headers = {'Authorization': 'Bearer %s' % token}
 
@@ -455,12 +468,13 @@ def get_hosts(path):
     try:
         with open('.job.ad', 'r') as fd:
             for line in fd.readlines():
-                match = re.match(r'AllRemoteHosts = "([\w_@,.-]+)"', line)
+                match = re.match(r'PublicClaimIds = "(.*)"', line)
                 if match:
-                    slots = match.group(1)
-                    for slot in slots.split(','):
-                        hosts.append(slot.split('@')[1])
-                    return hosts
+                    for host in match.group(1).split(','):
+                        match2 = re.match(r'<(\d+\.\d+\.\d+\.\d+):.*', host)
+                        if match2:
+                            hosts.append(match2.group(1))
+        return hosts
     except:
         pass
 
@@ -1450,6 +1464,7 @@ def run_udocker(image, cmd, workdir, env, path, mpi, mpi_processes, mpi_procs_pe
         extras += " --env=PROMINENCE_WORKFLOW_ID=%d" % workflow_id
     if mpi == 'intelmpi':
         extras += " --env=I_MPI_JOB_STARTUP_TIMEOUT=120"
+        extras += " --env=I_MPI_HYDRA_BRANCH_COUNT=0"
 
     # Get storage mountpoint
     mountpoint = get_storage_mountpoint(job)
@@ -1537,7 +1552,7 @@ def run_singularity(image, cmd, workdir, env, path, mpi, mpi_processes, mpi_proc
     logging.info('Running: "%s"', run_command)
 
     env_vars = dict(env,
-                    PATH='/usr/local/bin:/usr/bin:/usr/local/sbin:/usr/sbin',
+            PATH='/usr/local/bin:/usr/bin:/usr/local/sbin:/usr/sbin:/bin',
                     TMP='/tmp',
                     TEMP='/tmp',
                     TMPDIR='/tmp',
@@ -1554,6 +1569,7 @@ def run_singularity(image, cmd, workdir, env, path, mpi, mpi_processes, mpi_proc
         env_vars['PROMINENCE_WORKFLOW_ID'] = '%d' % workflow_id
     if mpi == 'intelmpi':
         env_vars['I_MPI_JOB_STARTUP_TIMEOUT'] = '120'
+        env_vars['I_MPI_HYDRA_BRANCH_COUNT'] = '0'
 
     return_code, timed_out, _ = run_with_timeout(run_command, env_vars, walltime_limit)
 
@@ -1686,13 +1702,6 @@ def run_tasks(job, path, main_node):
             procs_per_node_mpi = num_cpus
  
         mpi_processes = procs_per_node_mpi*num_nodes
-
-        # Setup for MPI
-        #if mpi:
-        #    logging.info('This is an MPI task, setting up using %d procs per node', procs_per_node_mpi)
-        #    write_mpi_hosts(path, procs_per_node_mpi)
-        #    cmd = setup_mpi(task['runtime'], path, mpi, cmd, env, mpi_processes, procs_per_node)
-        #    cmd = '/bin/bash -c "%s"' % cmd
 
         metrics_download = ProcessMetrics()
         metrics_task = ProcessMetrics()
