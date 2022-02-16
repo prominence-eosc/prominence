@@ -1614,7 +1614,7 @@ def run_tasks(job, path, main_node):
 
     # Artifact mounts
     artifacts = {}
-    if 'artifacts' in job and main_node:
+    if 'artifacts' in job:
         logging.info('Defining any artifact mounts if necessary')
         for artifact in job['artifacts']:
             if 'mountpoint' in artifact:
@@ -1943,10 +1943,7 @@ if __name__ == "__main__":
             replace_output_urls(job, args.outfile, args.outdir)
 
     # Mount user-specified storage if necessary
-    if main_node:
-        success_mount = mount_storage(job, path)
-    else:
-        success_mount = True
+    success_mount = mount_storage(job, path)
     
     json_mounts = []
     
@@ -1966,14 +1963,11 @@ if __name__ == "__main__":
     success_stageout = False
 
     if success_mount:
-        if main_node:
-            # Download any artifacts
-            logging.info('Stagein any input files if necessary')
-            (success_stagein, json_stagein) = download_artifacts(job, path)
-            if not success_stagein:
-                logging.error('Got error downloading artifact')
-        else:
-            success_stagein = True
+        # Download any artifacts
+        logging.info('Stagein any input files if necessary')
+        (success_stagein, json_stagein) = download_artifacts(job, path)
+        if not success_stagein:
+            logging.error('Got error downloading artifact')
 
         # Run tasks
         try:
@@ -2016,8 +2010,7 @@ if __name__ == "__main__":
         logging.critical('Unable to write promlet.json due to: %s', exc)
 
     # Unmount user-specified storage if necessary
-    if main_node:
-        unmount_storage(job, path)
+    unmount_storage(job, path)
 
     # Return appropriate exit code - necessary for retries of DAG nodes. If reportJobSuccessOnTaskFailure
     # is set to True the job will be reported as successful even if tasks failed
