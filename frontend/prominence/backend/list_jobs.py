@@ -435,6 +435,28 @@ def list_jobs(self, job_ids, identity, active, completed, workflow, num, detail,
                 jobj['storage'] = redact_storage_creds(job_json_file['storage'])
 
             execution = {}
+
+            stagein_total = 0
+            for item in stagein_u:
+                if 'time' in item:
+                    stagein_total = stagein_total + item['time']
+            if stagein_total:
+                execution['stageInTime'] = stagein_total
+
+            stageout_total = 0
+            if 'files' in stageout_u:
+                for item in stageout_u['files']:
+                    if 'time' in item:
+                        stageout_total = stageout_total + item['time']
+
+            if 'directories' in stageout_u:
+                for item in stageout_u['directories']:
+                    if 'time' in item:
+                        stageout_total = stageout_total + item['time']
+
+            if stageout_total > 0:
+                execution['stageOutTime'] = stageout_total
+
             if 'ProminenceInfrastructureSite' in job:
                 if job['ProminenceInfrastructureSite'] != 'none':
                     execution['site'] = str(job['ProminenceInfrastructureSite'])
