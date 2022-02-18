@@ -1627,8 +1627,24 @@ def run_tasks(job, path, main_node):
     job_start_time = time.time()
     total_pull_time = 0
 
+    # Check if we should run serial tasks on all nodes (multi-node jobs)
+    run_on_all = False
+    if 'policies' in job:
+        if 'runSerialTasksOnAllNodes' in job['policies']:
+            if job['policies']['runSerialTasksOnAllNodes']:
+                run_on_all = True
+
     for task in job['tasks']:
         logging.info('Working on task %d', count)
+
+        mpi = None
+        if 'type' in task:
+            if task['type'] == 'openmpi':
+                mpi = 'openmpi'
+            elif task['type'] == 'mpich':
+                mpi = 'mpich'
+            elif task['type'] == 'intelmpi':
+                mpi = 'intelmpi'
 
         image = task['image']
 
@@ -1686,15 +1702,6 @@ def run_tasks(job, path, main_node):
             logging.error('Unable to create directory %s', location)
             return False, {}
 
-        mpi = None
-        if 'type' in task:
-            if task['type'] == 'openmpi':
-                mpi = 'openmpi'
-            elif task['type'] == 'mpich':
-                mpi = 'mpich'
-            elif task['type'] == 'intelmpi':
-                mpi = 'intelmpi'
-
         if 'procsPerNode' in task:
             procs_per_node = task['procsPerNode']
             procs_per_node_mpi = task['procsPerNode']
@@ -1742,6 +1749,13 @@ def run_tasks(job, path, main_node):
                 else:
                     image = 'image%d' % count
 
+            if main_node or run_on_all or num_nodes == 1 or mpi:
+                pass
+            else:
+                logging.info('Not executing task %d on this node', count)
+                count = count + 1
+                continue
+
             # Setup for MPI
             if mpi:
                 logging.info('This is an MPI task, setting up using %d procs per node', procs_per_node_mpi)
@@ -1781,6 +1795,13 @@ def run_tasks(job, path, main_node):
                 if metrics_download.exit_code != 0:
                     logging.error('Unable to pull image')
                     image_pull_status = 'failed'
+
+            if main_node or run_on_all or num_nodes == 1 or mpi:
+                pass
+            else:
+                logging.info('Not executing task %d on this node', count)
+                count = count + 1
+                continue
 
             # Setup for MPI
             if mpi:
