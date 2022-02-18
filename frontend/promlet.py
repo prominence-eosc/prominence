@@ -1557,7 +1557,6 @@ def run_singularity(image, cmd, workdir, env, path, mpi, mpi_processes, mpi_proc
                     TEMP='/tmp',
                     TMPDIR='/tmp',
                     USER='%s' % getpass.getuser(),
-                    PROMINENCE_CONTAINER_LOCATION='%s' % os.path.dirname(image),
                     PROMINENCE_CONTAINER_RUNTIME='singularity',
                     PROMINENCE_CPUS='%d' % job_cpus,
                     PROMINENCE_MEMORY='%d' % job_memory,
