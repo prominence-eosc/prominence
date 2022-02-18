@@ -75,7 +75,7 @@ done
 
 _COMMAND=`echo $_COMMAND | tr '"' "'"`
 
-curl -s -H "Authorization: Bearer $PROMINENCE_TOKEN" -X POST -d "$_COMMAND" $PROMINENCE_URL/kv/_internal_/$PROMINENCE_JOB_ID/$_HOST > /dev/null 2>&1
+curl -s -H "Authorization: Bearer $PROMINENCE_TOKEN" -X POST -d "$_COMMAND" $PROMINENCE_URL/kv/_internal_/$PROMINENCE_JOB_ID/$_HOST/$PROMINENCE_TASK_NUM > /dev/null 2>&1
 """
 
 def retry(tries=4, delay=3, backoff=2):
@@ -135,7 +135,7 @@ def get_nodes():
 
     return (num_nodes, node_num)
 
-def setup_mpi(runtime, path, mpi, cmd, env, mpi_processes, mpi_procs_per_node):
+def setup_mpi(runtime, path, mpi, cmd, env, mpi_processes, mpi_procs_per_node, task_count):
     """
     Setup MPI & create MPI command to be executed on machine with node number zero
     """
@@ -151,7 +151,7 @@ def setup_mpi(runtime, path, mpi, cmd, env, mpi_processes, mpi_procs_per_node):
 
     # Nodes other than node 0 need to retrieve the command from the kv store
     if node_num > 0:
-        cmd = get_command(path)
+        cmd = get_command(path, task_count)
         return cmd
 
     # Node 0 needs to execute mpirun
@@ -216,13 +216,13 @@ def get_ip():
     return IP
 
 @retry(tries=8, delay=2, backoff=2)
-def get_command(path):
+def get_command(paths, task_count):
     """
     Get command from kv store
     """
     (token, url) = get_token(path)
     (job_id, _) = get_job_ids(path)
-    url = '%s/kv/_internal_/%d/%s' % (url, job_id, get_ip())
+    url = '%s/kv/_internal_/%d/%s/%d' % (url, job_id, get_ip(), task_count)
     logging.info('Getting command from: %s', url)
     headers = {'Authorization': 'Bearer %s' % token}
 
@@ -1662,6 +1662,8 @@ def run_tasks(job, path, main_node):
         if token and url:
             env['PROMINENCE_TOKEN'] = token
             env['PROMINENCE_URL'] = url
+        
+        env['PROMINENCE_TASK_NUM'] = '%d' % count
 
         if args.param:
             for pair in args.param:
@@ -1744,7 +1746,7 @@ def run_tasks(job, path, main_node):
             if mpi:
                 logging.info('This is an MPI task, setting up using %d procs per node', procs_per_node_mpi)
                 write_mpi_hosts(path, procs_per_node_mpi)
-                cmd = setup_mpi(task['runtime'], path, mpi, cmd, env, mpi_processes, procs_per_node)
+                cmd = setup_mpi(task['runtime'], path, mpi, cmd, env, mpi_processes, procs_per_node, count)
                 cmd = '/bin/bash -c "%s"' % cmd
 
             # Run task
@@ -1784,7 +1786,7 @@ def run_tasks(job, path, main_node):
             if mpi:
                 logging.info('This is an MPI task, setting up using %d procs per node', procs_per_node_mpi)
                 write_mpi_hosts(path, procs_per_node_mpi)
-                cmd = setup_mpi(task['runtime'], path, mpi, cmd, env, mpi_processes, procs_per_node)
+                cmd = setup_mpi(task['runtime'], path, mpi, cmd, env, mpi_processes, procs_per_node, count)
                 cmd = '/bin/bash -c "%s"' % cmd
 
             # Run task
