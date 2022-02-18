@@ -301,7 +301,8 @@ def validate_job(job):
                        'placement',
                        'autoScalingType',
                        'ignoreTaskFailures',
-                       'reportJobSuccessOnTaskFailure']
+                       'reportJobSuccessOnTaskFailure',
+                       'runSerialTasksOnAllNodes']
 
     valid_events = ['jobFinished']
 
@@ -521,6 +522,10 @@ def validate_job(job):
         for item in job['policies']:
             if item not in policies_valids:
                 return (False, 'invalid item "%s" in policies' % item)
+
+        if 'runSerialTasksOnAllNodes' in job['policies']:
+            if not isinstance(job['policies']['runSerialTasksOnAllNodes'], bool):
+                return (False, 'runSerialTasksOnAllNodes must be either true or false')
 
         if 'placement' in job['policies']:
             (status, msg) = validate_placement(job['policies']['placement'])
