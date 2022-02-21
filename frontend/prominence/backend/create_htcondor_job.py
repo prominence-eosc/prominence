@@ -119,8 +119,14 @@ def _create_htcondor_job(self, username, groups, email, uid, jjob, job_path, wor
     cjob['arguments'] = '--job .job.mapped.json --id 0'
 
     cjob['Log'] = job_path + '/job.0.log'
-    cjob['Output'] = job_path + '/job.0.out'
-    cjob['Error'] = job_path +  '/job.0.err'
+
+    if jjob['resources']['nodes'] == 1:
+        cjob['Output'] = job_path + '/job.0.out'
+        cjob['Error'] = job_path +  '/job.0.err'
+    else:
+        cjob['Output'] = job_path + '/job.0.out.$(Node)'
+        cjob['Error'] = job_path +  '/job.0.err.$(Node)'
+
     cjob['should_transfer_files'] = 'YES'
     cjob['when_to_transfer_output'] = 'ON_EXIT_OR_EVICT'
     cjob['skip_filechecks'] = 'true'
