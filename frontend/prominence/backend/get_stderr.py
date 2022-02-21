@@ -1,12 +1,18 @@
 import os
 
-def get_stderr(self, uid, iwd, out, err, job_id, job_name=None, instance_id=-1):
+def get_stderr(self, uid, iwd, out, err, job_id, job_name=None, instance_id=-1, node=0):
     """
     Return the stdout from the specified job
     """
+    if '#pArAlLeLnOdE#' in err:
+        err = err.replace('#pArAlLeLnOdE#', '%d' % node)
+
     if instance_id > -1:
         if os.path.isfile('%s/job.%d.err' % (iwd, instance_id)):
             with open('%s/job.%d.err' % (iwd, instance_id), 'rb') as fd:
+                return fd.read()
+        if os.path.isfile('%s/job.%d.err.%d' % (iwd, instance_id, node)):
+            with open('%s/job.%d.err.%d' % (iwd, instance_id, node), 'rb') as fd:
                 return fd.read()
     elif os.path.isfile('%s/%s' % (iwd, err)):
         with open('%s/%s' % (iwd, err), 'rb') as fd:
