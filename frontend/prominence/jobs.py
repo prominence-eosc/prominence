@@ -185,6 +185,10 @@ def get_stdout(username, group, email, job_id):
     """
     app.logger.info('%s GetStdOut user:%s group:%s id:%d' % (get_remote_addr(request), username, group, job_id))
 
+    node = 0
+    if 'node' in request.args:
+        node = int(request.args.get('node'))
+
     backend = ProminenceBackend(app.config)
     (uid, identity, iwd, out, err, name, _) = backend.get_job_unique_id(job_id)
     if not identity:
@@ -192,7 +196,7 @@ def get_stdout(username, group, email, job_id):
     if username != identity:
         return not_auth_job()
 
-    stdout = backend.get_stdout(uid, iwd, out, err, job_id, name)
+    stdout = backend.get_stdout(uid, iwd, out, err, job_id, name, node=node)
     if stdout is None:
         return no_stdout()
     else:
@@ -206,6 +210,10 @@ def get_stderr(username, group, email, job_id):
     """
     app.logger.info('%s GetStdErr user:%s group:%s id:%d' % (get_remote_addr(request), username, group, job_id))
 
+    node = 0
+    if 'node' in request.args:
+        node = int(request.args.get('node'))
+
     backend = ProminenceBackend(app.config)
     (uid, identity, iwd, out, err, name, _) = backend.get_job_unique_id(job_id)
     if not identity:
@@ -213,7 +221,7 @@ def get_stderr(username, group, email, job_id):
     if username != identity:
         return not_auth_job()
 
-    stderr = backend.get_stderr(uid, iwd, out, err, job_id, name)
+    stderr = backend.get_stderr(uid, iwd, out, err, job_id, name, node=node)
     if stderr is None:
         return no_stderr()
     else:
