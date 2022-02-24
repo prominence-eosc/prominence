@@ -1673,7 +1673,8 @@ def run_tasks(job, path, main_node):
 
         env = {}
         if 'env' in task:
-            env = task['env']
+            for item in task['env']:
+                env[item] = str(task['env'][item])
 
         if token and url:
             env['PROMINENCE_TOKEN'] = token
