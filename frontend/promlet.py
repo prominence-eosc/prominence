@@ -117,6 +117,7 @@ def write_mpi_hosts(path, cpus):
     with open('%s/userhome/.hosts-openmpi' % path, 'w') as fh:
         for host in hosts_slots:
             fh.write('%s slots=%d max-slots=%d\n' % (host, hosts_slots[host], hosts_slots[host]))
+            logging.info('[mpi hosts] %s slots=%d max-slots=%d', host, hosts_slots[host], hosts_slots[host])
 
     with open('%s/userhome/.hosts-mpich' % path, 'w') as fh:
         for host in hosts_slots:
