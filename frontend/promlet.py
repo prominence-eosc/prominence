@@ -158,6 +158,8 @@ def setup_mpi(runtime, path, mpi, cmd, env, mpi_processes, mpi_procs_per_node, t
     # Nodes other than node 0 need to retrieve the command from the kv store
     if node_num > 0:
         cmd = get_command(path, task_count, node_num)
+        if not cmd:
+            logging.info('Unable to get command from the KV store')
         return cmd
 
     # Node 0 needs to execute mpirun
@@ -1769,6 +1771,11 @@ def run_tasks(job, path, node_num, main_node):
                 logging.info('This is an MPI task, setting up using %d procs per node', procs_per_node_mpi)
                 write_mpi_hosts(path, procs_per_node_mpi, main_node)
                 cmd = setup_mpi(task['runtime'], path, mpi, cmd, env, mpi_processes, procs_per_node, count)
+
+                if not cmd:
+                    success = False
+                    break
+
                 cmd = '/bin/bash -c "%s"' % cmd
 
             # Run task
@@ -1816,6 +1823,11 @@ def run_tasks(job, path, node_num, main_node):
                 logging.info('This is an MPI task, setting up using %d procs per node', procs_per_node_mpi)
                 write_mpi_hosts(path, procs_per_node_mpi, main_node)
                 cmd = setup_mpi(task['runtime'], path, mpi, cmd, env, mpi_processes, procs_per_node, count)
+
+                if not cmd:
+                    success = False
+                    break
+
                 cmd = '/bin/bash -c "%s"' % cmd
 
             # Run task
