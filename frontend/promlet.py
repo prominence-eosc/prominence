@@ -75,7 +75,7 @@ done
 
 _COMMAND=`echo $_COMMAND | tr '"' "'"`
 
-curl -s -H "Authorization: Bearer $PROMINENCE_TOKEN" -X POST -d "$_COMMAND" $PROMINENCE_URL/kv/_internal_/$PROMINENCE_JOB_ID/$_HOST/$PROMINENCE_TASK_NUM > /dev/null 2>&1
+curl -s -H "Authorization: Bearer $PROMINENCE_TOKEN" -X POST -d "$_COMMAND" $PROMINENCE_URL/kv/_internal_/$PROMINENCE_JOB_ID/$_HOST/$PROMINENCE_TASK_NUM/$PROMINENCE_NODE_NUM > /dev/null 2>&1
 """
 
 def retry(tries=4, delay=3, backoff=2):
@@ -157,7 +157,7 @@ def setup_mpi(runtime, path, mpi, cmd, env, mpi_processes, mpi_procs_per_node, t
 
     # Nodes other than node 0 need to retrieve the command from the kv store
     if node_num > 0:
-        cmd = get_command(path, task_count)
+        cmd = get_command(path, task_count, node_num)
         return cmd
 
     # Node 0 needs to execute mpirun
@@ -222,13 +222,13 @@ def get_ip():
     return IP
 
 @retry(tries=8, delay=2, backoff=2)
-def get_command(paths, task_count):
+def get_command(paths, task_count, node_num):
     """
     Get command from kv store
     """
     (token, url) = get_token(path)
     (job_id, _) = get_job_ids(path)
-    url = '%s/kv/_internal_/%d/%s/%d' % (url, job_id, get_ip(), task_count)
+    url = '%s/kv/_internal_/%d/%s/%d/%d' % (url, job_id, get_ip(), task_count, node_num)
     logging.info('Getting command from: %s', url)
     headers = {'Authorization': 'Bearer %s' % token}
 
@@ -1582,7 +1582,7 @@ def run_singularity(image, cmd, workdir, env, path, mpi, mpi_processes, mpi_proc
 
     return return_code, timed_out
 
-def run_tasks(job, path, main_node):
+def run_tasks(job, path, node_num, main_node):
     """
     Execute sequential tasks
     """
@@ -1687,6 +1687,7 @@ def run_tasks(job, path, main_node):
             env['PROMINENCE_URL'] = url
         
         env['PROMINENCE_TASK_NUM'] = '%d' % count
+        env['PROMINENCE_NODE_NUM'] = '%d' % node_num
 
         if args.param:
             for pair in args.param:
@@ -2000,7 +2001,7 @@ if __name__ == "__main__":
 
         # Run tasks
         try:
-            (success_tasks, json_tasks) = run_tasks(job, path, main_node)
+            (success_tasks, json_tasks) = run_tasks(job, path, node_num, main_node)
         except OSError as exc:
             logging.critical('Got exception running tasks: %s', exc)
             success_tasks = False
