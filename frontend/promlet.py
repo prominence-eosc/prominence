@@ -98,7 +98,7 @@ def retry(tries=4, delay=3, backoff=2):
         return f_retry
     return deco_retry
 
-def write_mpi_hosts(path, cpus):
+def write_mpi_hosts(path, cpus, main_node):
     """
     Write MPI hosts files
     """
@@ -115,9 +115,14 @@ def write_mpi_hosts(path, cpus):
             hosts_slots[host] = hosts_slots[host] + cpus
 
     with open('%s/userhome/.hosts-openmpi' % path, 'w') as fh:
+        local_ip = socket.gethostbyname(socket.gethostname())
+        if main_node and local_ip in hosts_slots:
+            fh.write('%s slots=%d max-slots=%d\n' % (local_ip, hosts_slots[local_ip], hosts_slots[local_ip]))
+            logging.info('[mpi hosts main] %s slots=%d max-slots=%d', local_ip, hosts_slots[local_ip], hosts_slots[local_ip])
         for host in hosts_slots:
-            fh.write('%s slots=%d max-slots=%d\n' % (host, hosts_slots[host], hosts_slots[host]))
-            logging.info('[mpi hosts] %s slots=%d max-slots=%d', host, hosts_slots[host], hosts_slots[host])
+            if host != local_ip or not main_node:
+                fh.write('%s slots=%d max-slots=%d\n' % (host, hosts_slots[host], hosts_slots[host]))
+                logging.info('[mpi hosts] %s slots=%d max-slots=%d', host, hosts_slots[host], hosts_slots[host])
 
     with open('%s/userhome/.hosts-mpich' % path, 'w') as fh:
         for host in hosts_slots:
@@ -1761,7 +1766,7 @@ def run_tasks(job, path, main_node):
             # Setup for MPI
             if mpi:
                 logging.info('This is an MPI task, setting up using %d procs per node', procs_per_node_mpi)
-                write_mpi_hosts(path, procs_per_node_mpi)
+                write_mpi_hosts(path, procs_per_node_mpi, main_node)
                 cmd = setup_mpi(task['runtime'], path, mpi, cmd, env, mpi_processes, procs_per_node, count)
                 cmd = '/bin/bash -c "%s"' % cmd
 
@@ -1808,7 +1813,7 @@ def run_tasks(job, path, main_node):
             # Setup for MPI
             if mpi:
                 logging.info('This is an MPI task, setting up using %d procs per node', procs_per_node_mpi)
-                write_mpi_hosts(path, procs_per_node_mpi)
+                write_mpi_hosts(path, procs_per_node_mpi, main_node)
                 cmd = setup_mpi(task['runtime'], path, mpi, cmd, env, mpi_processes, procs_per_node, count)
                 cmd = '/bin/bash -c "%s"' % cmd
 
