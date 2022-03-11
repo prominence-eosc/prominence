@@ -5,6 +5,7 @@ def get_object_size(self, bucket_name, object_name):
     Get the size of an object
     """
     s3_client = boto3.client('s3',
+                             verify=False,
                              endpoint_url=self._config['S3_URL'],
                              aws_access_key_id=self._config['S3_ACCESS_KEY_ID'],
                              aws_secret_access_key=self._config['S3_SECRET_ACCESS_KEY'])
@@ -24,6 +25,7 @@ def create_presigned_url(self, method, bucket_name, object_name, duration_in_sec
     Create presigned S3 URL
     """
     s3_client = boto3.client('s3',
+                             verify=False,
                              endpoint_url=self._config['S3_URL'],
                              aws_access_key_id=self._config['S3_ACCESS_KEY_ID'],
                              aws_secret_access_key=self._config['S3_SECRET_ACCESS_KEY'])
@@ -50,6 +52,7 @@ def get_matching_s3_objects(url, access_key_id, secret_access_key, bucket, prefi
     Generate objects in an S3 bucket filtered by a prefix and/or suffix
     """
     s3 = boto3.client('s3',
+                      verify=False,
                       endpoint_url=url,
                       aws_access_key_id=access_key_id,
                       aws_secret_access_key=secret_access_key)
@@ -126,6 +129,7 @@ def delete_object(self, username, group, obj):
 
     try:
         s3_client = boto3.client('s3',
+                                 verify=False,
                                  endpoint_url=self._config['S3_URL'],
                                  aws_access_key_id=self._config['S3_ACCESS_KEY_ID'],
                                  aws_secret_access_key=self._config['S3_SECRET_ACCESS_KEY'])
