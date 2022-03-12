@@ -102,7 +102,7 @@ def write_mpi_hosts(path, cpus, main_node):
     """
     Write MPI hosts files
     """
-    hosts = get_hosts(path)
+    hosts = get_hosts()
     logging.info('Writing hosts files in %s using hosts: %s', path, ','.join(hosts))
     if not hosts:
         return
@@ -474,7 +474,7 @@ def get_job_ids(path):
 
     return (job_id, workflow_id)
 
-def get_hosts(path):
+def get_hosts():
     """
     Get list of hosts for multi-node jobs from job ad
     """
