@@ -118,15 +118,21 @@ def write_mpi_hosts(path, cpus, main_node):
         local_ip = socket.gethostbyname(socket.gethostname())
         if main_node and local_ip in hosts_slots:
             fh.write('%s slots=%d max-slots=%d\n' % (local_ip, hosts_slots[local_ip], hosts_slots[local_ip]))
-            logging.info('[mpi hosts main] %s slots=%d max-slots=%d', local_ip, hosts_slots[local_ip], hosts_slots[local_ip])
+            logging.info('[openmpi hosts main] %s slots=%d max-slots=%d', local_ip, hosts_slots[local_ip], hosts_slots[local_ip])
         for host in hosts_slots:
             if host != local_ip or not main_node:
                 fh.write('%s slots=%d max-slots=%d\n' % (host, hosts_slots[host], hosts_slots[host]))
-                logging.info('[mpi hosts] %s slots=%d max-slots=%d', host, hosts_slots[host], hosts_slots[host])
+                logging.info('[openmpi hosts] %s slots=%d max-slots=%d', host, hosts_slots[host], hosts_slots[host])
 
     with open('%s/userhome/.hosts-mpich' % path, 'w') as fh:
+        local_ip = socket.gethostbyname(socket.gethostname())
+        if main_node and local_ip in hosts_slots:
+            fh.write('%s:%d\n' % (local_ip, hosts_slots[local_ip]))
+            logging.info('[mpich hosts main] %s:%d' % (local_ip, hosts_slots[local_ip]))
         for host in hosts_slots:
-            fh.write('%s:%d\n' % (host, hosts_slots[host]))
+            if host != local_ip or not main_node:
+                fh.write('%s:%d\n' % (host, hosts_slots[host]))
+                logging.info('[mpich hosts] %s:%d' % (host, hosts_slots[host]))
 
 def get_nodes():
     """
