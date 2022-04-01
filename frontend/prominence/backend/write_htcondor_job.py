@@ -42,7 +42,8 @@ def write_htcondor_job(cjob, filename):
             '+ProminenceWantJobRouter',
             '+remote_cerequirements_default',
             '+ProminenceFactoryId',
-            '+ProminenceWorkflowName']
+            '+ProminenceWorkflowName',
+            '+JobPrio']
     extras = "\n"
     for key in keys:
         if key in cjob:
