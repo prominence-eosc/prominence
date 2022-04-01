@@ -171,6 +171,11 @@ def _create_htcondor_job(self, username, groups, email, uid, jjob, job_path, wor
     # Disk required (GB converted to KiB)
     cjob['RequestDisk'] = str(jjob['resources']['disk']*10.0**9/2**10)
 
+    # Priority
+    if 'policies' in jjob:
+        if 'priority' in jjob['policies']:
+            cjob['+JobPrio'] = jjob['policies']['priority']
+
     # Preemptible
     if 'preemptible' in jjob:
         cjob['+ProminencePreemptible'] = 'true'
