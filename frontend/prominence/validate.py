@@ -27,10 +27,13 @@ def validate_placement(placement):
 
     if 'requirements' in placement:
         for item in placement['requirements']:
-            if item not in ['sites', 'regions']:
+            if item not in ['sites', 'regions', 'exclusive']:
                 return (False, 'invalid item "%s" in requirements' % item)
-            if not isinstance(placement['requirements'][item], list):
+            if not isinstance(placement['requirements'][item], list) and item in ('sites', 'regions'):
                 return (False, '%s in requirements must be a list' % item)
+            if item == 'exclusive':
+                if not isinstance(placement['requirements']['exclusive'], bool):
+                    return (False, 'exclusive must be either true or false')
 
     if 'preferences' in placement:
         for item in placement['preferences']:
