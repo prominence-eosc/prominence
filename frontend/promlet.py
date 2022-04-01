@@ -1042,17 +1042,29 @@ def monitor(function, *args, **kwargs):
 
     return metrics
 
-def get_info():
+def get_info(path):
     """
-    Get information to be passed to job
+    Get provisioned resources
     """
+    cpus = None
+    memory = None
+    site = None
     try:
-        with open('/etc/prominence.json', 'r') as json_file:
-            job = json.load(json_file)
-    except Exception as ex:
-        logging.error('Unable to read job info due to %s', ex)
-        return {}
-    return job
+        with open('%s/.job.ad' % path, 'r') as fd:
+            for line in fd.readlines():
+                match = re.match(r'CpusProvisioned = ([\d]+)', line)
+                if match:
+                    cpus = int(match.group(1))
+                match = re.match(r'MemoryProvisioned = ([\d]+)', line)
+                if match:
+                    memory = int(match.group(1))
+                match = re.match(r'MachineAttrProminenceCloud0 = ([\w\-]+)', line)
+                if match:
+                    site = match.group(1)
+    except Exception:
+        pass
+
+    return {'cpus': cpus, 'memory': memory, 'site': site}
  
 def mount_storage(job, path):
     """
@@ -1462,7 +1474,7 @@ def run_udocker(image, cmd, workdir, env, path, mpi, mpi_processes, mpi_procs_pe
 
     extras += " ".join('--env=%s=%s' % (key, env[key]) for key in env)
 
-    job_info = get_info()
+    job_info = get_info(path)
     (num_nodes, node_num) = get_nodes()
     if 'cpus' in job_info:
         extras += " --env=PROMINENCE_CPUS=%d" % job_info['cpus']
@@ -1554,7 +1566,7 @@ def run_singularity(image, cmd, workdir, env, path, mpi, mpi_processes, mpi_proc
     job_cpus = -1
     job_memory = -1
     num_retries = 0
-    job_info = get_info()
+    job_info = get_info(path)
     if 'cpus' in job_info:
         job_cpus = job_info['cpus']
     if 'memory' in job_info:
@@ -2040,7 +2052,7 @@ if __name__ == "__main__":
     json_output['stagein'] = json_stagein
 
     # Get site
-    job_info = get_info()
+    job_info = get_info(path)
     if 'site' in job_info:
         json_output['site'] = job_info['site']
 
