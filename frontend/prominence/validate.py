@@ -299,6 +299,7 @@ def validate_job(job):
                        'maximumIdleTimePerResource',
                        'leaveInQueue',
                        'placement',
+                       'priority',
                        'autoScalingType',
                        'ignoreTaskFailures',
                        'reportJobSuccessOnTaskFailure',
@@ -543,6 +544,10 @@ def validate_job(job):
         if 'reportJobSuccessOnTaskFailure' in job['policies']:
             if not isinstance(job['policies']['reportJobSuccessOnTaskFailure'], bool):
                 return (False, 'reportJobSuccessOnTaskFailure must be either true or false')
+
+        if 'priority' in job['policies']:
+            if not str(job['policies']['priority']).isdigit():
+                return (False, 'the priority must be an integer')
 
         if 'maximumRetries' in job['policies']:
             if not str(job['policies']['maximumRetries']).isdigit():
