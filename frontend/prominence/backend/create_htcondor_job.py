@@ -163,10 +163,23 @@ def _create_htcondor_job(self, username, groups, email, uid, jjob, job_path, wor
         cjob['+ProminenceEmail'] = condor_str(email)
 
     # Memory required
-    cjob['RequestMemory'] = str(1000*int(jjob['resources']['memory']))
+    if 'memory' in jjob['resources']:
+        cjob['RequestMemory'] = str(1000*int(jjob['resources']['memory']))
+    elif 'memoryPerCpu' in jjob['resources'] and 'cpus' in jjob['resources']:
+        cjob['RequestMemory'] = str(1000*int(jjob['resources']['memoryPerCpu']*jjob['resources']['cpus']))
 
     # CPUs required
-    cjob['RequestCpus'] = str(jjob['resources']['cpus'])
+    if 'cpus' in jjob['resources']:
+        cjob['RequestCpus'] = str(jjob['resources']['cpus'])
+    elif 'cpusRange' in jjob['resources']:
+        cjob['Requirements'] = "Cpus >= %d && (PartitionableSlot || Cpus <= %d)" % (jjob['resources']['cpusRange'][0], jjob['resources']['cpusRange'][1])
+        cjob['RequestCpus'] = "Cpus > %d ? %d : Cpus" % (jjob['resources']['cpusRange'][1], jjob['resources']['cpusRange'][1])
+        cjob['Rank'] = "Cpus"
+
+        if 'memoryPerCpu' in jjob['resources']:
+            cjob['RequestMemory'] = "%d*(Cpus > %d ? %d : Cpus)" % (int(jjob['resources']['memoryPerCpu']),
+                                                                    jjob['resources']['cpusRange'][1],
+                                                                    jjob['resources']['cpusRange'][1])
 
     # Disk required (GB converted to KiB)
     cjob['RequestDisk'] = str(jjob['resources']['disk']*10.0**9/2**10)
@@ -204,7 +217,8 @@ def _create_htcondor_job(self, username, groups, email, uid, jjob, job_path, wor
     cjob['leave_in_queue'] = '(JobStatus == 4 || JobStatus == 3) && ProminenceRemoveFromQueue =?= False'
 
     # Site & region requirements
-    cjob['Requirements'] = 'True'
+    if not cjob['Requirements']:
+        cjob['Requirements'] = 'True'
     if 'policies' in jjob:
         if 'placement' in jjob['policies']:
             if 'requirements' in jjob['policies']['placement']:
@@ -214,6 +228,14 @@ def _create_htcondor_job(self, username, groups, email, uid, jjob, job_path, wor
                 if 'regions' in jjob['policies']['placement']['requirements']:
                     regions = ",".join(jjob['policies']['placement']['requirements']['regions'])
                     cjob['Requirements'] = '%s && stringListMember(TARGET.ProminenceRegion, "%s")' % (cjob['Requirements'], regions)
+
+            # Exclusivity
+            # TODO: Add min and/or max number of CPUs
+            if 'requirements' in jjob['policies']['placement']:
+                if 'exclusive' in jjob['policies']['placement']['requirements']:
+                    if jjob['policies']['placement']['requirements']['exclusive']:
+                        cjob['RequestCpus'] = "TotalCpus"
+                        cjob['Requirements'] = '%s && TotalCpus == Cpus' % (cjob['Requirements'])
 
     # Artifacts
     artifacts = []
@@ -338,10 +360,13 @@ def _create_htcondor_job(self, username, groups, email, uid, jjob, job_path, wor
                     cjob['+ProminenceWantMPI'] = 'true'
 
     # Prepare for submission to a remote HPC system
-    tasks = jjob['resources']['nodes']
-    cpus_per_task = jjob['resources']['cpus']
-    memory_per_cpu = jjob['resources']['memory']*1000
-    cjob['+remote_cerequirements_default'] = condor_str("RequiredTasks == %d && RequiredMemoryPerCpu == %d && RequiredCpusPerTask == %d && RequiredTime == %d" % (tasks, memory_per_cpu, cpus_per_task, max_run_time))
+    #tasks = jjob['resources']['nodes']
+    #cpus_per_task = jjob['resources']['cpus']
+    #if 'memory' in jjob['resources']:
+    #    memory_per_cpu = jjob['resources']['memory']*1000
+    #else:
+    #    memory_per_cpu = jjob['resources']['memoryPerCpu']*jjob['resources']['cpus']*1000
+    #cjob['+remote_cerequirements_default'] = condor_str("RequiredTasks == %d && RequiredMemoryPerCpu == %d && RequiredCpusPerTask == %d && RequiredTime == %d" % (tasks, memory_per_cpu, cpus_per_task, max_run_time))
 
     # Set max idle time per resource
     max_idle_time = 0
