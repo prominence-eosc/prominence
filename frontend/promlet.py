@@ -1617,6 +1617,8 @@ def run_tasks(job, path, node_num, main_node):
         if 'ignoreTaskFailures' in job['policies']:
             ignore_failures = job['policies']['ignoreTaskFailures']
 
+    job_info = get_info(path)
+
     # Number of nodes
     if 'nodes' in job['resources']:
         num_nodes = job['resources']['nodes']
@@ -1624,7 +1626,7 @@ def run_tasks(job, path, node_num, main_node):
         num_nodes = 1
 
     # Number of CPUs
-    num_cpus = job['resources']['cpus']
+    num_cpus = job_info['cpus']
 
     # MPI processes
     mpi_processes = num_cpus*num_nodes
