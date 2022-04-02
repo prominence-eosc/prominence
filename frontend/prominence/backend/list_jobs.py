@@ -468,6 +468,10 @@ def list_jobs(self, job_ids, identity, active, completed, workflow, num, detail,
                                     'model': job_u['cpu_model'],
                                     'clock': job_u['cpu_clock']}
 
+            if 'memory' in job_u and 'cpus' in job_u:
+                execution['provisionedResources'] = {'cpus': job_u['cpus'],
+                                                     'memory': job_u['memory']}
+
             new_tasks_u = []
             if tasks_u:
                 for task_u in tasks_u:
