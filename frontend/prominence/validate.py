@@ -292,7 +292,9 @@ def validate_job(job):
 
     resources_valids = ['nodes',
                         'cpus',
+                        'cpusRange',
                         'memory',
+                        'memoryPerCpu',
                         'disk',
                         'walltime']
 
@@ -355,16 +357,32 @@ def validate_job(job):
                 return (False, 'number of cpus must be an integer')
             if job['resources']['cpus'] < 1:
                 return (False, 'number of cpus must be at least 1')
-        else:
-            return (False, 'number of cpus must be defined')
+        elif 'cpusRange' not in job['resources']:
+            return (False, 'number of cpus or cpusRange must be defined')
+        elif 'cpusRange' in job['resources']:
+            if not isinstance(job['resources']['cpusRange'], list):
+                return (False, 'cpusRange must be a list containing the min and max allowed number of CPUs')
+            if len(job['resources']['cpusRange']) != 2:
+                return (False, 'cpusRange must be a list containing the min and max allowed number of CPUs')
+
+        if 'cpus' in job['resources'] and 'cpusRange' in job['resources']:
+            return (False, 'cpus and cpusRange cannot both be defined')
 
         if 'memory' in job['resources']:
             if not str(job['resources']['memory']).isdigit():
                 return (False, 'memory must be an integer')
             if job['resources']['memory'] < 1:
                 return (False, 'memory must be at least 1')
-        else:
-            return (False, 'memory (in GB) must be defined')
+        elif 'memoryPerCpu' not in job['resources']:
+            return (False, 'memory or memoryPerCpu (in GB) must be defined')
+        elif 'memoryPerCpu' in job['resources']:
+            if not str(job['resources']['memoryPerCpu']).isdigit():
+                return (False, 'memoryPerCpu must be an integer')
+            if job['resources']['memoryPerCpu'] < 1:
+                return (False, 'memoryPerCpu must be at least 1')
+
+        if 'memory' in job['resources'] and 'memoryPerCpu' in job['resources']:
+            return (False, 'memory and memoryPerCpu cannot both be defined')
 
         if 'disk' in job['resources']:
             if not str(job['resources']['disk']).isdigit():
