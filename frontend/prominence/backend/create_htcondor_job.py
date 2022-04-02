@@ -229,13 +229,6 @@ def _create_htcondor_job(self, username, groups, email, uid, jjob, job_path, wor
                     regions = ",".join(jjob['policies']['placement']['requirements']['regions'])
                     cjob['Requirements'] = '%s && stringListMember(TARGET.ProminenceRegion, "%s")' % (cjob['Requirements'], regions)
 
-            # Exclusivity
-            # TODO: Add min and/or max number of CPUs
-            #if 'requirements' in jjob['policies']['placement']:
-            #    if 'exclusive' in jjob['policies']['placement']['requirements']:
-            #        if jjob['policies']['placement']['requirements']['exclusive']:
-
-
     # Artifacts
     artifacts = []
     if 'artifacts' in jjob:
