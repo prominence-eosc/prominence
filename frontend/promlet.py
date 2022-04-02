@@ -1058,11 +1058,11 @@ def get_info(path):
                 match = re.match(r'MemoryProvisioned = ([\d]+)', line)
                 if match:
                     memory = int(match.group(1))
-                match = re.match(r'MachineAttrProminenceCloud0 = ([\w\-]+)', line)
+                match = re.match(r'MachineAttrProminenceCloud0 = "([\w\-]+)"', line)
                 if match:
                     site = match.group(1)
-    except Exception:
-        pass
+    except Exception as err:
+        logging.error('Got exception reading info from .job.ad: %s', err)
 
     return {'cpus': cpus, 'memory': memory, 'site': site}
  
@@ -2057,6 +2057,10 @@ if __name__ == "__main__":
     job_info = get_info(path)
     if 'site' in job_info:
         json_output['site'] = job_info['site']
+    if 'cpus' in job_info:
+        json_output['cpus'] = job_info['cpus']
+    if 'memory' in job_info:
+        json_output['memory'] = job_info['memory']
 
     # Get CPU info
     (cpu_vendor, cpu_model, cpu_clock) = get_cpu_info()
