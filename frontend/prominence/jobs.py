@@ -1,4 +1,5 @@
 """Routes for managing jobs"""
+import json
 import uuid
 
 from flask import Blueprint, jsonify, request
@@ -6,7 +7,7 @@ from flask import current_app as app
 
 from .auth import requires_auth
 from .backend import ProminenceBackend
-from .errors import invalid_constraint, func_disabled, no_such_job, not_auth_job, job_not_running, command_failed
+from .errors import invalid_constraint, func_disabled, no_such_job, not_auth_job, job_not_running, command_failed, job_rerun_error
 from .errors import job_id_required, no_stdout, no_stderr, snapshot_path_required, snapshot_invalid_path, removal_failed
 from .validate import validate_job
 from .utilities import get_remote_addr
@@ -301,3 +302,37 @@ def remove_job(username, group, email, job_id):
         return removal_failed()
 
     return jsonify({}), 200
+
+jobs.route("/prominence/v1/jobs/<int:job_id>", methods=['PUT'])
+@requires_auth
+def rerun_job(username, group, email, job_id):
+    """
+    Re-run the specified job
+    """
+    # Job unique identifier
+    uid = str(uuid.uuid4())
+
+    app.logger.info('%s JobReRun user:%s group:%s id:%d' % (get_remote_addr(request), username, group, job_id))
+
+    # Get previous job description
+    backend = ProminenceBackend(app.config)
+    (uid, identity, iwd, _, _, _, status) = backend.get_job_unique_id(job_id)
+
+    if not identity:
+        return no_such_job()
+    if username != identity:
+        return not_auth_job()
+
+    try:
+        with open(iwd+  '/.job.json') as json_file:
+            job_json = json.load(json_file)
+    except:
+        return job_rerun_error()
+
+    (return_code, data) = backend.create_job(username, group, email, uid, job_json)
+
+    retval = 201
+    if return_code == 1:
+        retval = 400
+
+    return jsonify(data), retval
