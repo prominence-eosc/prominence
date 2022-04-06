@@ -2133,4 +2133,4 @@ if __name__ == "__main__":
         exit(1)
 
     logging.info('Exiting promlet with success')
-    uxit(0)
+    exit(0)
