@@ -243,3 +243,22 @@ def rerun_workflow(username, group, email, workflow_id):
 
     return jsonify(data), retval
 
+@workflows.route("/prominence/v1/workflows/<int:workflow_id>/remove", methods=['PUT'])
+@requires_auth
+def remove_workflow(username, group, email, workflow_id):
+    """
+    Remove a completed workflow from the queue
+    """
+    app.logger.info('%s RemoveFromQueue user:%s group:%s id:%d' % (get_remote_addr(request), username, group, workflow_id))
+
+    backend = ProminenceBackend(app.config)
+    (uid, identity, iwd, _, _, _, status) = backend.get_job_unique_id(workflow_id)
+    if not identity:
+        return no_such_workflow()
+    if username != identity:
+        return not_auth_workflow()
+
+    if not backend.remove_workflow(workflow_id):
+        return removal_failed()
+
+    return jsonify({}), 200
