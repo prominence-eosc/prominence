@@ -4,6 +4,7 @@ import argparse
 import distutils.spawn
 import getpass
 import glob
+import hashlib
 import json
 import logging
 import os
@@ -77,6 +78,21 @@ _COMMAND=`echo $_COMMAND | tr '"' "'"`
 
 curl -s -H "Authorization: Bearer $PROMINENCE_TOKEN" -X POST -d "$_COMMAND" $PROMINENCE_URL/kv/_internal_/$PROMINENCE_JOB_ID/$_HOST/$PROMINENCE_TASK_NUM/$PROMINENCE_NODE_NUM > /dev/null 2>&1
 """
+
+def calculate_sha256(filename):
+    """
+    Calculate sha256 checksum of the specified file
+    """
+    sha256_hash = hashlib.sha256()
+    try:
+        with open(filename, "rb") as f:
+            for byte_block in iter(lambda: f.read(4096),b""):
+                sha256_hash.update(byte_block)
+            return sha256_hash.hexdigest()
+    except:
+        pass
+
+    return None
 
 def retry(tries=4, delay=3, backoff=2):
     """
@@ -1024,6 +1040,7 @@ class ProcessMetrics(object):
         self.time_user = None
         self.time_sys = None
         self.max_rss = None
+        self.data = None
 
 def monitor(function, *args, **kwargs):
     """
@@ -1032,7 +1049,7 @@ def monitor(function, *args, **kwargs):
     metrics = ProcessMetrics()
 
     start_time, start_resources = time.time(), getrusage(RUSAGE_CHILDREN)
-    metrics.exit_code, metrics.timed_out = function(*args, **kwargs)
+    metrics.exit_code, metrics.timed_out, metrics.data = function(*args, **kwargs)
     end_time, end_resources = time.time(), getrusage(RUSAGE_CHILDREN)
 
     metrics.time_wall = end_time - start_time
@@ -1064,7 +1081,7 @@ def get_info(path):
     except Exception as err:
         logging.error('Got exception reading info from .job.ad: %s', err)
 
-    return {'cpus': cpus, 'memory': memory, 'site': site}
+    return {'cpus': cpus, 'memory': int(memory/1024.0), 'site': site}
  
 def mount_storage(job, path):
     """
@@ -1181,6 +1198,7 @@ def download_singularity(image, image_new, location, path, credential, job):
     Download a Singularity image from a URL or pull an image from Docker Hub
     """
     logging.info('Pulling Singularity image for task')
+    checksum = None
 
     if image.startswith('/'):
         (token, base_url, _) = get_base_url(job)
@@ -1201,14 +1219,18 @@ def download_singularity(image, image_new, location, path, credential, job):
             (success, attempts) = download_from_url_with_retries(image, image_new_tmp, token)
             logging.info('Number of attempts to download file %s was %d', image, attempts)
 
+            # Generate checksum
+            checksum = calculate_sha256('%s/image.tar' % location)
+            logging.info('Calculated image checksum: %s', checksum)
+
             if not success:
-                return 1, False
+                return 1, False, checksum
 
             # Create singularity image from Docker archive
             success = create_sif_from_archive(image_new, image_new_tmp)
 
             if not success:
-                return 1, False
+                return 1, False, checksum
 
             # Remove temporary file
             try:
@@ -1220,7 +1242,7 @@ def download_singularity(image, image_new, location, path, credential, job):
             (success, attempts) = download_from_url_with_retries(image, image_new, token)
             logging.info('Number of attempts to download file %s was %d', image, attempts)
             if not success:
-                return 1, False
+                return 1, False, checksum
 
         logging.info('Singularity image downloaded from URL and written to file %s', image_new)
     elif image.startswith('/') and os.path.exists('%s/mounts/%s' % (path, image)):
@@ -1235,7 +1257,7 @@ def download_singularity(image, image_new, location, path, credential, job):
             success = create_sif_from_archive(image_new, '%s/mounts/%s' % (path, image))
 
             if not success:
-                return 1, False
+                return 1, False, checksum
         else:
             logging.info('Creating symlink to Singularity image from source on attached storage')
             try:
@@ -1243,7 +1265,12 @@ def download_singularity(image, image_new, location, path, credential, job):
                 os.symlink('%s/mounts/%s' % (path, image), image_new)
             except:
                 logging.error('Unable to create symlink for container image from source location on attached storage')
-                return 1, False
+                return 1, False, checksum
+
+            # Generate checksum
+            checksum = calculate_sha256('%s/mounts/%s' % (path, image))
+            logging.info('Calculated image checksum: %s', checksum)
+
     else:
         logging.info('Image needs to be pulled from registry')
 
@@ -1284,14 +1311,14 @@ def download_singularity(image, image_new, location, path, credential, job):
 
         if not success:
             logging.error('Unable to pull Singularity image successfully after %d attempts', count)
-            return 1, False
+            return 1, False, checksum
 
     if os.path.exists(image_new):
         logging.info('Image file %s exists', image_new)
     else:
         logging.info('Image file %s does not exist', image_new)
 
-    return 0, False
+    return 0, False, checksum
 
 def get_udocker(path):
     """
@@ -1360,10 +1387,11 @@ def download_udocker(image, location, label, path, credential, job):
     """
     Download an image from a URL and create a udocker container named 'image'
     """
+    checksum = None
     udocker_location = get_udocker(path)
     if not udocker_location:
         logging.error('Unable to install udockertools')
-        return 1, False
+        return 1, False, checksum
 
     if image.startswith('/'):
         (token, base_url, _) = get_base_url(job)
@@ -1380,7 +1408,11 @@ def download_udocker(image, location, label, path, credential, job):
         (success, attempts) = download_from_url_with_retries(image, '%s/image.tar' % location, token)
         logging.info('Number of attempts to download file %s was %d', '%s/image.tar' % location, attempts)
         if not success:
-            return 1, False
+            return 1, False, checksum
+
+        # Generate checksum
+        checksum = calculate_sha256('%s/image.tar' % location)
+        logging.info('Calculated image checksum: %s', checksum)
 
     (udocker_path, additional_envs) = generate_envs()
 
@@ -1392,7 +1424,11 @@ def download_udocker(image, location, label, path, credential, job):
             os.symlink('%s/mounts/%s' % (path, image), '%s/image.tar' % location)
         except Exception as err:
             logging.error('Unable to create symlink to container image from source location on attached storage due to "%s"', err)
-            return 1, False
+            return 1, False, checksum
+
+        # Generate checksum
+        checksum = calculate_sha256('%s/image.tar' % location)
+        logging.info('Calculated image checksum: %s', checksum)
 
     if re.match(r'^http', image) or (image.startswith('/') and image.endswith('.tar')):
         logging.info('Loading udocker image')
@@ -1410,7 +1446,7 @@ def download_udocker(image, location, label, path, credential, job):
             logging.error('Unable to load udocker tarball')
             logging.error(stdout)
             logging.error(stderr)
-            return 1, False
+            return 1, False, checksum
 
         # Determine image name
         image = stdout.split('\n')[len(stdout.split('\n')) - 2]
@@ -1431,7 +1467,7 @@ def download_udocker(image, location, label, path, credential, job):
         return_code = process.returncode
 
         if return_code != 0:
-            return 1, False
+            return 1, False, checksum
 
     # Create container
     logging.info('Creating udocker container')
@@ -1448,9 +1484,9 @@ def download_udocker(image, location, label, path, credential, job):
         logging.error('Got error creating udocker container')
         logging.error('stdout=%s', stdout)
         logging.error('stderr=%s', stderr)
-        return 1, False
+        return 1, False, checksum
 
-    return 0, False
+    return 0, False, checksum
 
 def run_udocker(image, cmd, workdir, env, path, mpi, mpi_processes, mpi_procs_per_node, artifacts, walltime_limit, job):
     """
@@ -1459,7 +1495,7 @@ def run_udocker(image, cmd, workdir, env, path, mpi, mpi_processes, mpi_procs_pe
     udocker_location = get_udocker(path)
     if not udocker_location:
         logging.error('Unable to install udockertools')
-        return 1, False
+        return 1, False, None
 
     extras = ''
     if cmd is None:
@@ -1532,7 +1568,7 @@ def run_udocker(image, cmd, workdir, env, path, mpi, mpi_processes, mpi_procs_pe
 
     logging.info('Task had exit code %d', return_code)
 
-    return return_code, timed_out
+    return return_code, timed_out, None
 
 def run_singularity(image, cmd, workdir, env, path, mpi, mpi_processes, mpi_procs_per_node, artifacts, walltime_limit, job):
     """
@@ -1600,7 +1636,7 @@ def run_singularity(image, cmd, workdir, env, path, mpi, mpi_processes, mpi_proc
 
     logging.info('Task had exit code %d', return_code)
 
-    return return_code, timed_out
+    return return_code, timed_out, None
 
 def run_tasks(job, path, node_num, main_node):
     """
@@ -1872,6 +1908,8 @@ def run_tasks(job, path, node_num, main_node):
 
         task_u = {}
         task_u['imagePullStatus'] = image_pull_status
+        if metrics_download.data:
+            task_u['imageSha256'] = metrics_download.data
         if metrics_download.time_wall:
             task_u['imagePullTime'] = metrics_download.time_wall
         if task_was_run:
@@ -2091,4 +2129,4 @@ if __name__ == "__main__":
         exit(1)
 
     logging.info('Exiting promlet with success')
-    exit(0)
+    uxit(0)
