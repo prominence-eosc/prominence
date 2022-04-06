@@ -173,13 +173,13 @@ def _create_htcondor_job(self, username, groups, email, uid, jjob, job_path, wor
         cjob['RequestCpus'] = str(jjob['resources']['cpus'])
     elif 'cpusRange' in jjob['resources']:
         cjob['Requirements'] = "Cpus >= %d && (PartitionableSlot || Cpus <= %d)" % (jjob['resources']['cpusRange'][0], jjob['resources']['cpusRange'][1])
-        cjob['RequestCpus'] = "Cpus > %d ? %d : Cpus" % (jjob['resources']['cpusRange'][1], jjob['resources']['cpusRange'][1])
+        cjob['RequestCpus'] = "ifThenElse(Cpus > %d, %d, Cpus)" % (jjob['resources']['cpusRange'][1], jjob['resources']['cpusRange'][1])
         cjob['Rank'] = "Cpus"
 
         if 'memoryPerCpu' in jjob['resources']:
-            cjob['RequestMemory'] = "%d*(Cpus > %d ? %d : Cpus)" % (int(jjob['resources']['memoryPerCpu']),
-                                                                    jjob['resources']['cpusRange'][1],
-                                                                    jjob['resources']['cpusRange'][1])
+            cjob['RequestMemory'] = "%d*ifThenElse(Cpus > %d, %d, Cpus)" % (int(jjob['resources']['memoryPerCpu']),
+                                                                            jjob['resources']['cpusRange'][1],
+                                                                            jjob['resources']['cpusRange'][1])
 
     # Disk required (GB converted to KiB)
     cjob['RequestDisk'] = str(jjob['resources']['disk']*10.0**9/2**10)
@@ -217,7 +217,7 @@ def _create_htcondor_job(self, username, groups, email, uid, jjob, job_path, wor
     cjob['leave_in_queue'] = '(JobStatus == 4 || JobStatus == 3) && ProminenceRemoveFromQueue =?= False'
 
     # Site & region requirements
-    if not cjob['Requirements']:
+    if 'Requirements' not in cjob:
         cjob['Requirements'] = 'True'
     if 'policies' in jjob:
         if 'placement' in jjob['policies']:
