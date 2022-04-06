@@ -290,6 +290,7 @@ def validate_job(job):
     resources_valids = ['nodes',
                         'cpus',
                         'cpusRange',
+                        'cpusOptions',
                         'memory',
                         'memoryPerCpu',
                         'disk',
@@ -354,16 +355,25 @@ def validate_job(job):
                 return (False, 'number of cpus must be an integer')
             if job['resources']['cpus'] < 1:
                 return (False, 'number of cpus must be at least 1')
-        elif 'cpusRange' not in job['resources']:
-            return (False, 'number of cpus or cpusRange must be defined')
+        elif 'cpusRange' not in job['resources'] and 'cpusOptions' not in job['resources']:
+            return (False, 'one of cpus, cpusRange, cpusOptions must be defined')
         elif 'cpusRange' in job['resources']:
             if not isinstance(job['resources']['cpusRange'], list):
                 return (False, 'cpusRange must be a list containing the min and max allowed number of CPUs')
             if len(job['resources']['cpusRange']) != 2:
                 return (False, 'cpusRange must be a list containing the min and max allowed number of CPUs')
+        elif 'cpusOptions' in job['resources']:
+            if not isinstance(job['resources']['cpusOptions'], list):
+                return (False, 'cpusOptions must be a list containing the two possible number of CPUs')
+            if len(job['resources']['cpusOptions']) != 2:
+                return (False, 'cpusOptions must be a list containing the two possible number of CPUs')
 
         if 'cpus' in job['resources'] and 'cpusRange' in job['resources']:
             return (False, 'cpus and cpusRange cannot both be defined')
+        elif 'cpus' in job['resources'] and 'cpusOptions' in job['resources']:
+            return (False, 'cpus and cpusOptions cannot both be defined')
+        elif 'cpusRange' in job['resources'] and 'cpusOptions' in job['resources']:
+            return (False, 'cpusRange and cpusOptions cannot both be defined')
 
         if 'memory' in job['resources']:
             if not str(job['resources']['memory']).isdigit():
