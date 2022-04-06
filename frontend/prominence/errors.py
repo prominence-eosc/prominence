@@ -2,6 +2,13 @@
 from flask import current_app as app
 from flask import jsonify
 
+def job_rerun_error():
+    """
+    Unable to rerun job
+    """
+    with app.app_context():
+        return jsonify({'error':'Unable to get JSON description of the specified job'}), 400
+
 def no_such_job():
     """
     User has specified an invalid job id
