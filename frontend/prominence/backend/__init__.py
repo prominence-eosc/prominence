@@ -12,6 +12,7 @@ class ProminenceBackend(object):
     from .list_jobs import list_jobs
     from .delete_job import delete_job
     from .remove_job import remove_job
+    from .remove_workflow import remove_workflow
     from .create_workflow import create_workflow, _output_urls
     from .list_workflows import list_workflows
     from .delete_workflow import delete_workflow
