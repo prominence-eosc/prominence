@@ -1220,7 +1220,7 @@ def download_singularity(image, image_new, location, path, credential, job):
             logging.info('Number of attempts to download file %s was %d', image, attempts)
 
             # Generate checksum
-            checksum = calculate_sha256('%s/image.tar' % location)
+            checksum = calculate_sha256(image_new_tmp)
             logging.info('Calculated image checksum: %s', checksum)
 
             if not success:
@@ -1243,6 +1243,10 @@ def download_singularity(image, image_new, location, path, credential, job):
             logging.info('Number of attempts to download file %s was %d', image, attempts)
             if not success:
                 return 1, False, checksum
+
+            # Generate checksum
+            checksum = calculate_sha256(image_new)
+            logging.info('Calculated image checksum: %s', checksum)
 
         logging.info('Singularity image downloaded from URL and written to file %s', image_new)
     elif image.startswith('/') and os.path.exists('%s/mounts/%s' % (path, image)):
