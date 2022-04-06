@@ -164,9 +164,9 @@ def _create_htcondor_job(self, username, groups, email, uid, jjob, job_path, wor
 
     # Memory required
     if 'memory' in jjob['resources']:
-        cjob['RequestMemory'] = str(1000*int(jjob['resources']['memory']))
+        cjob['RequestMemory'] = str(1024*int(jjob['resources']['memory']))
     elif 'memoryPerCpu' in jjob['resources'] and 'cpus' in jjob['resources']:
-        cjob['RequestMemory'] = str(1000*int(jjob['resources']['memoryPerCpu']*jjob['resources']['cpus']))
+        cjob['RequestMemory'] = str(1024*int(jjob['resources']['memoryPerCpu']*jjob['resources']['cpus']))
 
     # CPUs required
     if 'cpus' in jjob['resources']:
@@ -177,7 +177,7 @@ def _create_htcondor_job(self, username, groups, email, uid, jjob, job_path, wor
         cjob['Rank'] = "Cpus"
 
         if 'memoryPerCpu' in jjob['resources']:
-            cjob['RequestMemory'] = "%d*ifThenElse(Cpus > %d, %d, Cpus)" % (int(1000*jjob['resources']['memoryPerCpu']),
+            cjob['RequestMemory'] = "%d*ifThenElse(Cpus > %d, %d, Cpus)" % (int(1024*jjob['resources']['memoryPerCpu']),
                                                                             jjob['resources']['cpusRange'][1],
                                                                             jjob['resources']['cpusRange'][1])
     elif 'cpusOptions' in jjob['resources']:
@@ -187,7 +187,7 @@ def _create_htcondor_job(self, username, groups, email, uid, jjob, job_path, wor
                                                                  jjob['resources']['cpusOptions'][1])
 
         if 'memoryPerCpu' in jjob['resources']:
-            cjob['RequestMemory'] = "%d*RequestCpus" % int(1000*jjob['resources']['memoryPerCpu'])
+            cjob['RequestMemory'] = "%d*RequestCpus" % int(1024*jjob['resources']['memoryPerCpu'])
 
     # Disk required (GB converted to KiB)
     cjob['RequestDisk'] = str(jjob['resources']['disk']*10.0**9/2**10)
