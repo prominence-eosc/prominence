@@ -55,7 +55,8 @@ def validate_workflow(workflow):
 
     policies_workflow_valids = ['maximumRetries',
                                 'placement',
-                                'maximumReruns']
+                                'maximumReruns',
+                                'leaveInQueue']
 
     valid_events = ['workflowFinished']
 
@@ -224,6 +225,10 @@ def validate_workflow(workflow):
 
             if workflow['policies']['maximumReruns'] > 10:
                 return (False, 'the number of reruns must be less than 10')
+
+        if 'leaveInQueue' in workflow['policies']:
+            if not isinstance(workflow['policies']['leaveInQueue'], bool):
+                return (False, 'leaveInQueue must be either true or false')
 
     # Retries
     if 'maximumRetries' in workflow:
@@ -559,6 +564,10 @@ def validate_job(job):
         if 'runSerialTasksOnAllNodes' in job['policies']:
             if not isinstance(job['policies']['runSerialTasksOnAllNodes'], bool):
                 return (False, 'runSerialTasksOnAllNodes must be either true or false')
+
+        if 'leaveInQueue' in job['policies']:
+            if not isinstance(job['policies']['leaveInQueue'], bool):
+                return (False, 'leaveInQueue must be either true or false')
 
         if 'placement' in job['policies']:
             (status, msg) = validate_placement(job['policies']['placement'])
