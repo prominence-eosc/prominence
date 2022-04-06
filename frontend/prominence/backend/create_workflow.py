@@ -389,6 +389,15 @@ def create_workflow(self, username, groups, email, uid, jwf):
     dag_appends.append("'+ProminenceGroup=\"%s\"'" % groups)
     dag_appends.append("'+ProminenceJobUniqueIdentifier=\"%s\"'" % uid)
 
+    # Should the workflow be removed from the queue once finished?
+    prfq = '+ProminenceRemoveFromQueue=True'
+    if 'policies' in jwf:
+        if 'leaveInQueue' in jwf['policies']:
+            if jwf['policies']['leaveInQueue']:
+                prfq = '+ProminenceRemoveFromQueue=False'
+    dag_appends.append("'%s'" % prfq)
+    dag_appends.append("'leave_in_queue = (JobStatus == 4 || JobStatus == 3) && ProminenceRemoveFromQueue =?= False'")
+
     if email:
         dag_appends.append("'+ProminenceEmail=\"%s\"'" % email)
 
