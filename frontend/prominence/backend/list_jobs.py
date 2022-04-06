@@ -61,7 +61,8 @@ def list_jobs(self, job_ids, identity, active, completed, workflow, num, detail,
                       'Iwd',
                       'Args',
                       'CpusProvisioned',
-                      'MemoryProvisioned']
+                      'MemoryProvisioned',
+                      'AllRemoteHosts']
     jobs_state_map = {1:'idle',
                       2:'running',
                       3:'failed',
@@ -470,13 +471,20 @@ def list_jobs(self, job_ids, identity, active, completed, workflow, num, detail,
                                     'model': job_u['cpu_model'],
                                     'clock': job_u['cpu_clock']}
 
+            nodes_provisioned = 1
+            if 'AllRemoteHosts' in job:
+                if job['AllRemoteHosts']:
+                    nodes_provisioned = job['AllRemoteHosts'].count(',') + 1
+
             if 'CpusProvisioned' in job and 'MemoryProvisioned' in job:
                 execution['provisionedResources'] = {'cpus': int(job['CpusProvisioned']),
-                                                     'memory': int(job['MemoryProvisioned']/1024.0)}
+                                                     'memory': int(job['MemoryProvisioned']/1024.0),
+                                                     'nodes': nodes_provisioned}
             elif 'memory' in job_u and 'cpus' in job_u:
                 if job_u['cpus'] and job_u['memory']:
                     execution['provisionedResources'] = {'cpus': job_u['cpus'],
-                                                         'memory': job_u['memory']}
+                                                         'memory': job_u['memory'],
+                                                         'nodes': nodes_provisioned}
 
             new_tasks_u = []
             if tasks_u:
