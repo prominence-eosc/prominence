@@ -6,7 +6,7 @@ from flask import current_app as app
 
 from .auth import requires_auth
 from .backend import ProminenceBackend
-from .errors import invalid_constraint, no_such_workflow, no_stdout, no_stderr, not_auth_workflow, workflow_id_required
+from .errors import invalid_constraint, no_such_workflow, no_stdout, no_stderr, not_auth_workflow, workflow_id_required, workflow_removal_failed
 from .validate import validate_workflow
 from .utilities import get_remote_addr
 
@@ -259,6 +259,6 @@ def remove_workflow(username, group, email, workflow_id):
         return not_auth_workflow()
 
     if not backend.remove_workflow(workflow_id):
-        return removal_failed()
+        return workflow_removal_failed()
 
     return jsonify({}), 200
