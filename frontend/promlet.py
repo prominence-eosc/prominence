@@ -1328,12 +1328,14 @@ def get_udocker(path):
     """
     Check if udocker is installed
     """
-    if os.path.exists('/home/user/.udocker/bin/proot-x86_64'):
-        logging.info('Found existing udocker installation in /home/user')
-        return '/home/user'
-    else:
-        if install_udocker(path):
-            return path
+    #if os.path.exists('/home/user/.udocker/bin/proot-x86_64'):
+    #    logging.info('Found existing udocker installation in /home/user')
+    #    return '/home/user'
+    #else:
+    #    if install_udocker(path):
+    #        return path
+    if install_udocker(path):
+        return path
 
     return None
 
@@ -2072,21 +2074,21 @@ if __name__ == "__main__":
         (success_stagein, json_stagein) = download_artifacts(job, path)
         if not success_stagein:
             logging.error('Got error downloading artifact')
-
-        # Run tasks
-        try:
-            (success_tasks, json_tasks) = run_tasks(job, path, node_num, main_node)
-        except OSError as exc:
-            logging.critical('Got exception running tasks: %s', exc)
-            success_tasks = False
-            json_tasks = {}
-
-        # Upload output files if necessary
-        if main_node:
-            logging.info('Stageout any output files/dirs if necessary')
-            (success_stageout, json_stageout) = stageout(job, path)
         else:
-            success_stageout = True
+            # Run tasks
+            try:
+                (success_tasks, json_tasks) = run_tasks(job, path, node_num, main_node)
+            except OSError as exc:
+                logging.critical('Got exception running tasks: %s', exc)
+                success_tasks = False
+                json_tasks = {}
+
+            # Upload output files if necessary
+            if main_node:
+                logging.info('Stageout any output files/dirs if necessary')
+                (success_stageout, json_stageout) = stageout(job, path)
+            else:
+                success_stageout = True
 
     # Write json job details
     json_output = {}
