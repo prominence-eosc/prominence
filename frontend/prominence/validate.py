@@ -299,7 +299,8 @@ def validate_job(job):
                         'memory',
                         'memoryPerCpu',
                         'disk',
-                        'walltime']
+                        'walltime',
+                        'totalCpusRange']
 
     policies_valids = ['maximumRetries',
                        'preemptible',
@@ -354,6 +355,12 @@ def validate_job(job):
                 return (False, 'number of nodes must be an integer')
             if job['resources']['nodes'] < 1:
                 return (False, 'number of nodes must be at least 1')
+
+        if 'totalCpusRange' in job['resources']:
+            if not isinstance(job['resources']['totalCpusRange'], list):
+                return (False, 'totalCpusRange must be a list')
+            if len(job['resources']['totalCpusRange']) != 2:
+                return (False, 'totalCpusRange must be a list containing the min and max allowed total number of CPUs')
 
         if 'cpus' in job['resources']:
             if not str(job['resources']['cpus']).isdigit():
