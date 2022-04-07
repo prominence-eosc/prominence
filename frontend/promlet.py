@@ -1662,13 +1662,13 @@ def run_tasks(job, path, node_num, main_node):
     job_info = get_info(path)
 
     # Number of nodes
-    if 'nodes' in job['resources']:
-        num_nodes = job['resources']['nodes']
-    else:
-        num_nodes = 1
+    (num_nodes, _) = get_nodes()
 
     # Number of CPUs
     num_cpus = job_info['cpus']
+    if 'cpus' in job_info:
+        if job_info['cpus']:
+            num_cpus = job_info['cpus']
 
     # MPI processes
     mpi_processes = num_cpus*num_nodes
