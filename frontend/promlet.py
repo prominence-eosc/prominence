@@ -76,7 +76,7 @@ done
 
 _COMMAND=`echo $_COMMAND | tr '"' "'"`
 
-curl -s -H "Authorization: Bearer $PROMINENCE_TOKEN" -X POST -d "$_COMMAND" $PROMINENCE_URL/kv/_internal_/$PROMINENCE_JOB_ID/$_HOST/$PROMINENCE_TASK_NUM/$PROMINENCE_NODE_NUM > /dev/null 2>&1
+curl -s -H "Authorization: Bearer $PROMINENCE_TOKEN" -X POST -d "$_COMMAND" $PROMINENCE_URL/kv/_internal_/$PROMINENCE_JOB_ID/$_HOST/$PROMINENCE_TASK_NUM > /dev/null 2>&1
 """
 
 def calculate_sha256(filename):
@@ -252,7 +252,7 @@ def get_command(paths, task_count, node_num):
     """
     (token, url) = get_token(path)
     (job_id, _) = get_job_ids(path)
-    url = '%s/kv/_internal_/%d/%s/%d/%d' % (url, job_id, get_ip(), task_count, node_num)
+    url = '%s/kv/_internal_/%d/%s/%d' % (url, job_id, get_ip(), task_count)
     logging.info('Getting command from: %s', url)
     headers = {'Authorization': 'Bearer %s' % token}
 
