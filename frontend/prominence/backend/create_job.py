@@ -17,7 +17,7 @@ def submit_job(cjob):
         data['id'] = cid
     except Exception as err:
         retval = 1
-        data = {"error":"Job submission failed with an exception"}
+        data = {"error":"Job submission failed with an exception: %s" % err}
 
     return (retval, data)
 
