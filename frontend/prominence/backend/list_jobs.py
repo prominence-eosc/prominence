@@ -62,7 +62,8 @@ def list_jobs(self, job_ids, identity, active, completed, workflow, num, detail,
                       'Args',
                       'CpusProvisioned',
                       'MemoryProvisioned',
-                      'AllRemoteHosts']
+                      'AllRemoteHosts',
+                      'MachineAttrProminenceCloud0']
     jobs_state_map = {1:'idle',
                       2:'running',
                       3:'failed',
@@ -465,6 +466,9 @@ def list_jobs(self, job_ids, identity, active, completed, workflow, num, detail,
                     execution['site'] = str(job['ProminenceInfrastructureSite'])
             elif 'site' in job_u:
                 execution['site'] = job_u['site']
+            elif 'MachineAttrProminenceCloud0' in job:
+                if job['MachineAttrProminenceCloud0']:
+                    execution['site'] = job['MachineAttrProminenceCloud0']
 
             if 'cpu_vendor' in job_u and 'cpu_model' in job_u and 'cpu_clock' in job_u:
                 execution['cpu'] = {'vendor': job_u['cpu_vendor'],
