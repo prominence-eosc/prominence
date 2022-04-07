@@ -8,7 +8,7 @@ from flask import current_app as app
 from .auth import requires_auth
 from .backend import ProminenceBackend
 from .errors import invalid_constraint, func_disabled, no_such_job, not_auth_job, job_not_running, command_failed, job_rerun_error
-from .errors import job_id_required, no_stdout, no_stderr, snapshot_path_required, snapshot_invalid_path, removal_failed
+from .errors import job_id_required, no_stdout, no_stderr, snapshot_path_required, snapshot_invalid_path, job_removal_failed
 from .validate import validate_job
 from .utilities import get_remote_addr
 
@@ -299,11 +299,11 @@ def remove_job(username, group, email, job_id):
         return not_auth_job()
 
     if not backend.remove_job(job_id):
-        return removal_failed()
+        return job_removal_failed()
 
     return jsonify({}), 200
 
-jobs.route("/prominence/v1/jobs/<int:job_id>", methods=['PUT'])
+@jobs.route("/prominence/v1/jobs/<int:job_id>", methods=['PUT'])
 @requires_auth
 def rerun_job(username, group, email, job_id):
     """
@@ -316,7 +316,7 @@ def rerun_job(username, group, email, job_id):
 
     # Get previous job description
     backend = ProminenceBackend(app.config)
-    (uid, identity, iwd, _, _, _, status) = backend.get_job_unique_id(job_id)
+    (_, identity, iwd, _, _, _, status) = backend.get_job_unique_id(job_id)
 
     if not identity:
         return no_such_job()
