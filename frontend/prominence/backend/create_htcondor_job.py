@@ -1,6 +1,7 @@
 import base64
 import json
 import os
+import math
 import requests
 
 from .utilities import condor_str, retry
@@ -353,11 +354,29 @@ def _create_htcondor_job(self, username, groups, email, uid, jjob, job_path, wor
         cjob['+WantParallelSchedulingGroups'] = 'True'
         cjob['machine_count'] = jjob['resources']['nodes']
         cjob['universe'] = 'parallel'
+
     if 'tasks' in jjob:
         for task in jjob['tasks']:
             if 'type' in task:
                 if task['type'] in ('openmpi', 'mpich', 'intelmpi'):
                     cjob['+ProminenceWantMPI'] = 'true'
+
+    # Dynamic MPI
+    if 'totalCpusRange' in jjob['resources'] and 'cpusRange' in jjob['resources']:
+        num_nodes_max = math.ceiling(jjob['resources']['totalCpusRange'][1]/jjob['resources']['cpusRange'][1])
+        num_nodes_min = math.ceiling(jjob['resources']['totalCpusRange'][0]/jjob['resources']['cpusRange'][0])
+        cpus_max = jjob['resources']['cpusRange'][1]
+        cpus_min = jjob['resources']['cpusRange'][0]
+
+        cjob['machine_count'] = "ifThenElse(CurrentTime - QDate < 120, %d, %d" % (num_nodes_max, num_nodes_min)
+        cjob['RequestCpus'] = "ifThenElse(CurrentTime - QDate < 120, %d, %d" % (cpus_max, cpus_min)
+
+        if 'memoryPerCpu' in jjob['resources']:
+            cjob['RequestMemory'] = "%d*RequestCpus" % int(1024*jjob['resources']['memoryPerCpu'])
+
+        cjob['+ProminenceWantMPI'] = 'true'
+        cjob['+WantParallelSchedulingGroups'] = 'True'
+        cjob['universe'] = 'parallel'
 
     # Prepare for submission to a remote HPC system
     #tasks = jjob['resources']['nodes']
