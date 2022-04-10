@@ -2,12 +2,19 @@
 from flask import current_app as app
 from flask import jsonify
 
-def job_rerun_error():
+def job_clone_error():
     """
-    Unable to rerun job
+    Unable to clone job
     """
     with app.app_context():
         return jsonify({'error':'Unable to get JSON description of the specified job'}), 400
+
+def workflow_clone_error():
+    """
+    Unable to clone workflow
+    """
+    with app.app_context():
+        return jsonify({'error':'Unable to get JSON description of the specified workflow'}), 400
 
 def no_such_job():
     """
