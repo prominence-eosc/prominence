@@ -7,7 +7,7 @@ from flask import current_app as app
 
 from .auth import requires_auth
 from .backend import ProminenceBackend
-from .errors import invalid_constraint, func_disabled, no_such_job, not_auth_job, job_not_running, command_failed, job_rerun_error
+from .errors import invalid_constraint, func_disabled, no_such_job, not_auth_job, job_not_running, command_failed, job_clone_error
 from .errors import job_id_required, no_stdout, no_stderr, snapshot_path_required, snapshot_invalid_path, job_removal_failed
 from .validate import validate_job
 from .utilities import get_remote_addr
@@ -303,16 +303,16 @@ def remove_job(username, group, email, job_id):
 
     return jsonify({}), 200
 
-@jobs.route("/prominence/v1/jobs/<int:job_id>", methods=['PUT'])
+@jobs.route("/prominence/v1/jobs/<int:job_id>/clone", methods=['PUT'])
 @requires_auth
-def rerun_job(username, group, email, job_id):
+def clone_job(username, group, email, job_id):
     """
-    Re-run the specified job
+    Clone the specified job
     """
     # Job unique identifier
     uid = str(uuid.uuid4())
 
-    app.logger.info('%s JobReRun user:%s group:%s id:%d' % (get_remote_addr(request), username, group, job_id))
+    app.logger.info('%s JobClone user:%s group:%s id:%d' % (get_remote_addr(request), username, group, job_id))
 
     # Get previous job description
     backend = ProminenceBackend(app.config)
@@ -327,7 +327,7 @@ def rerun_job(username, group, email, job_id):
         with open(iwd+  '/.job.json') as json_file:
             job_json = json.load(json_file)
     except:
-        return job_rerun_error()
+        return job_clone_error()
 
     (return_code, data) = backend.create_job(username, group, email, uid, job_json)
 

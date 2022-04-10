@@ -1,4 +1,5 @@
 """Routes for managing workflows"""
+import json
 import uuid
 
 from flask import Blueprint, jsonify, request
@@ -6,7 +7,7 @@ from flask import current_app as app
 
 from .auth import requires_auth
 from .backend import ProminenceBackend
-from .errors import invalid_constraint, no_such_workflow, no_stdout, no_stderr, not_auth_workflow, workflow_id_required, workflow_removal_failed
+from .errors import invalid_constraint, no_such_workflow, no_stdout, no_stderr, not_auth_workflow, workflow_id_required, workflow_removal_failed, workflow_clone_error
 from .validate import validate_workflow
 from .utilities import get_remote_addr
 
@@ -262,3 +263,37 @@ def remove_workflow(username, group, email, workflow_id):
         return workflow_removal_failed()
 
     return jsonify({}), 200
+
+@workflows.route("/prominence/v1/workflows/<int:workflow_id>/clone", methods=['PUT'])
+@requires_auth
+def clone_workflow(username, group, email, workflow_id):
+    """
+    Clone the specified workflow
+    """
+    # Job unique identifier
+    uid = str(uuid.uuid4())
+
+    app.logger.info('%s WorkflowClone user:%s group:%s id:%d' % (get_remote_addr(request), username, group, workflow_id))
+
+    # Get previous workflow description
+    backend = ProminenceBackend(app.config)
+    (_, identity, iwd, _, _, _, status) = backend.get_job_unique_id(workflow_id)
+
+    if not identity:
+        return no_such_workflow()
+    if username != identity:
+        return not_auth_workflow()
+
+    try:
+        with open(iwd+  '/workflow.json') as json_file:
+            workflow_json = json.load(json_file)
+    except:
+        return workflow_clone_error()
+
+    (return_code, data) = backend.create_workflow(username, group, email, uid, workflow_json)
+
+    retval = 201
+    if return_code == 1:
+        retval = 400
+
+    return jsonify(data), retval
