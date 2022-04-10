@@ -363,13 +363,13 @@ def _create_htcondor_job(self, username, groups, email, uid, jjob, job_path, wor
 
     # Dynamic MPI
     if 'totalCpusRange' in jjob['resources'] and 'cpusRange' in jjob['resources']:
-        num_nodes_max = math.ceiling(jjob['resources']['totalCpusRange'][1]/jjob['resources']['cpusRange'][1])
-        num_nodes_min = math.ceiling(jjob['resources']['totalCpusRange'][0]/jjob['resources']['cpusRange'][0])
-        cpus_max = jjob['resources']['cpusRange'][1]
-        cpus_min = jjob['resources']['cpusRange'][0]
+        cjob['+ProminenceDynamicMPI'] = condor_str("%d,%d,%d,%d" % (jjob['resources']['totalCpusRange'][0],
+                                                                    jjob['resources']['totalCpusRange'][1],
+                                                                    jjob['resources']['cpusRange'][0],
+                                                                    jjob['resources']['cpusRange'][1]))
 
-        cjob['machine_count'] = "ifThenElse(CurrentTime - QDate < 120, %d, %d" % (num_nodes_max, num_nodes_min)
-        cjob['RequestCpus'] = "ifThenElse(CurrentTime - QDate < 120, %d, %d" % (cpus_max, cpus_min)
+        cjob['machine_count'] = math.ceil(jjob['resources']['totalCpusRange'][1]/jjob['resources']['cpusRange'][1])
+        cjob['RequestCpus'] = jjob['resources']['cpusRange'][1]
 
         if 'memoryPerCpu' in jjob['resources']:
             cjob['RequestMemory'] = "%d*RequestCpus" % int(1024*jjob['resources']['memoryPerCpu'])
