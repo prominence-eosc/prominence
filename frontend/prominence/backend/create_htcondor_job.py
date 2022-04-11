@@ -362,14 +362,28 @@ def _create_htcondor_job(self, username, groups, email, uid, jjob, job_path, wor
                     cjob['+ProminenceWantMPI'] = 'true'
 
     # Dynamic MPI
-    if 'totalCpusRange' in jjob['resources'] and 'cpusRange' in jjob['resources']:
-        cjob['+ProminenceDynamicMPI'] = condor_str("%d,%d,%d,%d" % (jjob['resources']['totalCpusRange'][0],
-                                                                    jjob['resources']['totalCpusRange'][1],
-                                                                    jjob['resources']['cpusRange'][0],
-                                                                    jjob['resources']['cpusRange'][1]))
+    if 'totalCpusRange' in jjob['resources']:
+        if 'cpusRange' in jjob['resources']:
+            cpus_min = jjob['resources']['cpusRange'][0]
+            cpus_max = jjob['resources']['cpusRange'][1]
+            cpus_type = 'range'
+        elif 'cpus' in jjob['resources']:
+            cpus_min = jjob['resources']['cpus']
+            cpus_max = jjob['resources']['cpus']
+            cpus_type = 'range'
+        elif 'cpusOptions' in jjob['resources']:
+            cpus_min = jjob['resources']['cpusOptions'][0]
+            cpus_max = jjob['resources']['cpusOptions'][1]
+            cpus_type = 'options'
 
-        cjob['machine_count'] = math.ceil(jjob['resources']['totalCpusRange'][1]/jjob['resources']['cpusRange'][1])
-        cjob['RequestCpus'] = jjob['resources']['cpusRange'][1]
+        cjob['+ProminenceDynamicMPI'] = condor_str("%d,%d,%d,%d,%s" % (jjob['resources']['totalCpusRange'][0],
+                                                                       jjob['resources']['totalCpusRange'][1],
+                                                                       cpus_min,
+                                                                       cpus_max,
+                                                                       cpus_type))
+
+        cjob['machine_count'] = math.ceil(jjob['resources']['totalCpusRange'][1]/cpus_max)
+        cjob['RequestCpus'] = cpus_max
 
         if 'memoryPerCpu' in jjob['resources']:
             cjob['RequestMemory'] = "%d*RequestCpus" % int(1024*jjob['resources']['memoryPerCpu'])
