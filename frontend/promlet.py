@@ -1317,6 +1317,11 @@ def download_singularity(image, image_new, location, path, credential, job):
             logging.error('Unable to pull Singularity image successfully after %d attempts', count)
             return 1, False, checksum
 
+        # Generate checksum
+        checksum = calculate_sha256(image_new)
+        logging.info('Calculated image checksum: %s', checksum)
+
+
     if os.path.exists(image_new):
         logging.info('Image file %s exists', image_new)
     else:
