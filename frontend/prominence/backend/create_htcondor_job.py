@@ -54,7 +54,7 @@ def _create_htcondor_job(self, username, groups, email, uid, jjob, job_path, wor
             input_files.append(filename_new)
 
     # Set default number of nodes if not already specified
-    if 'nodes' not in jjob['resources']:
+    if 'nodes' not in jjob['resources'] and 'totalCpusRange' not in jjob['resources']:
         jjob['resources']['nodes'] = 1
 
     # Write original job.json
@@ -121,7 +121,14 @@ def _create_htcondor_job(self, username, groups, email, uid, jjob, job_path, wor
 
     cjob['Log'] = job_path + '/job.0.log'
 
-    if jjob['resources']['nodes'] == 1:
+    multiple_nodes = False
+    if 'nodes' in jjob['resources']:
+        if jjob['resources']['nodes'] > 1:
+            multiple_nodes = True
+    if 'totalCpuRange' in jjob['resources']:
+        multiple_nodes = True
+
+    if not multiple_nodes:
         cjob['Output'] = job_path + '/job.0.out'
         cjob['Error'] = job_path +  '/job.0.err'
     else:
@@ -349,10 +356,11 @@ def _create_htcondor_job(self, username, groups, email, uid, jjob, job_path, wor
 
     # Is job MPI?
     cjob['+ProminenceWantMPI'] = 'false'
-    if jjob['resources']['nodes'] > 1:
+    if multiple_nodes:
         cjob['+ProminenceWantMPI'] = 'true'
         cjob['+WantParallelSchedulingGroups'] = 'True'
-        cjob['machine_count'] = jjob['resources']['nodes']
+        if 'nodes' in jjob['resources']:
+            cjob['machine_count'] = jjob['resources']['nodes']
         cjob['universe'] = 'parallel'
 
     if 'tasks' in jjob:
