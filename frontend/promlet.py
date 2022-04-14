@@ -1065,6 +1065,7 @@ def get_info(path):
     """
     cpus = None
     memory = None
+    disk = None
     site = None
     try:
         with open('%s/.job.ad' % path, 'r') as fd:
@@ -1075,13 +1076,16 @@ def get_info(path):
                 match = re.match(r'MemoryProvisioned = ([\d]+)', line)
                 if match:
                     memory = int(match.group(1))
+                match = re.match(r'DiskProvisioned = ([\d]+)', line)
+                if match:
+                    disk = int(match.group(1))
                 match = re.match(r'MachineAttrProminenceCloud0 = "([\w\-]+)"', line)
                 if match:
                     site = match.group(1)
     except Exception as err:
         logging.error('Got exception reading info from .job.ad: %s', err)
 
-    return {'cpus': cpus, 'memory': int(memory/1024.0), 'site': site}
+    return {'cpus': cpus, 'memory': int(memory/1024.0), 'disk': int(disk/1000.0/1000.0), 'site': site}
  
 def mount_storage(job, path):
     """
@@ -2110,6 +2114,8 @@ if __name__ == "__main__":
         json_output['cpus'] = job_info['cpus']
     if 'memory' in job_info:
         json_output['memory'] = job_info['memory']
+    if 'disk' in job_info:
+        json_output['disk'] = job_info['disk']
 
     # Get CPU info
     (cpu_vendor, cpu_model, cpu_clock) = get_cpu_info()
