@@ -62,6 +62,7 @@ def list_jobs(self, job_ids, identity, active, completed, workflow, num, detail,
                       'Args',
                       'CpusProvisioned',
                       'MemoryProvisioned',
+                      'DiskProvisioned',
                       'AllRemoteHosts',
                       'MachineAttrProminenceCloud0']
     jobs_state_map = {1:'idle',
@@ -480,14 +481,16 @@ def list_jobs(self, job_ids, identity, active, completed, workflow, num, detail,
                 if job['AllRemoteHosts']:
                     nodes_provisioned = job['AllRemoteHosts'].count(',') + 1
 
-            if 'CpusProvisioned' in job and 'MemoryProvisioned' in job:
+            if 'CpusProvisioned' in job and 'MemoryProvisioned' in job and 'DiskProvisioned' in job:
                 execution['provisionedResources'] = {'cpus': int(job['CpusProvisioned']),
                                                      'memory': int(job['MemoryProvisioned']/1024.0),
+                                                     'disk': int(job['DiskProvisioned']/1000.0/1000.0),
                                                      'nodes': nodes_provisioned}
-            elif 'memory' in job_u and 'cpus' in job_u:
-                if job_u['cpus'] and job_u['memory']:
+            elif 'memory' in job_u and 'cpus' in job_u and 'disk' in job_u:
+                if job_u['cpus'] and job_u['memory'] and job_u['disk']:
                     execution['provisionedResources'] = {'cpus': job_u['cpus'],
                                                          'memory': job_u['memory'],
+                                                         'disk': job_u['disk'],
                                                          'nodes': nodes_provisioned}
 
             new_tasks_u = []
