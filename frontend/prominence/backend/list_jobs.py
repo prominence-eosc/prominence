@@ -1,5 +1,6 @@
 import glob
 import json
+import math
 import os
 import re
 
@@ -484,7 +485,7 @@ def list_jobs(self, job_ids, identity, active, completed, workflow, num, detail,
             if 'CpusProvisioned' in job and 'MemoryProvisioned' in job and 'DiskProvisioned' in job:
                 execution['provisionedResources'] = {'cpus': int(job['CpusProvisioned']),
                                                      'memory': int(job['MemoryProvisioned']/1024.0),
-                                                     'disk': int(job['DiskProvisioned']/1000.0/1000.0),
+                                                     'disk': math.ceil(job['DiskProvisioned']/1000.0/1000.0),
                                                      'nodes': nodes_provisioned}
             elif 'memory' in job_u and 'cpus' in job_u and 'disk' in job_u:
                 if job_u['cpus'] and job_u['memory'] and job_u['disk']:
