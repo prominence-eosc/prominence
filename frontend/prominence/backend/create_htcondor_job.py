@@ -197,8 +197,8 @@ def _create_htcondor_job(self, username, groups, email, uid, jjob, job_path, wor
         if 'memoryPerCpu' in jjob['resources']:
             cjob['RequestMemory'] = "%d*RequestCpus" % int(1024*jjob['resources']['memoryPerCpu'])
 
-    # Disk required (GB converted to KiB)
-    cjob['RequestDisk'] = str(jjob['resources']['disk']*10.0**9/2**10)
+    # Disk required
+    cjob['RequestDisk'] = str(jjob['resources']['disk']*1024*1024)
 
     # Priority
     if 'policies' in jjob:
