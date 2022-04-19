@@ -1707,7 +1707,8 @@ def run_tasks(job, path, node_num, main_node):
     job_start_time = time.time()
     total_pull_time = 0
 
-    # Reorder list of tasks so that sidecars are first
+    # Reorder list of tasks so that sidecars are first - we can then easily start them
+    # first before running the normal sequential tasks
     num_tasks_sidecar = 0
     tasks = []
     for task in job['tasks']:
