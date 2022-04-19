@@ -1874,20 +1874,20 @@ def run_tasks(job, path, node_num, main_node):
             if (found_image or metrics_download.exit_code == 0) and not FINISH_NOW:
                 if task['type'] == 'sidecar':
                     logging.info('Starting sidecar task')
-                    d = multiprocessing.Process(target=run_udocker,
-                                                args=(image,
-                                                      cmd,
-                                                      workdir,
-                                                      env,
-                                                      path,
-                                                      mpi,
-                                                      mpi_processes,
-                                                      procs_per_node,
-                                                      artifacts,
-                                                      100*24*60*60,
-                                                      job))
-                    d.daemon = True
-                    d.start()
+                    sidecar = multiprocessing.Process(target=run_udocker,
+                                                      args=(image,
+                                                            cmd,
+                                                            workdir,
+                                                            env,
+                                                            path,
+                                                            mpi,
+                                                            mpi_processes,
+                                                            procs_per_node,
+                                                            artifacts,
+                                                            100*24*60*60,
+                                                            job))
+                    sidecar.daemon = True
+                    sidecar.start()
                     count = count + 1
                     continue
 
@@ -1946,20 +1946,20 @@ def run_tasks(job, path, node_num, main_node):
             if (found_image or metrics_download.exit_code == 0) and not FINISH_NOW:
                 if task['type'] == 'sidecar':
                     logging.info('Starting sidecar task')
-                    d = multiprocessing.Process(target=run_singularity,
-                                                args=(image_new,
-                                                      cmd,
-                                                      workdir,
-                                                      env,
-                                                      path,
-                                                      mpi,
-                                                      mpi_processes,
-                                                      procs_per_node,
-                                                      artifacts,
-                                                      100*24*60*60,
-                                                      job))
-                    d.daemon = True
-                    d.start()
+                    sidecar = multiprocessing.Process(target=run_singularity,
+                                                      args=(image_new,
+                                                            cmd,
+                                                            workdir,
+                                                            env,
+                                                            path,
+                                                            mpi,
+                                                            mpi_processes,
+                                                            procs_per_node,
+                                                            artifacts,
+                                                            100*24*60*60,
+                                                            job))
+                    sidecar.daemon = True
+                    sidecar.start()
                     count = count + 1
                     continue
 
