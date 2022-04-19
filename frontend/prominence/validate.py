@@ -458,7 +458,7 @@ def validate_job(job):
                     return (False, 'cmd must be a string')
 
             if 'type' in task:
-                if task['type'] != 'openmpi' and task['type'] != 'mpich' and task['type'] != 'intelmpi':
+                if task['type'] not in ('openmpi', 'mpich', 'intelmpi', 'basic', 'sidecar'):
                     return (False, 'invalid task type')
 
                 if task['type'] == 'openmpi' or task['type'] == 'mpich' or task['type'] == 'intelmpi':
