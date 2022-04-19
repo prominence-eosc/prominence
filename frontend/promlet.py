@@ -7,6 +7,7 @@ import glob
 import hashlib
 import json
 import logging
+import multiprocessing
 import os
 import posixpath
 import re
@@ -1706,6 +1707,25 @@ def run_tasks(job, path, node_num, main_node):
     job_start_time = time.time()
     total_pull_time = 0
 
+    # Reorder list of tasks so that sidecars are first
+    num_tasks_sidecar = 0
+    tasks = []
+    for task in job['tasks']:
+        if 'type' in task:
+            if task['type'] == 'sidecar':
+                tasks.append(task)
+                num_tasks_sidecar += 1
+
+    for task in job['tasks']:
+        if 'type' in task:
+            if task['type'] != 'sidecar':
+                tasks.append(task)
+        else:
+            task['type'] = 'basic'
+            tasks.append(task)
+
+    logging.info('Number of sidecar tasks is: %d', num_tasks_sidecar)
+
     # Check if we should run serial tasks on all nodes (multi-node jobs)
     run_on_all = False
     if 'policies' in job:
@@ -1713,7 +1733,7 @@ def run_tasks(job, path, node_num, main_node):
             if job['policies']['runSerialTasksOnAllNodes']:
                 run_on_all = True
 
-    for task in job['tasks']:
+    for task in tasks:
         logging.info('Working on task %d', count)
 
         mpi = None
@@ -1851,10 +1871,30 @@ def run_tasks(job, path, node_num, main_node):
 
             # Run task
             if (found_image or metrics_download.exit_code == 0) and not FINISH_NOW:
+                if task['type'] == 'sidecar':
+                    logging.info('Starting sidecar task')
+                    d = multiprocessing.Process(target=run_udocker,
+                                                args=(image,
+                                                      cmd,
+                                                      workdir,
+                                                      env,
+                                                      path,
+                                                      mpi,
+                                                      mpi_processes,
+                                                      procs_per_node,
+                                                      artifacts,
+                                                      100*24*60*60,
+                                                      job))
+                    d.daemon = True
+                    d.start()
+                    count = count + 1
+                    continue
+
                 task_was_run = True
                 while metrics_task.exit_code != 0 and retry_count < num_retries + 1 and not metrics_task.timed_out and not FINISH_NOW:
                     logging.info('Running task, attempt %d', retry_count + 1)
                     task_time_limit = walltime_limit - (time.time() - job_start_time) + total_pull_time
+                    #task_executors.submit()
                     metrics_task = monitor(run_udocker,
                                            image,
                                            cmd,
@@ -1903,6 +1943,25 @@ def run_tasks(job, path, node_num, main_node):
 
             # Run task
             if (found_image or metrics_download.exit_code == 0) and not FINISH_NOW:
+                if task['type'] == 'sidecar':
+                    logging.info('Starting sidecar task')
+                    d = multiprocessing.Process(target=run_singularity,
+                                                args=(image_new,
+                                                      cmd,
+                                                      workdir,
+                                                      env,
+                                                      path,
+                                                      mpi,
+                                                      mpi_processes,
+                                                      procs_per_node,
+                                                      artifacts,
+                                                      100*24*60*60,
+                                                      job))
+                    d.daemon = True
+                    d.start()
+                    count = count + 1
+                    continue
+
                 task_was_run = True
                 while metrics_task.exit_code != 0 and retry_count < num_retries + 1 and not metrics_task.timed_out and not FINISH_NOW:
                     logging.info('Running task, attempt %d', retry_count + 1)
