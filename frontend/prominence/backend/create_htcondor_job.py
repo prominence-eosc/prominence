@@ -176,11 +176,14 @@ def _create_htcondor_job(self, username, groups, email, uid, jjob, job_path, wor
     elif 'memoryPerCpu' in jjob['resources'] and 'cpus' in jjob['resources']:
         cjob['RequestMemory'] = str(1024*int(jjob['resources']['memoryPerCpu']*jjob['resources']['cpus']))
 
+    # Default requirements: ensure user-instantiated worker nodes can only run jobs from that user
+    cjob['Requirements'] = '(isUndefined(TARGET.AuthenticatedIdentity) || TARGET.AuthenticatedIdentity =?= "worker@cloud" || TARGET.AuthenticatedIdentity =?= strcat(ProminenceIdentity, "@cloud") || TARGET.AuthenticatedIdentity =?= ProminenceIdentity)'
+
     # CPUs required
     if 'cpus' in jjob['resources']:
         cjob['RequestCpus'] = str(jjob['resources']['cpus'])
     elif 'cpusRange' in jjob['resources']:
-        cjob['Requirements'] = "Cpus >= %d && (PartitionableSlot || Cpus <= %d)" % (jjob['resources']['cpusRange'][0], jjob['resources']['cpusRange'][1])
+        cjob['Requirements'] = "%s && Cpus >= %d && (PartitionableSlot || Cpus <= %d)" % (cjob['Requirements'], jjob['resources']['cpusRange'][0], jjob['resources']['cpusRange'][1])
         cjob['RequestCpus'] = "ifThenElse(Cpus > %d, %d, Cpus)" % (jjob['resources']['cpusRange'][1], jjob['resources']['cpusRange'][1])
         cjob['Rank'] = "Cpus"
 
