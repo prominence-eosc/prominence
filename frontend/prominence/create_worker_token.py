@@ -7,7 +7,7 @@ def create_condor_worker_token(user):
     if '@' not in user:
         user = '%s@cloud' % user
 
-    run = subprocess.run(["sudo",
+    process = subprocess.Popen(["sudo",
                           "condor_token_create",
                           "-identity",
                           user,
@@ -16,9 +16,12 @@ def create_condor_worker_token(user):
                           "-authz",
                           "ADVERTISE_STARTD",
                           "-authz",
-                          "ADVERTISE_MASTER"])
+                          "ADVERTISE_MASTER"],
+                          stdout=subprocess.PIPE,
+                          stderr=subprocess.PIPE)
+    stdout, stderr = process.communicate()
 
-    if run.returncode == 0:
-        return run.stdout
-    else:
-        return None
+    if process.returncode == 0:
+        return stdout.strip().decode('utf-8')
+
+    return None
