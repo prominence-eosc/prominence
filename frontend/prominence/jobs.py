@@ -8,7 +8,7 @@ from flask import current_app as app
 from .auth import requires_auth
 from .backend import ProminenceBackend
 from .errors import invalid_constraint, func_disabled, no_such_job, not_auth_job, job_not_running, command_failed, job_clone_error
-from .errors import job_id_required, no_stdout, no_stderr, snapshot_path_required, snapshot_invalid_path, job_removal_failed
+from .errors import job_id_required, no_stdout, no_stderr, snapshot_path_required, snapshot_invalid_path, job_removal_failed, invalid_status
 from .validate import validate_job
 from .utilities import get_remote_addr
 
@@ -78,11 +78,11 @@ def list_jobs(username, group, email):
         active = True
         num = -1
 
-    idle = False
-    if 'idle' in request.args:
-        completed = False
-        active = False
-        idle = True
+    status = None
+    if 'status' in request.args:
+        status = request.args.get('status')
+        if status != 'idle' and status != 'running':
+            return invalid_status()
 
     detail = 0
     if 'detail' in request.args:
@@ -103,7 +103,7 @@ def list_jobs(username, group, email):
             active = True
 
     backend = ProminenceBackend(app.config)
-    data = backend.list_jobs(job_ids, username, active, completed, idle, workflow, num, detail, constraint, name_constraint)
+    data = backend.list_jobs(job_ids, username, active, completed, status, workflow, num, detail, constraint, name_constraint)
 
     return jsonify(data)
 
@@ -116,7 +116,7 @@ def get_job(username, group, email, job_id):
     app.logger.info('%s DescribeJob user:%s group:%s id:%d' % (get_remote_addr(request), username, group, job_id))
 
     backend = ProminenceBackend(app.config)
-    data = backend.list_jobs([job_id], username, True, True, False, False, 1, 1, (None, None), None)
+    data = backend.list_jobs([job_id], username, True, True, False, None, 1, 1, (None, None), None)
     return jsonify(data)
 
 @jobs.route("/prominence/v1/jobs/<int:job_id>/exec", methods=['POST'])

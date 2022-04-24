@@ -177,6 +177,13 @@ def job_id_required():
     with app.app_context():
         return jsonify({'error':'a job id or list of job ids must be provided'}), 400
 
+def invalid_status():
+    """
+    Invalid status specified
+    """
+    with app.app_context():
+        return jsonify({'error':'invalid status specified'})
+
 def workflow_id_required():
     """
     Workflow id or list of workflow ids missing
