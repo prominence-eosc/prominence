@@ -78,6 +78,12 @@ def list_jobs(username, group, email):
         active = True
         num = -1
 
+    idle = False
+    if 'idle' in request.args:
+        completed = False
+        active = False
+        idle = True
+
     detail = 0
     if 'detail' in request.args:
         detail = 1
@@ -97,7 +103,7 @@ def list_jobs(username, group, email):
             active = True
 
     backend = ProminenceBackend(app.config)
-    data = backend.list_jobs(job_ids, username, active, completed, workflow, num, detail, constraint, name_constraint)
+    data = backend.list_jobs(job_ids, username, active, completed, idle, workflow, num, detail, constraint, name_constraint)
 
     return jsonify(data)
 
@@ -110,7 +116,7 @@ def get_job(username, group, email, job_id):
     app.logger.info('%s DescribeJob user:%s group:%s id:%d' % (get_remote_addr(request), username, group, job_id))
 
     backend = ProminenceBackend(app.config)
-    data = backend.list_jobs([job_id], username, True, True, False, 1, 1, (None, None), None)
+    data = backend.list_jobs([job_id], username, True, True, False, False, 1, 1, (None, None), None)
     return jsonify(data)
 
 @jobs.route("/prominence/v1/jobs/<int:job_id>/exec", methods=['POST'])

@@ -23,7 +23,7 @@ def convert_to_number(value):
 
     return output
 
-def list_jobs(self, job_ids, identity, active, completed, workflow, num, detail, constraint, name_constraint):
+def list_jobs(self, job_ids, identity, active, completed, idle, workflow, num, detail, constraint, name_constraint):
     """
     List jobs or describe a specified job
     """
@@ -104,6 +104,10 @@ def list_jobs(self, job_ids, identity, active, completed, workflow, num, detail,
     if active:
         jobs_active = schedd.xquery('RoutedBy =?= undefined && ProminenceType == "job" && ProminenceName =!= undefined && %s' % constraintc, required_attrs)
         jobs_condor.extend(jobs_active)
+
+    # Get only idle jobs if necessary
+    if idle:
+        jobs_condor = schedd.xquery('JobStatus == 1 && RoutedBy =?= undefined && ProminenceType == "job" && ProminenceName =!= undefined && %s' % constraintc, required_attrs)
 
     for job in jobs_condor:
         # Get json from file
