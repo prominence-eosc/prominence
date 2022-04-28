@@ -80,6 +80,45 @@ _COMMAND=`echo $_COMMAND | tr '"' "'"`
 curl -s -H "Authorization: Bearer $PROMINENCE_TOKEN" -X POST -d "$_COMMAND" $PROMINENCE_URL/kv/_internal_/$PROMINENCE_JOB_ID/$_HOST/$PROMINENCE_TASK_NUM > /dev/null 2>&1
 """
 
+def get_singularity_version():
+    """
+    Get the version of Singularity
+    """
+    version = None
+    try:
+        version = (subprocess.check_output("singularity --version",
+                                           shell=True).strip()).decode().replace('singularity version ', '')
+    except:
+        pass
+
+    return version
+
+def get_udocker_version(path):
+    """
+    Get the udocker version
+    """
+    (udocker_path, additional_envs) = generate_envs()
+    udocker_location = get_udocker(path)
+    try:
+        data = (subprocess.check_output("udocker --version",
+                                        env=dict(PATH=udocker_path, UDOCKER_DIR='%s/.udocker' % udocker_location),
+                                        shell=True).strip()).decode()
+    except:
+        return None
+
+    version = None
+    version_tarball = None
+    for line in data.split('\n'):
+        if 'version:' in line:
+            version = line.replace('version: ', '')
+        if 'tarball_release' in line:
+            version_tarball = line.replace('tarball_release: ', '')
+
+    if version and version_tarball:
+        return '%s/%s' % (version, version_tarball)
+
+    return None
+
 def calculate_sha256(filename):
     """
     Calculate sha256 checksum of the specified file
@@ -289,7 +328,7 @@ def generate_envs():
     """
     Generate PATH & any other env variables to use for running udocker
     """
-    use_path = '/usr/local/bin:/usr/bin:/bin'
+    use_path = '/usr/local/bin:/usr/bin:/bin:/home/%s/bin:/home/%s/udocker' % (getpass.getuser(), getpass.getuser())
 
     # Get path to Python
     path = None
@@ -1661,6 +1700,9 @@ def run_tasks(job, path, node_num, main_node):
     # Get token
     (token, url) = get_token(path)
 
+    used_udocker = False
+    used_singularity = False
+
     num_retries = 0
     ignore_failures = False
     if 'policies' in job:
@@ -1837,6 +1879,8 @@ def run_tasks(job, path, node_num, main_node):
             image_count += 1
 
         if task['runtime'] == 'udocker':
+            used_udocker = True
+
             # Pull image if necessary or use a previously pulled image
             if found_image:
                 image = 'image%d' % image_count
@@ -1910,6 +1954,8 @@ def run_tasks(job, path, node_num, main_node):
                                            job)
                     retry_count += 1
         else:
+            used_singularity = True
+
             # Pull image if necessary or use a previously pulled image
             if found_image:
                 image_new = '%s/images/%d/image.simg' % (path, image_count)
@@ -2023,6 +2069,20 @@ def run_tasks(job, path, node_num, main_node):
         task_u = {}
         task_u['error'] = 'WallTimeLimitExceeded'
         tasks_u.append(task_u)
+
+    if used_singularity:
+        version = get_singularity_version()
+        if version:
+            tasks_u.append({'singularityVersion': version})
+        else:
+            logging.error('Unable to get Singularity version')
+
+    if used_udocker:
+        version = get_udocker_version(path)
+        if version:
+            tasks_u.append({'udockerVersion': version})
+        else:
+            logging.error('Unable to get udocker version')
 
     return success, tasks_u
 
