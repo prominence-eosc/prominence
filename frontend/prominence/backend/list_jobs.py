@@ -508,6 +508,7 @@ def list_jobs(self, job_ids, identity, active, completed, status, workflow, num,
                                                          'disk': job_u['disk'],
                                                          'nodes': nodes_provisioned}
 
+            execution['runtimeVersion'] = {}
             new_tasks_u = []
             if tasks_u:
                 for task_u in tasks_u:
@@ -515,6 +516,10 @@ def list_jobs(self, job_ids, identity, active, completed, status, workflow, num,
                         execution['maxMemoryUsageKB'] = task_u['maxMemoryUsageKB']
                     elif task_u == 'status':
                         continue
+                    elif 'singularityVersion' in task_u:
+                        execution['runtimeVersion']['singularity'] = task_u['singularityVersion']
+                    elif 'udockerVersion' in task_u:
+                        execution['runtimeVersion']['udocker'] = task_u['udockerVersion']
                     elif 'error' in task_u:
                         job_wall_time_limit_exceeded = True
                     else:
