@@ -2150,7 +2150,10 @@ if __name__ == "__main__":
             except OSError as exc:
                 logging.critical('Got exception running tasks: %s', exc)
                 success_tasks = False
-                json_tasks = {}
+                json_tasks = {'status': 'failed'}
+
+            if not success_tasks:
+                json_tasks = {'status': 'success'}
 
             # Upload output files if necessary
             if main_node:
