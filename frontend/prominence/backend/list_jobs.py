@@ -248,6 +248,12 @@ def list_jobs(self, job_ids, identity, active, completed, status, workflow, num,
         # For jobs which are not idle or running, check for various failed states in the
         # promlet json file
         if job['JobStatus'] != 1 and job['JobStatus'] != 2:
+            # Check for failure to execute tasks
+            if tasks_u:
+                if 'status' in tasks_u:
+                    if tasks_u['status'] == 'failed':
+                        jobj['status'] = 'failed'
+                        jobj['statusReason'] = 'Unable to execute task(s)'
 
             # Return status as failed if any fuse mounts failed
             if 'mounts' in job_u:
@@ -507,6 +513,8 @@ def list_jobs(self, job_ids, identity, active, completed, status, workflow, num,
                 for task_u in tasks_u:
                     if 'maxMemoryUsageKB' in task_u:
                         execution['maxMemoryUsageKB'] = task_u['maxMemoryUsageKB']
+                    elif task_u == 'status':
+                        continue
                     elif 'error' in task_u:
                         job_wall_time_limit_exceeded = True
                     else:
