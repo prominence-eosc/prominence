@@ -1,0 +1,11 @@
+gunicorn
+flask
+requests
+boto3
+PyJWT
+elasticsearch
+elasticsearch-dsl
+etcd3
+classad
+htcondor
+influxdb-client
