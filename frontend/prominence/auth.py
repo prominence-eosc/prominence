@@ -21,13 +21,15 @@ def validate_token(token):
         app.logger.warning('Got exception checking for job token: %s', err)
 
     if decoded:
+        if 'username' in decoded and 'groups' in decoded and 'email' in decoded and 'job' in decoded:
+            return (str(decoded['username']), str(decoded['groups']), str(decoded['email']), str(decoded['job']))
         if 'username' in decoded and 'groups' in decoded and 'email' in decoded:
-            return (str(decoded['username']), str(decoded['groups']), str(decoded['email']))
+            return (str(decoded['username']), str(decoded['groups']), str(decoded['email']), None)
 
         if 'username' in decoded and 'groups' in decoded:
-            return (str(decoded['username']), str(decoded['groups']), None)
+            return (str(decoded['username']), str(decoded['groups']), None, None)
 
-    return (None, None, None)
+    return (None, None, None, None)
 
 def get_expiry(token):
     """
@@ -107,51 +109,80 @@ def authenticate():
     """
     return auth_failure()
 
+def requires_auth_check():
+    """
+    Check authentication
+    """
+    start_time = time.time()
+    if 'Authorization' not in request.headers:
+        app.logger.warning('%s AuthenticationFailure authorization not in headers' % get_remote_addr(request))
+        raise ValueError()
+    auth = request.headers['Authorization']
+    try:
+        token = auth.split(' ')[1]
+    except:
+        app.logger.warning('%s AuthenticationFailure no token specified' % get_remote_addr(request))
+        raise ValueError()
+
+    # Check token expiry
+    if time.time() > get_expiry(token):
+        app.logger.warning('%s AuthenticationFailure token has already expired' % get_remote_addr(request))
+        raise ValueError()
+
+    # Firstly check if token is a job token
+    success = False
+    (username, group, email, job_uuid) = validate_token(token)
+    if username and group:
+        success = True
+        allowed = True
+
+    # Query OIDC server if necessary
+    if not success:
+       (success, username, group, email, allowed) = get_user_details(token)
+
+    if not success:
+        raise ValueError('OIDC')
+
+    if not username:
+        app.logger.warning('%s AuthenticationFailure username not returned from identity provider' % get_remote_addr(request))
+        raise ValueError()
+
+    if not allowed:
+        app.logger.warning('%s AuthenticationFailure user does not have required entitlements' % get_remote_addr(request))
+        raise ValueError()
+
+    app.logger.info('%s AuthenticationSuccess user:%s group:%s duration:%d' % (get_remote_addr(request), username, group, time.time() - start_time))
+
+    return username, group, email, job_uuid
+
+
 def requires_auth(function):
     """
     Check authentication
     """
     @wraps(function)
     def decorated(*args, **kwargs):
-        start_time = time.time()
-        if 'Authorization' not in request.headers:
-            app.logger.warning('%s AuthenticationFailure authorization not in headers' % get_remote_addr(request))
-            return authenticate()
-        auth = request.headers['Authorization']
         try:
-            token = auth.split(' ')[1]
-        except:
-            app.logger.warning('%s AuthenticationFailure no token specified' % get_remote_addr(request))
+            username, group, email, job_uuid = requires_auth_check()
+        except ValueError as err:
+            if 'OIDC' in err:
+                return oidc_error()
             return authenticate()
-
-        # Check token expiry
-        if time.time() > get_expiry(token):
-            app.logger.warning('%s AuthenticationFailure token has already expired' % get_remote_addr(request))
-            return authenticate()
-
-        # Firstly check if token is a job token
-        success = False
-        (username, group, email) = validate_token(token)
-        if username and group:
-            success = True
-            allowed = True
-
-        # Query OIDC server if necessary
-        if not success:
-            (success, username, group, email, allowed) = get_user_details(token)
-
-        if not success:
-            return oidc_error()
-
-        if not username:
-            app.logger.warning('%s AuthenticationFailure username not returned from identity provider' % get_remote_addr(request))
-            return authenticate()
-
-        if not allowed:
-            app.logger.warning('%s AuthenticationFailure user does not have required entitlements' % get_remote_addr(request))
-            return authenticate()
-
-        app.logger.info('%s AuthenticationSuccess user:%s group:%s duration:%d' % (get_remote_addr(request), username, group, time.time() - start_time))
-
         return function(username, group, email, *args, **kwargs)
     return decorated
+
+def requires_auth_ts(function):
+    """
+    Check authentication
+    """
+    @wraps(function)
+    def decorated(*args, **kwargs):
+        try:
+            username, group, email, job_uuid = requires_auth_check()
+        except ValueError as err:
+            if 'OIDC' in err:
+                return oidc_error()
+            return authenticate()
+        return function(username, group, email, job_uuid, *args, **kwargs)
+    return decorated
+
