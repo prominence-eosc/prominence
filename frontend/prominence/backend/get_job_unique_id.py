@@ -1,7 +1,7 @@
 import classad
 import htcondor
 
-def get_job_unique_id(self, job_id):
+def get_job_unique_id(self, job_id, return_qdate=False):
     """
     Return the uid and identity for a specified job id
     """
@@ -12,8 +12,9 @@ def get_job_unique_id(self, job_id):
     out = None
     err = None
     status = -1
+    qdate = None
 
-    attributes = ['ProminenceJobUniqueIdentifier', 'ProminenceIdentity', 'Iwd', 'Out', 'Err', 'DAGNodeName', 'JobStatus']
+    attributes = ['ProminenceJobUniqueIdentifier', 'ProminenceIdentity', 'Iwd', 'Out', 'Err', 'DAGNodeName', 'JobStatus', 'QDate']
 
     schedd = htcondor.Schedd()
     jobs_condor = schedd.history('RoutedBy =?= undefined && ClusterId =?= %s' % job_id, attributes, 1)
@@ -25,6 +26,7 @@ def get_job_unique_id(self, job_id):
             out = job['Out']
             err = job['Err']
             status = job['JobStatus']
+            qdate = job['QDate']
             # If a job has a DAGNodeName it must be part of a workflow, and to get the stdout/err of a such
             # a job we need to know the job name
             if 'DAGNodeName' in job:
@@ -40,9 +42,13 @@ def get_job_unique_id(self, job_id):
                 out = job['Out']
                 err = job['Err']
                 status = job['JobStatus']
+                date = job['QDate']
                 # If a job has a DAGNodeName it must be part of a workflow, and to get the stdout/err of a such
                 # a job we need to know the job name
                 if 'DAGNodeName' in job:
                     name = job['DAGNodeName']
 
-    return (uid, identity, iwd, out, err, name, status)
+    if not return_qdate:
+        return (uid, identity, iwd, out, err, name, status)
+
+    return (uid, identity, iwd, out, err, name, status, qdate)
