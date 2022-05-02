@@ -11,6 +11,7 @@ from prominence import jobs
 from prominence import workflows
 from prominence import health
 from prominence import kv
+from prominence import ts
 from prominence import token
 
 logging.basicConfig(stream=sys.stdout,
@@ -25,6 +26,7 @@ app.register_blueprint(jobs.jobs)
 app.register_blueprint(workflows.workflows)
 app.register_blueprint(health.health)
 app.register_blueprint(kv.kv)
+app.register_blueprint(ts.ts)
 app.register_blueprint(token.token)
 
 if __name__ == "__main__":
