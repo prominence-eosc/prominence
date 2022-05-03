@@ -165,7 +165,7 @@ def requires_auth(function):
         try:
             username, group, email, job_uuid = requires_auth_check()
         except ValueError as err:
-            if 'OIDC' in err:
+            if 'OIDC' in str(err):
                 return oidc_error()
             return authenticate()
         return function(username, group, email, *args, **kwargs)
@@ -180,7 +180,7 @@ def requires_auth_ts(function):
         try:
             username, group, email, job_uuid = requires_auth_check()
         except ValueError as err:
-            if 'OIDC' in err:
+            if 'OIDC' in str(err):
                 return oidc_error()
             return authenticate()
         return function(username, group, email, job_uuid, *args, **kwargs)
