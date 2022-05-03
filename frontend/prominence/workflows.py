@@ -7,7 +7,7 @@ from flask import current_app as app
 
 from .auth import requires_auth
 from .backend import ProminenceBackend
-from .errors import invalid_constraint, no_such_workflow, no_stdout, no_stderr, not_auth_workflow, workflow_id_required, workflow_removal_failed, workflow_clone_error
+from .errors import invalid_constraint, no_such_workflow, no_stdout, no_stderr, not_auth_workflow, workflow_id_required, workflow_removal_failed, workflow_clone_error, invalid_status
 from .validate import validate_workflow
 from .utilities import get_remote_addr
 
@@ -51,6 +51,12 @@ def list_workflows(username, group, email):
         active = True
         num = -1
 
+    status = None
+    if 'status' in request.args:
+        status = request.args.get('status')
+        if status != 'idle' and status != 'running':
+            return invalid_status()
+
     detail = 0
     if 'detail' in request.args:
         detail = 1
@@ -63,7 +69,7 @@ def list_workflows(username, group, email):
         active = True
 
     backend = ProminenceBackend(app.config)
-    data = backend.list_workflows(workflow_ids, username, active, completed, num, detail, constraint, name_constraint)
+    data = backend.list_workflows(workflow_ids, username, active, completed, status, num, detail, constraint, name_constraint)
 
     return jsonify(data)
 
@@ -76,7 +82,7 @@ def get_workflow(username, group, email, workflow_id):
     app.logger.info('%s DescribeWorkflow user:%s group:%s id:%d' % (get_remote_addr(request), username, group, workflow_id))
 
     backend = ProminenceBackend(app.config)
-    data = backend.list_workflows([workflow_id], username, True, True, 1, 1, (None, None), None)
+    data = backend.list_workflows([workflow_id], username, True, True, None, 1, 1, (None, None), None)
     return jsonify(data)
 
 @workflows.route("/prominence/v1/workflows/<int:workflow_id>/<string:job>/stdout", methods=['GET'])

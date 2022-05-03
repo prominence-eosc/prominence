@@ -6,7 +6,7 @@ import htcondor
 
 from .utilities import redact_storage_creds
 
-def list_workflows(self, workflow_ids, identity, active, completed, num, detail, constraint, name_constraint):
+def list_workflows(self, workflow_ids, identity, active, completed, status, num, detail, constraint, name_constraint):
     """
     List workflows or describe a specified workflow
     """
@@ -57,6 +57,14 @@ def list_workflows(self, workflow_ids, identity, active, completed, num, detail,
     if active:
         wfs_active = schedd.xquery('RoutedBy =?= undefined && ProminenceType == "workflow" && %s' % constraintc, required_attrs)
         wfs_condor.extend(wfs_active)
+
+    # Get only workflows in specific state
+    if status == 'idle' or status == 'running':
+        if status == 'idle':
+            wf_status = 1
+        elif status == 'running':
+            wf_status = 2
+        wfs_condor = schedd.xquery('JobStatus == %d && RoutedBy =?= undefined && ProminenceType == "workflow" && %s' % (wf_status, constraintc), required_attrs)
 
     for wf in wfs_condor:
         wfj = {}
