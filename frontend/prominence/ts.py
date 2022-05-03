@@ -47,6 +47,8 @@ def get_points(username, group, email, job_id):
         query_api = client.query_api()
         tables = query_api.query('from(bucket:"user") |> range(start: -%dm) |> filter(fn: (r) => r["jobuid"] == "%s")' % (since, job_uuid))
 
+        have_tags = False
+        tags = {}
         for table in tables:
             data = {}
             ts = []
@@ -54,10 +56,17 @@ def get_points(username, group, email, job_id):
             for record in table.records:
                 ts.append(record.values['_time'].strftime("%Y-%m-%d %H:%M:%S"))
                 vals.append(record.values['_value'])
+                if not have_tags:
+                    have_tags = True
+                    for item in record.values:
+                        if item not in ('_time', '_start', '_stop', '_field', '_measurement', '_value', 'result', 'table', 'jobuid'):
+                            tags[item] = record.values[item]
+
             data['times'] = ts
             data['values'] = vals
             data['measurement'] = record.values['_measurement']
             data['field'] = record.values['_field']
+            data['tags'] = tags
             output.append(data)
     except:
         return jsonify({'error':'A JWT token is required'}), 400
@@ -97,6 +106,7 @@ def set_point(username, group, email, job_uuid):
         if 'tags' in request.get_json():
             for tag in request.get_json()['tags']:
                 dictionary[tag] = request.get_json()['tags'][tag]
+                tags.append(tag)
 
         point = Point.from_dict(dictionary,
                     write_precision=WritePrecision.S,
