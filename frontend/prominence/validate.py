@@ -17,6 +17,32 @@ def validate_notification(notification, valid_events):
 
     return (True, '')
 
+def validate_point(point):
+    """
+    Validate time-series point
+    """
+    for item in point:
+        if item not in ('measurement', 'fields', 'tags', 'time'):
+            return (False, 'invalid item "%s" in time-series point' % item)
+
+    if 'time' in point:
+        if not str(point['time']).isdigit():
+            return (False, 'time must be an integer')
+
+    if 'measurement' not in point:
+        return (False, 'a measurement name must be specified')
+
+    if not isinstance(point['measurement'], str):
+        return (False, 'the measurement name must be a string')
+
+    if 'fields' not in point:
+        return (False, 'fields are not specified')
+
+    if not isinstance(point['fields'], dict):
+        return (False, 'fields must be a dict')
+
+    return (True, '')
+
 def validate_placement(placement):
     """
     Validate placement policy
