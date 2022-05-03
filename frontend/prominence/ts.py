@@ -9,6 +9,7 @@ from flask import current_app as app
 from .backend import ProminenceBackend
 from .errors import func_disabled, no_such_job, not_auth_job
 from .utilities import get_remote_addr
+from .validate import validate_point
 
 from .auth import requires_auth, requires_auth_ts
 
@@ -83,6 +84,11 @@ def set_point(username, group, email, job_uuid):
 
     if app.config['ENABLE_TS'] != 'True':
         return func_disabled()
+
+    # Validate the input JSON
+    (status, msg) = validate_point(request.get_json())
+    if not status:
+        return jsonify({'error': msg}), 400
 
     try:
         client = InfluxDBClient(url=app.config['INFLUXDB_URL'],
