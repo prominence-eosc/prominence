@@ -514,7 +514,7 @@ def list_jobs(self, job_ids, identity, active, completed, status, workflow, num,
                 for task_u in tasks_u:
                     if 'maxMemoryUsageKB' in task_u:
                         execution['maxMemoryUsageKB'] = task_u['maxMemoryUsageKB']
-                    elif task_u == 'status':
+                    elif 'status' in task_u:
                         continue
                     elif 'singularityVersion' in task_u:
                         execution['runtimeVersion']['singularity'] = task_u['singularityVersion']
