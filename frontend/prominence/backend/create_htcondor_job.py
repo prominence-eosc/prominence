@@ -196,6 +196,7 @@ def _create_htcondor_job(self, username, groups, email, uid, jjob, job_path, wor
         cjob['RequestCpus'] = "ifThenElse(%d > Cpus, %d, %d)" % (jjob['resources']['cpusOptions'][1],
                                                                  jjob['resources']['cpusOptions'][0],
                                                                  jjob['resources']['cpusOptions'][1])
+        cjob['Requirements'] = "%s && (TARGET.DynamicSlot is undefined || Cpus == TotalSlotCpus)" % cjob['Requirements']
 
         if 'memoryPerCpu' in jjob['resources']:
             cjob['RequestMemory'] = "%d*RequestCpus" % int(1024*jjob['resources']['memoryPerCpu'])
