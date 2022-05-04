@@ -1,7 +1,7 @@
 # Job template
 JOB_SUBMIT = \
 """
-universe = vanilla
+universe = %(universe)s
 executable = promlet.py
 arguments = --job .job.mapped.json --id $(prominencecount) %(extra_args)s
 output = job.$(prominencecount).out
@@ -44,7 +44,10 @@ def write_htcondor_job(cjob, filename):
             '+ProminenceFactoryId',
             '+ProminenceWorkflowName',
             'Rank',
-            '+JobPrio']
+            '+JobPrio',
+            '+ProminenceDynamicMPI',
+            '+WantParallelSchedulingGroups',
+            'machine_count']
     extras = "\n"
     for key in keys:
         if key in cjob:
@@ -70,6 +73,7 @@ def write_htcondor_job(cjob, filename):
     info['requirements'] = cjob['Requirements']
     info['jobtoken'] = cjob['+ProminenceJobToken']
     info['joburl'] = cjob['+ProminenceURL']
+    info['universe'] = cjob['universe']
 
     # Add any labels
     extras_metadata = ''
