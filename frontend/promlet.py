@@ -219,7 +219,7 @@ def setup_mpi(runtime, path, mpi, cmd, env, mpi_processes, mpi_procs_per_node, t
 
     # Nodes other than node 0 need to retrieve the command from the kv store
     if node_num > 0:
-        cmd = get_command(path, task_count, node_num)
+        cmd = get_command(path, task_count)
         if not cmd:
             logging.info('Unable to get command from the KV store')
         return cmd
@@ -286,7 +286,7 @@ def get_ip():
     return IP
 
 @retry(tries=8, delay=2, backoff=2)
-def get_command(paths, task_count, node_num):
+def get_command(paths, task_count):
     """
     Get command from kv store
     """
