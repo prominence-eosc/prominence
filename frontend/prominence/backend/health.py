@@ -39,6 +39,14 @@ def get_health(self):
     except:
         errors.append('ETCD_EXCP')
 
+    # Check InfluxDB
+    try:
+        resp = requests.get('%s/health' % self._config['INFLUXDB_URL'])
+        if resp.status_code != 200:
+            errors.append('INFLUXDB_STATUS')
+    except:
+        errors.append('INFLUXDB_EXCP')
+
     if errors:
         return (False, {'errors': ','.join(errors)})
 
