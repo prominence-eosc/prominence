@@ -448,6 +448,7 @@ def validate_job(job):
         if not isinstance(job['tasks'], list):
             return (False, 'an array of tasks must be provided')
 
+        found_standard_task = False
         for task in job['tasks']:
             for item in task:
                 if item not in task_valids:
@@ -487,10 +488,18 @@ def validate_job(job):
                 if task['type'] not in ('openmpi', 'mpich', 'intelmpi', 'basic', 'sidecar'):
                     return (False, 'invalid task type')
 
+                if task['type'] not in ('openmpi', 'mpich', 'intelmpi', 'basic'):
+                    found_standard_task = True
+
                 if task['type'] == 'openmpi' or task['type'] == 'mpich' or task['type'] == 'intelmpi':
                     if 'cmd' in task:
                         if task['cmd'].startswith('mpirun -n'):
                             return (False, 'it is not necessary to include mpirun in the cmd if an MPI flavour has been specified')
+            else:
+                found_standard_task = True
+
+        if not found_standard_task:
+            return (False, 'a job cannot contain only sidecar tasks')
 
     else:
         return (False, 'a job must contain tasks')
