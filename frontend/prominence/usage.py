@@ -34,7 +34,12 @@ def get_usage(username,
     for hit in search:
         if 'type' in hit:
             if hit['type'] == 'job':
-                cpus = hit.resources['cpus']
+                cpus = 1
+                if 'cpus' in hit.resources:
+                    cpus = hit.resources['cpus']
+                if 'provisionedResources' in hit.execution:
+                    if 'cpus' in hit.execution['provisionedResources']:
+                        cpus = hit.execution['provisionedResources']['cpus']
                 if 'tasks' in hit.execution:
                     if hit.username not in wall_time:
                         wall_time[hit.username] = 0
