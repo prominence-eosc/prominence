@@ -456,6 +456,10 @@ def list_jobs(self, job_ids, identity, active, completed, status, workflow, num,
 
             execution = {}
 
+            if 'JobRunCount' in job:
+                if job['JobRunCount'] > 1:
+                    execution['numRetries'] = job['JobRunCount'] - 1
+
             stagein_total = 0
             for item in stagein_u:
                 if 'time' in item:
