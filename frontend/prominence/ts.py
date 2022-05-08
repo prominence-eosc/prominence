@@ -37,7 +37,15 @@ def get_points(username, group, email, job_id):
     if username != identity:
         return not_auth_job()
 
-    since = int((time.time() - qdate)/60) + 30
+    start = int((time.time() - qdate)/60) + 30
+    if 'start' in request.args:
+        start = int(request.args.get('start'))
+
+    if 'stop' in request.args:
+        stop = int(request.args.get('stop'))
+        range_expr = 'range(start: -%dm, stop: -%dm)' % (start, stop)
+    else:
+        range_expr = 'range(start: -%dm)' % start
 
     output = []
     try:
@@ -46,7 +54,7 @@ def get_points(username, group, email, job_id):
                                 org=app.config['INFLUXDB_ORG'])
 
         query_api = client.query_api()
-        tables = query_api.query('from(bucket:"user") |> range(start: -%dm) |> filter(fn: (r) => r["jobuid"] == "%s")' % (since, job_uuid))
+        tables = query_api.query('from(bucket:"user") |> %s |> filter(fn: (r) => r["jobuid"] == "%s")' % (range_expr, job_uuid))
 
         have_tags = False
         tags = {}
@@ -70,7 +78,7 @@ def get_points(username, group, email, job_id):
             data['tags'] = tags
             output.append(data)
     except:
-        return jsonify({'error':'A JWT token is required'}), 400
+        return jsonify({'error':'Unable to get time-series data'}), 400
 
     return jsonify(output)
 
