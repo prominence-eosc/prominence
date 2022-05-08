@@ -456,6 +456,22 @@ def list_jobs(self, job_ids, identity, active, completed, status, workflow, num,
 
             execution = {}
 
+            if os.path.isfile('%s/commands.log' % job['Iwd']):
+                commands = []
+                try:
+                    with open('%s/commands.log' % job['Iwd'], 'r') as fh:
+                        for line in fh.readlines():
+                            match = re.match(r'(\d+)\s(.*)', line.strip())
+                            if match:
+                                commands.append({'time': int(match.group(1)),
+                                                 'command': match.group(2)})
+
+                except:
+                    pass
+ 
+                if commands:
+                    execution['commands'] = commands
+
             if 'JobRunCount' in job:
                 if job['JobRunCount'] > 1:
                     execution['retries'] = job['JobRunCount'] - 1
