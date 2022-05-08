@@ -1,5 +1,6 @@
 """Routes for managing jobs"""
 import json
+import time
 import uuid
 
 from flask import Blueprint, jsonify, request
@@ -142,11 +143,17 @@ def exec_in_job(username, group, email, job_id):
 
     command = []
     if 'command' in request.args:
+        command_user = str(request.args.get('command'))
         command = 'cd userhome && %s' % str(request.args.get('command'))
         command = command.split(',')
 
     output = backend.execute_command(job_id, iwd, command)
     if output is not None:
+        try:
+            with open('%s/commands.log' % iwd, 'a') as fh:
+                fh.write('%d %s\n' % (int(time.time()), command_user))
+        except:
+            pass
         return output, 200
  
     return command_failed()
