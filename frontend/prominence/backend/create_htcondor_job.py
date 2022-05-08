@@ -209,6 +209,11 @@ def _create_htcondor_job(self, username, groups, email, uid, jjob, job_path, wor
         if 'priority' in jjob['policies']:
             cjob['+JobPrio'] = jjob['policies']['priority']
 
+    # Retries
+    if 'policies' in jjob:
+        if 'maximumRetries' in jjob['policies']:
+            cjob['max_retries'] = jjob['policies']['maximumRetries']
+
     # Preemptible
     if 'preemptible' in jjob:
         cjob['+ProminencePreemptible'] = 'true'
