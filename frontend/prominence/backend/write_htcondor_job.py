@@ -47,7 +47,8 @@ def write_htcondor_job(cjob, filename):
             '+JobPrio',
             '+ProminenceDynamicMPI',
             '+WantParallelSchedulingGroups',
-            'machine_count']
+            'machine_count',
+            'max_retries']
     extras = "\n"
     for key in keys:
         if key in cjob:
