@@ -488,7 +488,7 @@ def validate_job(job):
                 if task['type'] not in ('openmpi', 'mpich', 'intelmpi', 'basic', 'sidecar'):
                     return (False, 'invalid task type')
 
-                if task['type'] not in ('openmpi', 'mpich', 'intelmpi', 'basic'):
+                if task['type'] in ('openmpi', 'mpich', 'intelmpi', 'basic'):
                     found_standard_task = True
 
                 if task['type'] == 'openmpi' or task['type'] == 'mpich' or task['type'] == 'intelmpi':
