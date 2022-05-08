@@ -1706,8 +1706,8 @@ def run_tasks(job, path, node_num, main_node):
     num_retries = 0
     ignore_failures = False
     if 'policies' in job:
-        if 'maximumRetries' in job['policies']:
-            num_retries = job['policies']['maximumRetries']
+        if 'maximumTaskRetries' in job['policies']:
+            num_retries = job['policies']['maximumTaskRetries']
         if 'ignoreTaskFailures' in job['policies']:
             ignore_failures = job['policies']['ignoreTaskFailures']
 

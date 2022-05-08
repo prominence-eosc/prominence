@@ -329,6 +329,7 @@ def validate_job(job):
                         'totalCpusRange']
 
     policies_valids = ['maximumRetries',
+                       'maximumTaskRetries',
                        'preemptible',
                        'maximumTimeInQueue',
                        'maximumIdleTimePerResource',
@@ -636,6 +637,16 @@ def validate_job(job):
                 return (False, 'the number of retries must be greater than 0')
 
             if job['policies']['maximumRetries'] > 6:
+                return (False, 'the number of retries must be less than 6')
+
+        if 'maximumTaskRetries' in job['policies']:
+            if not str(job['policies']['maximumTaskRetries']).isdigit():
+                return (False, 'the number of task retries must be an integer')
+
+            if job['policies']['maximumTaskRetries'] < 1:
+                return (False, 'the number of retries must be greater than 0')
+
+            if job['policies']['maximumTaskRetries'] > 6:
                 return (False, 'the number of retries must be less than 6')
 
         if 'maximumTimeInQueue' in job['policies']:
