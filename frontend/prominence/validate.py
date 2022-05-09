@@ -629,6 +629,10 @@ def validate_job(job):
             if not str(job['policies']['priority']).isdigit():
                 return (False, 'the priority must be an integer')
 
+        if 'autoScalingType' in job['policies']:
+            if job['policies']['autoScalingType'] not in (None, 'none', 'dedicated', 'shared'):
+                return (False, 'autoScalingType, if defined, must be none, dedicated or shared')
+
         if 'maximumRetries' in job['policies']:
             if not str(job['policies']['maximumRetries']).isdigit():
                 return (False, 'the number of retries must be an integer')
