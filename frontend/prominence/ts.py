@@ -47,6 +47,10 @@ def get_points(username, group, email, job_id):
     else:
         range_expr = 'range(start: -%dm)' % start
 
+    flux_mean = ''
+    if 'mean' in request.args:
+        flux_mean = ' |> mean() '
+
     output = []
     try:
         client = InfluxDBClient(url=app.config['INFLUXDB_URL'],
@@ -54,7 +58,7 @@ def get_points(username, group, email, job_id):
                                 org=app.config['INFLUXDB_ORG'])
 
         query_api = client.query_api()
-        tables = query_api.query('from(bucket:"user") |> %s |> filter(fn: (r) => r["jobuid"] == "%s")' % (range_expr, job_uuid))
+        tables = query_api.query('from(bucket:"user") |> %s |> filter(fn: (r) => r["jobuid"] == "%s") %s' % (range_expr, job_uuid, flux_mean))
 
         have_tags = False
         tags = {}
@@ -63,7 +67,8 @@ def get_points(username, group, email, job_id):
             ts = []
             vals = []
             for record in table.records:
-                ts.append(record.values['_time'].strftime("%Y-%m-%d %H:%M:%S"))
+                if 'mean' not in request.args:
+                    ts.append(record.values['_time'].strftime("%Y-%m-%d %H:%M:%S"))
                 vals.append(record.values['_value'])
                 if not have_tags:
                     have_tags = True
@@ -71,7 +76,8 @@ def get_points(username, group, email, job_id):
                         if item not in ('_time', '_start', '_stop', '_field', '_measurement', '_value', 'result', 'table', 'jobuid'):
                             tags[item] = record.values[item]
 
-            data['times'] = ts
+            if 'mean' not in request.args:
+                data['times'] = ts
             data['values'] = vals
             data['measurement'] = record.values['_measurement']
             data['field'] = record.values['_field']
