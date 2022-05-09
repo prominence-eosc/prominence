@@ -31,7 +31,7 @@ def get_keys(username, group, email, path=None):
 
         keys = []
         try:
-            etcd = etcd3.client()
+            etcd = etcd3.client(host=app.config['ETCD_HOSTNAME'], port=app.config['ETCD_PORT'])
             for item in etcd.get_prefix('/%s%s' % (username, prefix)):
                 key = item[1].key.decode('utf-8').replace('/%s' % username, '', 1)
                 if '_internal_' not in key:
@@ -48,7 +48,7 @@ def get_keys(username, group, email, path=None):
 
     value = None
     try:
-        etcd = etcd3.client()
+        etcd = etcd3.client(host=app.config['ETCD_HOSTNAME'], port=app.config['ETCD_PORT'])
         value = etcd.get('/%s/%s' % (username, path))
         etcd.close()
     except Exception as err:
@@ -85,7 +85,7 @@ def set_value(username, group, email, key=None):
     value = request.get_data()
 
     try:
-        etcd = etcd3.client()
+        etcd = etcd3.client(host=app.config['ETCD_HOSTNAME'], port=app.config['ETCD_PORT'])
         etcd.put('/%s/%s' % (username, key), base64.b64encode(value))
         etcd.close()
     except Exception as err:
@@ -113,7 +113,7 @@ def delete_key(username, group, email, key=None):
         prefix = True
 
     try:
-        etcd = etcd3.client()
+        etcd = etcd3.client(host=app.config['ETCD_HOSTNAME'], port=app.config['ETCD_PORT'])
         if not prefix:
             etcd.delete('/%s/%s' % (username, key))
         else:
