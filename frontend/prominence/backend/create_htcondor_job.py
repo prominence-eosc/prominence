@@ -220,11 +220,11 @@ def _create_htcondor_job(self, username, groups, email, uid, jjob, job_path, wor
 
     # Job router - route idle jobs if they have never been routed before and have been idle for over 40 secs
     # or if they were last routed more than 20 mins ago
-    disable_router = False
+    disable_router = True
     if 'policies' in jjob:
         if 'autoScalingType' in jjob['policies']:
-            if jjob['policies']['autoScalingType'] == 'none' or not jjob['policies']['autoScalingType']:
-                disable_router = True
+            if jjob['policies']['autoScalingType'] == 'dedicated':
+                disable_router = False
 
     if disable_router:
         cjob['+ProminenceWantJobRouter'] = 'false'
