@@ -569,8 +569,6 @@ def get_token(path):
         logging.error('Got exception reading job ad: %s', err)
         pass
 
-    logging.info('Read token: %s, URL: %s', token, url)
-
     return (token, url)
 
 def create_sif_from_archive(image_out, image_in):
