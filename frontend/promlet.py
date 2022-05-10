@@ -2138,8 +2138,8 @@ if __name__ == "__main__":
     if num_nodes > 1:
         filename = '%s/logs/promlet.%d-%d.log' % (path, args.id, node_num)
 
-    logging.basicConfig(filename=filename, level=logging.INFO, format='%(asctime)s %(message)s')
-    logging.info('Started promlet using path "%s" on host %s', path, socket.gethostname())
+    logging.basicConfig(filename=filename, level=logging.INFO, format='%(asctime)s [promlet] %(message)s')
+    logging.info('Started PROMINENCE executor using path "%s" on host %s', path, socket.gethostname())
     logging.info('This is node %d of %d nodes', node_num, num_nodes)
 
     # Write empty json job details, so no matter what happens next, at least an empty file exists
@@ -2152,7 +2152,7 @@ if __name__ == "__main__":
 
     # Check if we have been run before
     if os.path.isfile('.lock'):
-        logging.critical('Lock file detected - promlet is being re-run, exiting...')
+        logging.critical('Lock file detected - PROMINENCE executor is being re-run, exiting...')
         exit(1)
 
     # Create a lock file
@@ -2265,8 +2265,8 @@ if __name__ == "__main__":
                 success_tasks = True
 
     if not success_tasks or not success_stageout or not success_stagein:
-        logging.info('Exiting promlet with failure')
+        logging.info('Exiting with failure')
         exit(1)
 
-    logging.info('Exiting promlet with success')
+    logging.info('Exiting with success')
     exit(0)
