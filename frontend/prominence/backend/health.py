@@ -25,7 +25,7 @@ def get_health(self):
 
     # Check Elasticsearch
     try:
-        resp = requests.get('http://%s:%s' % (self._config['ELASTICSEARCH_HOST'], self._config['ELASTICSEARCH_PORT']))
+        resp = requests.get('http://%s:%s' % (self._config['ELASTICSEARCH_HOST'], self._config['ELASTICSEARCH_PORT']), timeout=10)
         if resp.status_code != 200:
             errors.append('ELASTICSEARCH_STATUS')
     except:
@@ -33,7 +33,7 @@ def get_health(self):
 
     # Check etcd
     try:
-        resp = requests.get('http://127.0.0.1:2379/health')
+        resp = requests.get('http://127.0.0.1:2379/health', timeout=10)
         if resp.status_code != 200:
             errors.append('ETCD_STATUS')
     except:
@@ -41,7 +41,7 @@ def get_health(self):
 
     # Check InfluxDB
     try:
-        resp = requests.get('%s/health' % self._config['INFLUXDB_URL'])
+        resp = requests.get('%s/health' % self._config['INFLUXDB_URL'], timeout=10)
         if resp.status_code != 200:
             errors.append('INFLUXDB_STATUS')
     except:
