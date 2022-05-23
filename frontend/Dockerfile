@@ -32,3 +32,7 @@ ENTRYPOINT ["uwsgi", \
             "--master", \
             "--chdir", "/usr/local/bin", \
             "-w", "prominence-restapi:app"]
+
+RUN yum -y install sudo
+COPY prominence-sudoers /etc/sudoers.d/prominence
+RUN chmod a-w /etc/sudoers.d/prominence && chmod o-r  /etc/sudoers.d/prominence
