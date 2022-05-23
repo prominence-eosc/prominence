@@ -179,6 +179,20 @@ def _create_htcondor_job(self, username, groups, email, uid, jjob, job_path, wor
     # Default requirements: ensure user-instantiated worker nodes can only run jobs from that user
     cjob['Requirements'] = '(isUndefined(TARGET.AuthenticatedIdentity) || TARGET.AuthenticatedIdentity =?= "worker@cloud" || TARGET.AuthenticatedIdentity =?= strcat(ProminenceIdentity, "@cloud") || TARGET.AuthenticatedIdentity =?= ProminenceIdentity)'
 
+    # Is Singularity required?
+    requires_singularity = False
+    if 'tasks' in jjob:
+        for task in jjob['tasks']:
+            if 'runtime' in task:
+                if task['runtime'] == 'singularity':
+                    requires_singularity = True
+            if 'image' in task:
+                if task['image'].endswith('.sif') or task['image'].endswith('.simg'):
+                    requires_singularity = True
+
+    if requires_singularity:
+        cjob['Requirements'] = '%s && HasSingularity =?= True'  % cjob['Requirements']
+
     # CPUs required
     if 'cpus' in jjob['resources']:
         cjob['RequestCpus'] = str(jjob['resources']['cpus'])
