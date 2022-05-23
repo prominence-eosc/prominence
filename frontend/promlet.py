@@ -1954,6 +1954,10 @@ def run_tasks(job, path, node_num, main_node):
         else:
             used_singularity = True
 
+            # Check if Singularity has been installed
+            if not get_singularity_version():
+                logging.error('Singularity is not installed')
+
             # Pull image if necessary or use a previously pulled image
             if found_image:
                 image_new = '%s/images/%d/image.simg' % (path, image_count)
