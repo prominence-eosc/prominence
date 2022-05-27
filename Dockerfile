@@ -11,7 +11,7 @@ RUN mkdir /tmp/prominence
 COPY setup.py /tmp/prominence/.
 COPY README.md /tmp/prominence/.
 COPY prominence /tmp/prominence/prominence/
-COPY bin /tmp/prominence/bin/
+COPY prominence-restapi.py /tmp/prominence/.
 
 RUN pip3 install --upgrade pip
 
