@@ -1,1 +1,0 @@
-prominence ALL=(ALL:ALL) NOPASSWD:/usr/bin/condor_token_create
