@@ -5,7 +5,7 @@ import etcd3
 from flask import Blueprint, jsonify, request
 from flask import current_app as app
 
-from .errors import func_disabled, kv_error, key_not_specified, no_value_provided, value_too_big, no_such_key
+from .errors import func_disabled, kv_error, key_not_specified, no_value_provided, value_too_big, no_such_key, replacement_failed
 from .utilities import get_remote_addr
 
 from .auth import requires_auth
@@ -84,13 +84,25 @@ def set_value(username, group, email, key=None):
 
     value = request.get_data()
 
-    try:
-        etcd = etcd3.client(host=app.config['ETCD_HOSTNAME'], port=app.config['ETCD_PORT'])
-        etcd.put('/%s/%s' % (username, key), base64.b64encode(value))
-        etcd.close()
-    except Exception as err:
-        app.logger.error('Got exception setting kv: %s', err)
-        return kv_error()
+    if 'prev' in request.args:
+        try:
+            etcd = etcd3.client(host=app.config['ETCD_HOSTNAME'], port=app.config['ETCD_PORT'])
+            status = etcd.replace('/%s/%s' % (username, key), base64.b64encode(request.args.get('prev').encode('utf-8')), base64.b64encode(value))
+            etcd.close()
+        except Exception as err:
+            app.logger.error('Got exception replacing kv: %s', err)
+            return kv_error()
+
+        if not status:
+            return replacement_failed()
+    else:
+        try:
+            etcd = etcd3.client(host=app.config['ETCD_HOSTNAME'], port=app.config['ETCD_PORT'])
+            etcd.put('/%s/%s' % (username, key), base64.b64encode(value))
+            etcd.close()
+        except Exception as err:
+            app.logger.error('Got exception setting kv: %s', err)
+            return kv_error()
 
     return jsonify({}), 201
 

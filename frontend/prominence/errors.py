@@ -128,6 +128,13 @@ def no_such_key():
     with app.app_context():
         return jsonify({'error':'No such key'}), 404
 
+def replacement_failed():
+    """
+    Atomic replacement not successful
+    """
+    with app.app_context():
+        return jsonify({'error':'Atomic replacement not successful'}), 400    
+
 def key_not_specified():
     """
     Key not specified
