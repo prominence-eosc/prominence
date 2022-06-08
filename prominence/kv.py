@@ -35,7 +35,11 @@ def get_keys(username, group, email, path=None):
             for item in etcd.get_prefix('/%s%s' % (username, prefix)):
                 key = item[1].key.decode('utf-8').replace('/%s' % username, '', 1)
                 if '_internal_' not in key:
-                    keys.append(key)
+                    if 'values' in request.args:
+                        value = base64.b64decode(item[0].decode('utf-8')).decode('utf-8')
+                        keys.append({key: value})
+                    else:
+                        keys.append(key)
             etcd.close()
         except Exception as err:
             app.logger.error('Got exception listing kv: %s', err)
