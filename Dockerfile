@@ -11,7 +11,7 @@ RUN mkdir /tmp/prominence
 COPY setup.py /tmp/prominence/.
 COPY README.md /tmp/prominence/.
 COPY prominence /tmp/prominence/prominence/
-COPY bin /tmp/prominence/bin/
+COPY prominence-restapi.py /tmp/prominence/.
 
 RUN pip3 install --upgrade pip
 
@@ -19,8 +19,15 @@ RUN cd /tmp/prominence && \
     pip3 install . && \
     rm -rf /tmp/prominence
 
+# Executor
 COPY promlet.py /usr/local/libexec/
 
+# Allow prominence user to run condor_token_create
+RUN yum -y install sudo && \
+    echo "prominence ALL=(ALL:ALL) NOPASSWD:/usr/bin/condor_token_create" > /etc/sudoers.d/prominence && \
+    chmod a-w /etc/sudoers.d/prominence && chmod o-r  /etc/sudoers.d/prominence
+
+# Entrypoint
 ENTRYPOINT ["uwsgi", \
             "--http-socket", "localhost:8080", \
             "--processes", "4", \
@@ -32,7 +39,3 @@ ENTRYPOINT ["uwsgi", \
             "--master", \
             "--chdir", "/usr/local/bin", \
             "-w", "prominence-restapi:app"]
-
-RUN yum -y install sudo
-COPY prominence-sudoers /etc/sudoers.d/prominence
-RUN chmod a-w /etc/sudoers.d/prominence && chmod o-r  /etc/sudoers.d/prominence

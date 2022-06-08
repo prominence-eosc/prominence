@@ -16,7 +16,7 @@ setuptools.setup(
     platforms=["any"],
     install_requires=["uwsgi", "flask", "requests", "boto3", "PyJWT", "elasticsearch", "elasticsearch-dsl", "etcd3", "influxdb-client"],
     package_dir={'': '.'},
-    scripts=["bin/prominence-restapi.py"],
+    scripts=["prominence-restapi.py"],
     packages=["prominence", "prominence.backend"],
     package_data={"": ["README.md"]},
 )
