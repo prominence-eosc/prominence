@@ -445,8 +445,7 @@ def _create_htcondor_job(self, username, groups, email, uid, jjob, job_path, wor
     except IOError as err:
         return (1, {"error":"Unable to write .job.mapped.json due to %s" % err}, cjob)
 
-    # Write empty files for stdout & stderr - for jobs submitted to a batch system, these will
-    # not be initially created by HTCondor by default
+    # Write empty files for stdout & stderr
     try:
         open('%s/job.0.out' % job_path, 'a').close()
         open('%s/job.0.err' % job_path, 'a').close()
