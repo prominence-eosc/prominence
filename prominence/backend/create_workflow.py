@@ -7,7 +7,7 @@ from string import Template
 from urllib.parse import unquote
 import uuid
 
-from .utilities import condor_str, run
+from .utilities import condor_str, run, validate_presigned_url
 from .write_htcondor_job import write_htcondor_job
 
 # Get an instance of a logger
@@ -42,7 +42,7 @@ def _create_mapped_json(self, path, job_index, mapping, job_name):
         with open('%s/.job.mapped.json' % path) as fh:
             job_json = json.load(fh)
     except:
-        return None
+        return None, None
     new_job_json = job_json.copy()
 
     # Update artifact URLs
@@ -63,6 +63,14 @@ def _create_mapped_json(self, path, job_index, mapping, job_name):
                                                     self._config['S3_BUCKET'],
                                                     name,
                                                     864000)
+
+                # Validate
+                url_exists = validate_presigned_url(new_url)
+                if not url_exists:
+                    pieces = name.split('/')
+                    artifact_name = pieces[len(pieces)-1]
+                    return False, {"error":"Artifact %s does not exist" % artifact_name}
+
                 new_artifacts.append({'url': new_url})
         new_job_json['artifacts'] = new_artifacts
 
@@ -79,7 +87,6 @@ def _create_mapped_json(self, path, job_index, mapping, job_name):
                 # Apply template
                 for key in mapping:
                     value = mapping[key]
-                    print('--template--', key, value)
                     name = Template(name).safe_substitute({key:value})
 
                 # Create new presigned URL
@@ -118,9 +125,9 @@ def _create_mapped_json(self, path, job_index, mapping, job_name):
         with open('%s/.job.mapped.%d.json' % (path, job_index), 'w') as fh:
             json.dump(new_job_json, fh)
     except:
-        return None
+        return None, None
 
-    return True
+    return True, None
 
 def create_workflow(self, username, groups, email, uid, jwf):
     """
@@ -397,10 +404,12 @@ def create_workflow(self, username, groups, email, uid, jwf):
                 return (1, {"error":"Unable to write JDL for job"})
 
             for map_count in range(0, len(mappings_maps)):
-                self._create_mapped_json('%s/%s' % (job_sandbox, job['name']),
-                                         mappings_indexes[map_count],
-                                         mappings_maps[map_count],
-                                         job['name'])
+                status, msg = self._create_mapped_json('%s/%s' % (job_sandbox, job['name']),
+                                                       mappings_indexes[map_count],
+                                                       mappings_maps[map_count],
+                                                       job['name'])
+                if not status and msg:
+                    return (1, msg)
 
             for to_dir in exec_copy_dirs:
                 if to_dir != job['name']:
