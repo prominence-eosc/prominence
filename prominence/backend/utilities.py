@@ -1,4 +1,5 @@
 from functools import wraps
+import requests
 import shlex
 import subprocess
 import threading
@@ -84,3 +85,17 @@ def retry(tries=4, delay=3, backoff=2):
         return f_retry
 
     return deco_retry
+
+@retry(tries=2, delay=1, backoff=1)
+def validate_presigned_url(url):
+    """
+    Validate a presigned URL
+    """
+    try:
+        response = requests.get(url, stream=True, timeout=30)
+    except requests.exceptions.RequestException:
+        return False
+
+    if response.status_code != 200:
+        return False
+    return True
