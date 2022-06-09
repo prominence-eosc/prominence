@@ -2,24 +2,9 @@ import base64
 import json
 import os
 import math
-import requests
 
-from .utilities import condor_str, retry
+from .utilities import condor_str, retry, validate_presigned_url
 from .create_job_token import create_job_token
-
-@retry(tries=2, delay=1, backoff=1)
-def validate_presigned_url(url):
-    """
-    Validate a presigned URL
-    """
-    try:
-        response = requests.get(url, stream=True, timeout=30)
-    except requests.exceptions.RequestException:
-        return False
-
-    if response.status_code != 200:
-        return False
-    return True
 
 def _create_htcondor_job(self, username, groups, email, uid, jjob, job_path, workflow=False, jobfactory=False, workflowuid=None, joblabel=None):
     """
