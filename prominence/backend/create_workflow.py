@@ -262,8 +262,9 @@ def create_workflow(self, username, groups, email, uid, jwf):
                     jobs_in_dag.append('%s_%d' % (job['name'], index))
 
             elif job_factory['type'] == 'zip':
+                cjob['extra_args'] = ''
                 for index in range(len(job_factory['parameters'])):
-                    cjob['extra_args'] = '--param %s=$(prominencevalue%d) ' % (job_factory['parameters'][index]['name'], index)
+                    cjob['extra_args'] += '--param %s=$(prominencevalue%d) ' % (job_factory['parameters'][index]['name'], index)
 
                 for index in range(len(job_factory['parameters'][0]['values'])):
                     parameters = []
