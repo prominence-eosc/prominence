@@ -412,15 +412,6 @@ def _create_htcondor_job(self, username, groups, email, uid, jjob, job_path, wor
         cjob['+WantParallelSchedulingGroups'] = 'True'
         cjob['universe'] = 'parallel'
 
-    # Prepare for submission to a remote HPC system
-    #tasks = jjob['resources']['nodes']
-    #cpus_per_task = jjob['resources']['cpus']
-    #if 'memory' in jjob['resources']:
-    #    memory_per_cpu = jjob['resources']['memory']*1000
-    #else:
-    #    memory_per_cpu = jjob['resources']['memoryPerCpu']*jjob['resources']['cpus']*1000
-    #cjob['+remote_cerequirements_default'] = condor_str("RequiredTasks == %d && RequiredMemoryPerCpu == %d && RequiredCpusPerTask == %d && RequiredTime == %d" % (tasks, memory_per_cpu, cpus_per_task, max_run_time))
-
     # Set max idle time per resource
     max_idle_time = 0
     if 'policies' in jjob:
