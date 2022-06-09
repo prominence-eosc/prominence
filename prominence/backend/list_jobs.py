@@ -3,6 +3,7 @@ import json
 import math
 import os
 import re
+from string import Template
 
 import classad
 import htcondor
@@ -566,6 +567,11 @@ def list_jobs(self, job_ids, identity, active, completed, status, workflow, num,
                 outputs = []
                 for output_file in job_json_file['outputFiles']:
                     filename = os.path.basename(output_file)
+                    if jobj['parameters']:
+                        for key in jobj['parameters']:
+                            value = jobj['parameters'][key]
+                            filename = Template(filename).safe_substitute({key:value})
+
                     stageout_success = False
                     url = ''
                     size = None
@@ -592,6 +598,11 @@ def list_jobs(self, job_ids, identity, active, completed, status, workflow, num,
                 for output_dir in job_json_file['outputDirs']:
                     dirs = output_dir.split('/')
                     dirname_base = dirs[len(dirs) - 1]
+                    if jobj['parameters']:
+                        for key in jobj['parameters']:
+                            value = jobj['parameters'][key]
+                            dirname_base = Template(dirname_base).safe_substitute({key:value})
+
                     stageout_success = False
                     url = ''
                     size = None
