@@ -764,39 +764,6 @@ def download_artifacts(job, path):
 
     return success, json_artifacts
 
-def replace_output_urls(job, outfiles, outdirs):
-    """
-    Replace output file & directory URLs if necessary
-    """
-    # With user-provided storage, don't need to update URLs
-    (storage, _, _) = get_base_url(job)
-    if storage:
-        return
-
-    logging.info('Checking if we need to update any output file & directories URLs')
-
-    if outfiles and 'outputFiles' in job:
-        for outfile in outfiles:
-            pieces = outfile.split('=', 1)
-            filename = pieces[0]
-            url = pieces[1]
-            for i in range(0, len(job['outputFiles'])):
-                pair = job['outputFiles'][i]
-                if filename == pair['name']:
-                    logging.info('Updating URL for file %s with %s', filename, url)
-                    job['outputFiles'][i]['url'] = url
-
-    if outdirs and 'outputDirs' in job:
-        for outdir in outdirs:
-            pieces = outdir.split('=', 1)
-            filename = pieces[0]
-            url = pieces[1]
-            for i in range(0, len(job['outputDirs'])):
-                pair = job['outputDirs'][i]
-                if filename == pair['name']:
-                    logging.info('Updating URL for dir %s with %s', filename, url)
-                    job['outputDirs'][i]['url'] = url
-
 def image_name(image):
     """
     Normalise image names
@@ -2105,14 +2072,6 @@ def create_parser():
                         dest='param',
                         action='append',
                         help='Parameters for the job')
-    parser.add_argument('--outfile',
-                        dest='outfile',
-                        action='append',
-                        help='Output file url put addresses')
-    parser.add_argument('--outdir',
-                        dest='outdir',
-                        action='append',
-                        help='Output directory url put addresses')
 
     return parser.parse_args()
 
@@ -2173,11 +2132,6 @@ if __name__ == "__main__":
     job = get_job(args.job)
     if not job:
         exit(1)
-
-    # Replace output file/dir URL addresses if necessary
-    if main_node:
-        if args.outfile or args.outdir:
-            replace_output_urls(job, args.outfile, args.outdir)
 
     # Mount user-specified storage if necessary
     success_mount = mount_storage(job, path)
