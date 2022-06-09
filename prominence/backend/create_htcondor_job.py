@@ -283,9 +283,10 @@ def _create_htcondor_job(self, username, groups, email, uid, jjob, job_path, wor
                 else:
                     path = '%s/%s' % (username, artifact_url)
                 artifact_url = self.create_presigned_url('get', self._config['S3_BUCKET'], 'uploads/%s' % path, 864000)
-                #url_exists = validate_presigned_url(artifact_url)
-                #if not url_exists:
-                #    return (1, {"error":"Artifact %s does not exist" % artifact_original}, cjob)
+                if not jobfactory:
+                    url_exists = validate_presigned_url(artifact_url)
+                    if not url_exists:
+                        return (1, {"error":"Artifact %s does not exist" % artifact_original}, cjob)
                 artifact['url'] = artifact_url
             artifacts.append(artifact)
 
