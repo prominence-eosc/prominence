@@ -111,7 +111,10 @@ def _create_htcondor_job(self, username, groups, email, uid, jjob, job_path, wor
 
     # Include the mapped JSON job description as an input file
     input_files.append(os.path.join(job_path, '.job.json'))
-    input_files.append(os.path.join(job_path, '.job.mapped.json'))
+    if jobfactory:
+        input_files.append('$(mappedjson)')
+    else:
+        input_files.append(os.path.join(job_path, '.job.mapped.json'))
 
     # Standard defaults
     cjob['universe'] = 'vanilla'
@@ -280,9 +283,9 @@ def _create_htcondor_job(self, username, groups, email, uid, jjob, job_path, wor
                 else:
                     path = '%s/%s' % (username, artifact_url)
                 artifact_url = self.create_presigned_url('get', self._config['S3_BUCKET'], 'uploads/%s' % path, 864000)
-                url_exists = validate_presigned_url(artifact_url)
-                if not url_exists:
-                    return (1, {"error":"Artifact %s does not exist" % artifact_original}, cjob)
+                #url_exists = validate_presigned_url(artifact_url)
+                #if not url_exists:
+                #    return (1, {"error":"Artifact %s does not exist" % artifact_original}, cjob)
                 artifact['url'] = artifact_url
             artifacts.append(artifact)
 

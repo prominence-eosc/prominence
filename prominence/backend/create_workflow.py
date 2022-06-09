@@ -3,6 +3,7 @@ import logging
 import os
 import re
 import shutil
+from string import Template
 import uuid
 
 from .utilities import condor_str, run
@@ -87,6 +88,51 @@ def _output_urls(self, workflow, uid, job_name, label):
                 count += 1
 
     return lists
+
+def _create_mapped_json(self, path, job_index, mapping):
+    """
+    Create mapped JSON file
+    """
+    try:
+        with open('%s/.job.mapped.json' % path) as fh:
+            job_json = json.load(fh)
+    except:
+        print('Uanle to open .job.mapped.json')
+        return None
+    new_job_json = job_json.copy()
+
+    # Update artifact URLs
+    if 'artifacts' in job_json:
+        new_artifacts = []
+        for artifact in job_json['artifacts']:
+            print('Workin on arficat', artifact)
+            if 'url' in artifact:
+                # Exctract object name from presigned URL
+                name = artifact['url'].split(self._config['S3_BUCKET'])[1].split('?AWSAccessKeyId')[0][1:]
+                name = name.replace('%24', '$')
+
+                # Apply template
+                for key in mapping:
+                    value = mapping[key]
+                    name = Template(name).safe_substitute({key:value})
+
+                # Create new presigned URL
+                new_url = self.create_presigned_url('get',
+                                                    self._config['S3_BUCKET'],
+                                                    name,
+                                                    864000)
+                new_artifacts.append({'url': new_url})
+        new_job_json['artifacts'] = new_artifacts
+
+    # Write new mapped JSON file
+    try:
+        with open('%s/.job.mapped.%d.json' % (path, job_index), 'w') as fh:
+            json.dump(new_job_json, fh)
+    except:
+        print('Unable to write file')
+        return None
+
+    return True
 
 def create_workflow(self, username, groups, email, uid, jwf):
     """
@@ -181,7 +227,7 @@ def create_workflow(self, username, groups, email, uid, jwf):
 
             # Append job to DAG description
             dag.append('JOB %s job.jdl DIR %s' % ( job['name'], job['name']))
-            dag.append('VARS %s prominencecount="0"' % job['name'])
+            dag.append('VARS %s prominencecount="0" mappedjson=".job.mapped.json"' % job['name'])
             jobs_in_dag.append(job['name'])
 
         else:
@@ -205,6 +251,9 @@ def create_workflow(self, username, groups, email, uid, jwf):
 
             exec_copy_dirs = []
 
+            mappings_maps = []
+            mappings_indexes = []
+
             if job_factory['type'] == 'repeat':
                 cjob['extra_args'] = output_params(jwf)
 
@@ -214,9 +263,9 @@ def create_workflow(self, username, groups, email, uid, jwf):
                         exec_copy_dirs.append(dir_name)
 
                     dag.append('JOB %s_%d job.jdl DIR %s' % (job['name'], index, dir_name))
-                    dag.append('VARS %s_%d prominencecount="%d" %s' % (job['name'], index,
-                                                                          index,
-                                                                          self._output_urls(jwf, uid, job['name'], index)))
+                    dag.append('VARS %s_%d prominencecount="%d" %s mappedjson=".job.mapped.json"' % (job['name'], index,
+                                                                                     index,
+                                                                                     self._output_urls(jwf, uid, job['name'], index)))
                     jobs_in_dag.append('%s_%d' % (job['name'], index))
 
             elif job_factory['type'] == 'zip':
@@ -231,16 +280,21 @@ def create_workflow(self, username, groups, email, uid, jwf):
                     if dir_name not in exec_copy_dirs:
                         exec_copy_dirs.append(dir_name)
 
+                    mapping = {}
                     for parameter in job_factory['parameters']:
                         parameters.append('prominencevalue%d="%s"' % (count,
                                                                       write_parameter_value(parameter['values'][index])))
+                        mapping[parameter['name']] = parameter['values'][index]
                         count += 1
                     dag.append('JOB %s_%d job.jdl DIR %s' % (job['name'], index, dir_name))
-                    dag.append('VARS %s_%d %s prominencecount="%d" %s' % (job['name'], index,
-                                                                          ' '.join(parameters),
-                                                                          index,
-                                                                          self._output_urls(jwf, uid, job['name'], index)))
+                    dag.append('VARS %s_%d %s prominencecount="%d" %s mappedjson="%s"' % (job['name'], index,
+                                                                                        ' '.join(parameters),
+                                                                                        index,
+                                                                                        self._output_urls(jwf, uid, job['name'], index),
+                                                                                        '.job.mapped.%d.json' % index))
                     jobs_in_dag.append('%s_%d' % (job['name'], index))
+                    mappings_maps.append(mapping)
+                    mappings_indexes.append(index)
             elif job_factory['type'] == 'parameterSweep':
                 num_dimensions = len(job_factory['parameters'])
 
@@ -272,34 +326,45 @@ def create_workflow(self, username, groups, email, uid, jwf):
                 if num_dimensions == 1:
                     job_count = 0
                     for x1 in range(ps_num[0]):
+                        mapping = {}
                         x1_val = ps_start[0] + x1*ps_step[0]
                         dir_name = create_dir_structure(job['name'], job_count, ps_num[0])
                         if dir_name not in exec_copy_dirs:
                             exec_copy_dirs.append(dir_name)
                         dag.append('JOB %s_%d job.jdl DIR %s' % (job['name'], job_count, dir_name))
-                        dag.append('VARS %s_%d prominencevalue0="%s" prominencecount="%d" %s' % (job['name'], job_count, write_parameter_value(x1_val), job_count, self._output_urls(jwf, uid, job['name'], job_count)))
+                        dag.append('VARS %s_%d prominencevalue0="%s" prominencecount="%d" %s mappedjson="%s"' % (job['name'], job_count, write_parameter_value(x1_val), job_count, self._output_urls(jwf, uid, job['name'], job_count), '.job.mapped.%d.json' % job_count))
                         jobs_in_dag.append('%s_%d' % (job['name'], job_count))
+                        mapping[ps_name[0]] = x1_val
+                        mappings_maps.append(mapping)
+                        mappings_indexes.append(job_count)
                         job_count += 1
 
                 elif num_dimensions == 2:
                     job_count = 0
                     for x1 in range(ps_num[0]):
                         for y1 in range(ps_num[1]):
+                            mapping = {}
                             x1_val = ps_start[0] + x1*ps_step[0]
                             y1_val = ps_start[1] + y1*ps_step[1]
                             dir_name = create_dir_structure(job['name'], job_count, ps_num[0]*ps_num[1])
                             if dir_name not in exec_copy_dirs:
                                 exec_copy_dirs.append(dir_name)
                             dag.append('JOB %s_%d job.jdl DIR %s' % (job['name'], job_count, job['name']))
-                            dag.append('VARS %s_%d prominencevalue0="%s" prominencevalue1="%s" prominencecount="%d" %s' % (job['name'], job_count, write_parameter_value(x1_val), write_parameter_value(y1_val), job_count, self._output_urls(jwf, uid, job['name'], job_count)))
+                            dag.append('VARS %s_%d prominencevalue0="%s" prominencevalue1="%s" prominencecount="%d" %s mappedjson="%s"' % (job['name'], job_count, write_parameter_value(x1_val), write_parameter_value(y1_val), job_count, self._output_urls(jwf, uid, job['name'], job_count), '.job.mapped.%d.json' % job_count))
                             jobs_in_dag.append('%s_%d' % (job['name'], job_count))
+                            mapping[ps_name[0]] = x1_val
+                            mapping[ps_name[1]] = y1_val
+                            mappings_maps.append(mapping)
+                            mappings_indexes.append(job_count)
                             job_count += 1
 
                 elif num_dimensions == 3:
+                    mapping = {}
                     job_count = 0
                     for x1 in range(ps_num[0]):
                         for y1 in range(ps_num[1]):
                             for z1 in range(ps_num[2]):
+                                mapping = {}
                                 x1_val = ps_start[0] + x1*ps_step[0]
                                 y1_val = ps_start[1] + y1*ps_step[1]
                                 z1_val = ps_start[2] + z1*ps_step[2]
@@ -307,8 +372,13 @@ def create_workflow(self, username, groups, email, uid, jwf):
                                 if dir_name not in exec_copy_dirs:
                                     exec_copy_dirs.append(dir_name)
                                 dag.append('JOB %s_%d job.jdl DIR %s' % (job['name'], job_count, job['name']))
-                                dag.append('VARS %s_%d prominencevalue0="%s" prominencevalue1="%s" prominencevalue2="%s" prominencecount="%d" %s' % (job['name'], job_count, write_parameter_value(x1_val), write_parameter_value(y1_val), write_parameter_value(z1_val), job_count, self._output_urls(jwf, uid, job['name'], job_count)))
+                                dag.append('VARS %s_%d prominencevalue0="%s" prominencevalue1="%s" prominencevalue2="%s" prominencecount="%d" %s mappedjson="%s"' % (job['name'], job_count, write_parameter_value(x1_val), write_parameter_value(y1_val), write_parameter_value(z1_val), job_count, self._output_urls(jwf, uid, job['name'], job_count), '.job.mapped.%d.json' % job_count))
                                 jobs_in_dag.append('%s_%d' % (job['name'], job_count))
+                                mapping[ps_name[0]] = x1_val
+                                mapping[ps_name[1]] = y1_val
+                                mapping[ps_name[2]] = z1_val
+                                mappings_maps.append(mapping)
+                                mappings_indexes.append(job_count)
                                 job_count += 1
 
                 elif num_dimensions == 4:
@@ -317,6 +387,7 @@ def create_workflow(self, username, groups, email, uid, jwf):
                         for y1 in range(ps_num[1]):
                             for z1 in range(ps_num[2]):
                                 for t1 in range(ps_num[3]):
+                                    mapping = {}
                                     x1_val = ps_start[0] + x1*ps_step[0]
                                     y1_val = ps_start[1] + y1*ps_step[1]
                                     z1_val = ps_start[2] + z1*ps_step[2]
@@ -325,8 +396,14 @@ def create_workflow(self, username, groups, email, uid, jwf):
                                     if dir_name not in exec_copy_dirs:
                                         exec_copy_dirs.append(dir_name)
                                     dag.append('JOB %s_%d job.jdl DIR %s' % (job['name'], job_count, job['name']))
-                                    dag.append('VARS %s_%d prominencevalue0="%s" prominencevalue1="%s" prominencevalue2="%s" prominencevalue3="%s" prominencecount="%d" %s' % (job['name'], job_count, write_parameter_value(x1_val), write_parameter_value(y1_val), write_parameter_value(z1_val), write_parameter_value(t1_val), job_count, self._output_urls(jwf, uid, job['name'], job_count)))
+                                    dag.append('VARS %s_%d prominencevalue0="%s" prominencevalue1="%s" prominencevalue2="%s" prominencevalue3="%s" prominencecount="%d" %s mappedjson="%s"' % (job['name'], job_count, write_parameter_value(x1_val), write_parameter_value(y1_val), write_parameter_value(z1_val), write_parameter_value(t1_val), job_count, self._output_urls(jwf, uid, job['name'], job_count), '.job.mapped.%d.json' % job_count))
                                     jobs_in_dag.append('%s_%d' % (job['name'], job_count))
+                                    mapping[ps_name[0]] = x1_val
+                                    mapping[ps_name[1]] = y1_val
+                                    mapping[ps_name[2]] = z1_val
+                                    mapping[ps_name[3]] = t1_val
+                                    mappings_maps.append(mapping)
+                                    mappings_indexes.append(job_count)
                                     job_count += 1
 
                 elif num_dimensions > 4:
@@ -334,6 +411,12 @@ def create_workflow(self, username, groups, email, uid, jwf):
 
             if not write_htcondor_job(cjob, '%s/%s/job.jdl' % (job_sandbox, job['name'])):
                 return (1, {"error":"Unable to write JDL for job"})
+
+            for map_count in range(0, len(mappings_maps)):
+                print('[MAP]', map_count, mappings_maps[map_count], mappings_indexes[map_count])
+                self._create_mapped_json('%s/%s' % (job_sandbox, job['name']),
+                                         mappings_indexes[map_count],
+                                         mappings_maps[map_count])
 
             for to_dir in exec_copy_dirs:
                 if to_dir != job['name']:
