@@ -118,7 +118,7 @@ def _create_mapped_json(self, path, job_index, mapping, job_name):
                                                     name,
                                                     864000)
                 new_outputs.append({'url': new_url, 'name': output['name']})
-        new_job_json['outputFiles'] = new_outputs
+        new_job_json['outputDirs'] = new_outputs
 
     # Write new mapped JSON file
     try:
