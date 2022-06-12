@@ -498,7 +498,11 @@ def get_cpu_info():
     """
     Get CPU details
     """
-    data = (subprocess.check_output("lscpu", shell=True).strip()).decode()
+    try:
+        data = (subprocess.check_output("lscpu", shell=True).strip()).decode()
+    except Exception as err:
+        logging.error('Unable to run lscpu')
+        return (None, None, None)
     dict = {}
     for line in data.split('\n'):
         pieces = line.split(':')
