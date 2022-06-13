@@ -465,6 +465,7 @@ def create_workflow(self, username, groups, email, uid, jwf):
     dag_appends.append("'+ProminenceIdentity=\"%s\"'" % username)
     dag_appends.append("'+ProminenceGroup=\"%s\"'" % groups)
     dag_appends.append("'+ProminenceJobUniqueIdentifier=\"%s\"'" % uid)
+    dag_appends.append("'+ProminenceAPI=\"1.0\"'")
 
     # Should the workflow be removed from the queue once finished?
     prfq = '+ProminenceRemoveFromQueue=True'

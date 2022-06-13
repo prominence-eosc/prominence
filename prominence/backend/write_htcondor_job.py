@@ -18,6 +18,7 @@ stream_error = true
 RequestCpus = %(cpus)s
 RequestMemory = %(reqmemory)s
 RequestDisk = %(reqdisk)s
++ProminenceAPI = %(apivers)s
 +ProminenceJobUniqueIdentifier = %(uuid)s
 +ProminenceIdentity = %(username)s
 +ProminenceGroup = %(group)s
@@ -75,6 +76,7 @@ def write_htcondor_job(cjob, filename):
     info['jobtoken'] = cjob['+ProminenceJobToken']
     info['joburl'] = cjob['+ProminenceURL']
     info['universe'] = cjob['universe']
+    info['apivers'] = cjob['+ProminenceAPI']
 
     # Add any labels
     extras_metadata = ''
