@@ -1087,6 +1087,7 @@ def get_info(path):
                     site = match.group(1)
     except Exception as err:
         logging.error('Got exception reading info from .job.ad: %s', err)
+        return None
 
     return {'cpus': cpus, 'memory': int(memory/1024.0), 'disk': int(disk/1000.0/1000.0), 'site': site}
  
