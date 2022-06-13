@@ -26,7 +26,6 @@ import requests
 from urllib.parse import urlsplit, unquote
 
 import urllib3
-urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 CURRENT_SUBPROCS = set()
 FINISH_NOW = False
@@ -1468,7 +1467,7 @@ def download_udocker(image, location, label, path, credential, job):
             return 1, False, checksum
 
         # Determine image name
-        image = stdout.split('\n')[len(stdout.split('\n')) - 2]
+        image = stdout.decode().split('\n')[len(stdout.decode().split('\n')) - 2]
         logging.info('Image name used is: %s', image)
 
         # Delete tarball
@@ -2101,6 +2100,7 @@ if __name__ == "__main__":
         filename = '%s/logs/promlet.%d-%d.log' % (path, args.id, node_num)
 
     logging.basicConfig(filename=filename, level=logging.INFO, format='%(asctime)s [promlet] %(message)s')
+    logging.captureWarnings(True)
     logging.info('Started PROMINENCE executor using path "%s" on host %s', path, socket.gethostname())
     logging.info('This is node %d of %d nodes', node_num, num_nodes)
 
