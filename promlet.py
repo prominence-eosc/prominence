@@ -1,5 +1,4 @@
 #!/usr/bin/python
-from __future__ import print_function
 import argparse
 import distutils.spawn
 import getpass
@@ -19,17 +18,12 @@ from string import Template
 import subprocess
 import tarfile
 import time
-from urllib import unquote
 from functools import wraps
 from resource import getrusage, RUSAGE_CHILDREN
 from threading import Timer
 import requests
 
-try:
-    from urlparse import urlsplit
-    from urllib import unquote
-except ImportError: # Python 3
-    from urllib.parse import urlsplit, unquote
+from urllib.parse import urlsplit, unquote
 
 import urllib3
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
