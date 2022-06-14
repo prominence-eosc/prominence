@@ -290,7 +290,7 @@ def get_command(paths, task_count):
     headers = {'Authorization': 'Bearer %s' % token}
 
     try:
-        response = requests.get(url, headers=headers, verify=False)
+        response = requests.get(url, headers=headers)
     except Exception as err:
         logging.error('Unable to get command from kv store due to: %s', err)
         return None
@@ -869,7 +869,7 @@ def get_new_url(path, name):
     data = {'name': name}
     headers = {'Authorization': 'Bearer %s' % token}
     try:
-        resp = requests.post('%s/data/output' % url, headers=headers, json=data, verify=False)
+        resp = requests.post('%s/data/output' % url, headers=headers, json=data)
     except Exception as err:
         logging.error('Got exception when trying to get new presigned URL: %s', err)
         return None
