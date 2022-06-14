@@ -66,7 +66,8 @@ def list_jobs(self, job_ids, identity, active, completed, status, workflow, num,
                       'MemoryProvisioned',
                       'DiskProvisioned',
                       'AllRemoteHosts',
-                      'MachineAttrProminenceCloud0']
+                      'MachineAttrProminenceCloud0',
+                      'ProminenceAPI']
     jobs_state_map = {1:'idle',
                       2:'running',
                       3:'failed',
@@ -567,11 +568,13 @@ def list_jobs(self, job_ids, identity, active, completed, status, workflow, num,
                 outputs = []
                 for output_file in job_json_file['outputFiles']:
                     filename = os.path.basename(output_file)
-                    if 'parameters' in jobj:
-                        if jobj['parameters']:
-                            for key in jobj['parameters']:
-                                value = jobj['parameters'][key]
-                                filename = Template(filename).safe_substitute({key:value})
+                    if 'ProminenceAPI' in job:
+                        if job['ProminenceAPI'] > 1.0:
+                            if 'parameters' in jobj:
+                                if jobj['parameters']:
+                                    for key in jobj['parameters']:
+                                        value = jobj['parameters'][key]
+                                        filename = Template(filename).safe_substitute({key:value})
 
                     stageout_success = False
                     url = ''
@@ -599,11 +602,13 @@ def list_jobs(self, job_ids, identity, active, completed, status, workflow, num,
                 for output_dir in job_json_file['outputDirs']:
                     dirs = output_dir.split('/')
                     dirname_base = dirs[len(dirs) - 1]
-                    if 'parameters' in jobj:
-                        if jobj['parameters']:
-                            for key in jobj['parameters']:
-                                value = jobj['parameters'][key]
-                                dirname_base = Template(dirname_base).safe_substitute({key:value})
+                    if 'ProminenceAPI' in job:
+                        if job['ProminenceAPI'] > 1.0:
+                            if 'parameters' in jobj:
+                                if jobj['parameters']:
+                                    for key in jobj['parameters']:
+                                        value = jobj['parameters'][key]
+                                        dirname_base = Template(dirname_base).safe_substitute({key:value})
 
                     stageout_success = False
                     url = ''
