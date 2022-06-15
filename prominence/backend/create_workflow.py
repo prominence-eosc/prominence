@@ -60,7 +60,6 @@ def _create_mapped_json(self, path, job_index, mapping, job_name):
 
                 # Create new presigned URL
                 new_url = self.create_presigned_url('get',
-                                                    self._config['S3_BUCKET'],
                                                     name,
                                                     864000)
 
@@ -91,7 +90,6 @@ def _create_mapped_json(self, path, job_index, mapping, job_name):
 
                 # Create new presigned URL
                 new_url = self.create_presigned_url('put',
-                                                    self._config['S3_BUCKET'],
                                                     name,
                                                     864000)
                 new_outputs.append({'url': new_url, 'name': output['name']})
@@ -114,7 +112,6 @@ def _create_mapped_json(self, path, job_index, mapping, job_name):
 
                 # Create new presigned URL
                 new_url = self.create_presigned_url('put',
-                                                    self._config['S3_BUCKET'],
                                                     name,
                                                     864000)
                 new_outputs.append({'url': new_url, 'name': output['name']})

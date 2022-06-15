@@ -8,14 +8,14 @@ def get_snapshot_url(self, uid):
     """
     Return a pre-signed URL to retrieve a snapshot
     """
-    return str(self.create_presigned_url('get', self._config['S3_BUCKET'], 'snapshots/%s/snapshot.tgz' % uid, 3600))
+    return str(self.create_presigned_url('get', 'snapshots/%s/snapshot.tgz' % uid, 3600))
 
 def create_snapshot(self, uid, job_id, path, userhome):
     """
     Create a snapshot of the specified path
     """
     # Firstly create the PUT URL
-    snapshot_url = self.create_presigned_url('put', self._config['S3_BUCKET'], 'snapshots/%s/snapshot.tgz' % uid, 1000)
+    snapshot_url = self.create_presigned_url('put', 'snapshots/%s/snapshot.tgz' % uid, 1000)
 
     # Use the routed job id, but if there isn't one use the original job id
     job_id_routed = get_routed_job_id(job_id)

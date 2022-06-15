@@ -585,11 +585,9 @@ def list_jobs(self, job_ids, identity, active, completed, status, workflow, num,
                                 continue
                             if file['name'] == output_file and file['status'] == 'success' and use_default_object_storage:
                                 url = self.create_presigned_url('get',
-                                                                self._config['S3_BUCKET'],
                                                                 'scratch/%s/%s' % (fid, filename),
                                                                 7*24*60*60)
-                                size = self.get_object_size(self._config['S3_BUCKET'],
-                                                            'scratch/%s/%s' % (fid, filename))
+                                size = self.get_object_size('scratch/%s/%s' % (fid, filename))
 
                     file_map = {'name':output_file, 'url':url}
                     if size:
@@ -619,11 +617,9 @@ def list_jobs(self, job_ids, identity, active, completed, status, workflow, num,
                                 continue
                             if directory['name'] == output_dir and directory['status'] == 'success' and use_default_object_storage:
                                 url = self.create_presigned_url('get',
-                                                                self._config['S3_BUCKET'],
                                                                 'scratch/%s/%s.tgz' % (fid, dirname_base),
                                                                 7*24*60*60)
-                                size = self.get_object_size(self._config['S3_BUCKET'],
-                                                            'scratch/%s/%s.tgz' % (fid, dirname_base))
+                                size = self.get_object_size('scratch/%s/%s.tgz' % (fid, dirname_base))
                     file_map = {'name':output_dir, 'url':url}
                     if size:
                         file_map['size'] = size

@@ -84,7 +84,7 @@ def _create_htcondor_job(self, username, groups, email, uid, jjob, job_path, wor
                         path = task['image']
                     else:
                         path = '%s/%s' % (username, task['image'])
-                    task['image'] = self.create_presigned_url('get', self._config['S3_BUCKET'], 'uploads/%s' % path, 864000)
+                    task['image'] = self.create_presigned_url('get', 'uploads/%s' % path, 864000)
                     url_exists = validate_presigned_url(task['image'])
                     if not url_exists:
                         return (1, {"error":"Image %s does not exist" % image}, cjob)
@@ -270,7 +270,7 @@ def _create_htcondor_job(self, username, groups, email, uid, jjob, job_path, wor
                     path = artifact_url
                 else:
                     path = '%s/%s' % (username, artifact_url)
-                artifact_url = self.create_presigned_url('get', self._config['S3_BUCKET'], 'uploads/%s' % path, 864000)
+                artifact_url = self.create_presigned_url('get', 'uploads/%s' % path, 864000)
                 if not jobfactory:
                     url_exists = validate_presigned_url(artifact_url)
                     if not url_exists:
@@ -294,17 +294,14 @@ def _create_htcondor_job(self, username, groups, email, uid, jjob, job_path, wor
             if not jobfactory:
                 if not joblabel:
                     url_put = self.create_presigned_url('put',
-                                                        self._config['S3_BUCKET'],
                                                         'scratch/%s/%s' % (uid, os.path.basename(filename)),
                                                         864000)
                 else:
                     url_put = self.create_presigned_url('put',
-                                                        self._config['S3_BUCKET'],
                                                         'scratch/%s/%s/%s' % (workflowuid, joblabel, os.path.basename(filename)),
                                                         864000)
             elif joblabel:
                 url_put = self.create_presigned_url('put',
-                                                    self._config['S3_BUCKET'],
                                                     'scratch/%s/%s/%s' % (workflowuid, joblabel, os.path.basename(filename)),
                                                     864000)
             else:
@@ -328,17 +325,14 @@ def _create_htcondor_job(self, username, groups, email, uid, jjob, job_path, wor
             if not jobfactory:
                 if not joblabel:
                     url_put = self.create_presigned_url('put',
-                                                        self._config['S3_BUCKET'],
                                                         'scratch/%s/%s.tgz' % (uid, os.path.basename(dirname)),
                                                         864000)
                 else:
                     url_put = self.create_presigned_url('put',
-                                                        self._config['S3_BUCKET'],
                                                         'scratch/%s/%s/%s.tgz' % (workflowuid, joblabel, os.path.basename(dirname)),
                                                         864000)
             elif joblabel:
                 url_put = self.create_presigned_url('put',
-                                                    self._config['S3_BUCKET'],
                                                     'scratch/%s/%s/%s.tgz' % (workflowuid, joblabel, os.path.basename(dirname)),
                                                     864000)
             else:
