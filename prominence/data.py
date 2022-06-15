@@ -89,9 +89,9 @@ def upload_file(username, group, email):
         file_group = '/'.join(pieces)
         if file_group not in group:
             return jsonify({'error':'Not authorized to access upload with this path'}), 403
-        url = backend.create_presigned_url('put', app.config['S3_BUCKET'], 'uploads/%s' % object_name)
+        url = backend.create_presigned_url('put', 'uploads/%s' % object_name)
     else:
-        url = backend.create_presigned_url('put', app.config['S3_BUCKET'], 'uploads/%s/%s' % (username, object_name))
+        url = backend.create_presigned_url('put', 'uploads/%s/%s' % (username, object_name))
     return jsonify({'url':url}), 201
 
 
@@ -130,7 +130,7 @@ def get_url(username, group, email):
     if decoded:
         if 'job' in decoded:
             job_uuid = str(decoded['job'])
-            url = backend.create_presigned_url('put', app.config['S3_BUCKET'], 'scratch/%s/%s' % (job_uuid, name), 7200)
+            url = backend.create_presigned_url('put', 'scratch/%s/%s' % (job_uuid, name), 7200)
             return jsonify({'url': url}), 201
 
     return jsonify({'error':'Unspecified error'}), 400
