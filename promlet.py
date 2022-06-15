@@ -902,9 +902,9 @@ def get_name_from_url(url):
     """
     Return name of object
     """
-    new_url = unquote(url).decode('utf8')
+    new_url = unquote(url)
     path = new_url.split('/')[5]
-    return new_url.split('?AWSAccessKeyId')[0].split(path)[1][1:]
+    return new_url.split('?')[0].split(path)[1][1:]
 
 def get_actual_filename(path):
     """
