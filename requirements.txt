@@ -9,3 +9,4 @@ etcd3
 classad
 htcondor
 influxdb-client
+azure-storage-blob
