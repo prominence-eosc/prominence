@@ -823,6 +823,8 @@ def upload(filename, url, token=None):
     headers = {}
     if token:
         headers['X-Auth-Token'] = token
+    elif 'windows' in url:
+        headers['x-ms-blob-type'] = 'BlockBlob'
 
     logging.info('Uploading to URL: %s', url)
 
