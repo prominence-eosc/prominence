@@ -1,5 +1,15 @@
-FROM alahiff/htcondor:9.2.0
+FROM centos:7
+  
+# Install HTCondor
+RUN yum -y install wget epel-release && \
+    yum install -y https://research.cs.wisc.edu/htcondor/repo/9.x/htcondor-release-current.el7.noarch.rpm && \
+    wget http://research.cs.wisc.edu/htcondor/yum/RPM-GPG-KEY-HTCondor && \
+    rpm --import RPM-GPG-KEY-HTCondor && \
+    rm RPM-GPG-KEY-HTCondor && \
+    sed -i 's/priority=90/priority=40/g' /etc/yum.repos.d/htcondor.repo && \
+    yum -y install condor
 
+# Install dependencies
 RUN yum -y install epel-release && \
     yum -y install python3-pip \
                    python3-devel \
