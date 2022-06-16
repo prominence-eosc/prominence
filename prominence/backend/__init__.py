@@ -25,6 +25,7 @@ class ProminenceBackend(object):
     from .get_job_unique_id import get_job_unique_id
     from .create_htcondor_job import _create_htcondor_job
     from .health import get_health
+    from .resources import get_existing_resources
 
     def create_sandbox(self, uid):
         """
