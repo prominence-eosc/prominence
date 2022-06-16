@@ -212,3 +212,9 @@ def snapshot_invalid_path():
     with app.app_context():
         return jsonify({'error':'Invalid path'}), 400
 
+def resources_error():
+    """
+    Unable to get resources
+    """
+    with app.app_context():
+        return jsonify({'error':'Unable to get resources'})

@@ -10,6 +10,7 @@ from prominence import data
 from prominence import jobs
 from prominence import workflows
 from prominence import health
+from prominence import resources
 from prominence import kv
 from prominence import ts
 from prominence import token
@@ -28,6 +29,7 @@ app.register_blueprint(health.health)
 app.register_blueprint(kv.kv)
 app.register_blueprint(ts.ts)
 app.register_blueprint(token.token)
+app.register_blueprint(resources.resources)
 
 if __name__ == "__main__":
     if 'PROMINENCE_RESTAPI_CONFIG_FILE' not in os.environ:
