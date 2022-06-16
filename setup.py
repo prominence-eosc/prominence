@@ -14,7 +14,7 @@ setuptools.setup(
     long_description_content_type="text/markdown",
     url="https://prominence-eosc.github.io/docs",
     platforms=["any"],
-    install_requires=["uwsgi", "flask", "requests", "boto3", "PyJWT", "elasticsearch", "elasticsearch-dsl", "etcd3", "influxdb-client"],
+    install_requires=["uwsgi", "flask", "requests", "boto3", "PyJWT", "elasticsearch", "elasticsearch-dsl", "etcd3", "influxdb-client", "azure-storage-blob"],
     package_dir={'': '.'},
     scripts=["prominence-restapi.py"],
     packages=["prominence", "prominence.backend"],
