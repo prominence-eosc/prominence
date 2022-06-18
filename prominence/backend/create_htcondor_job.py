@@ -223,18 +223,11 @@ def _create_htcondor_job(self, username, groups, email, uid, jjob, job_path, wor
     if 'preemptible' in jjob:
         cjob['+ProminencePreemptible'] = 'true'
 
-    # Job router - route idle jobs if they have never been routed before and have been idle for over 40 secs
-    # or if they were last routed more than 20 mins ago
-    disable_router = True
+    # Scaling type
+    cjob['+ProminenceAutoScalingType'] = 'none'
     if 'policies' in jjob:
         if 'autoScalingType' in jjob['policies']:
-            if jjob['policies']['autoScalingType'] == 'dedicated':
-                disable_router = False
-
-    if disable_router:
-        cjob['+ProminenceWantJobRouter'] = 'false'
-    else:
-        cjob['+ProminenceWantJobRouter'] = str('JobStatus == 1 && ((CurrentTime - ProminenceLastRouted > 1200) || (CurrentTime - EnteredCurrentStatus > 40 && isUndefined(ProminenceLastRouted)))')
+            cjob['+ProminenceAutoScalingType'] = jjob['policies']['autoScalingType']
 
     # Should the job be removed from the queue once finished?
     cjob['+ProminenceRemoveFromQueue'] = 'True'
