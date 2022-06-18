@@ -40,7 +40,6 @@ def write_htcondor_job(cjob, filename):
     Write a HTCondor JDL
     """
     keys = ['transfer_input_files',
-            '+ProminenceWantJobRouter',
             '+remote_cerequirements_default',
             '+ProminenceFactoryId',
             '+ProminenceWorkflowName',
