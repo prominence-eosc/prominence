@@ -73,6 +73,17 @@ _COMMAND=`echo $_COMMAND | tr '"' "'"`
 curl -s -H "Authorization: Bearer $PROMINENCE_TOKEN" -X POST -d "$_COMMAND" $PROMINENCE_URL/kv/_internal_/$PROMINENCE_JOB_ID/$_HOST/$PROMINENCE_TASK_NUM > /dev/null 2>&1
 """
 
+def get_image_cache():
+    """
+    Get the base directory of the image cache
+    """
+    if os.path.exists('/mnt/resource'):
+        return '/mnt/resource'
+    elif os.path.exists('/home/prominence'):
+        return '/home/prominence'
+    
+    return None
+
 def get_singularity_version():
     """
     Get the version of Singularity
@@ -1258,6 +1269,21 @@ def download_singularity(image, image_new, location, path, credential, job):
             logging.info('Calculated image checksum: %s', checksum)
 
         logging.info('Singularity image downloaded from URL and written to file %s', image_new)
+
+    elif image.startswith('%s/images' % get_image_cache()):
+        # Handle image cached on worker
+        logging.info('Using image cached on worker')
+
+        try:
+            os.symlink(image, image_new)
+        except Exception as err:
+            logging.error('Unable to create symlink to container image from source location on attached storage due to "%s"', err)
+            return 1, False, checksum
+
+        # Generate checksum
+        checksum = calculate_sha256(image_new)
+        logging.info('Calculated image checksum: %s', checksum)
+
     elif image.startswith('/') and os.path.exists('%s/mounts/%s' % (path, image)):
         logging.info('Image exists on attached storage')
         # Handle image stored on attached POSIX-like storage
@@ -1335,6 +1361,16 @@ def download_singularity(image, image_new, location, path, credential, job):
         logging.info('Image file %s exists', image_new)
     else:
         logging.info('Image file %s does not exist', image_new)
+
+    # Copy to cache if necessary
+    cached = '%s/images/%s' % (get_image_cache(), checksum)
+    if not os.path.exists(cached):
+        logging.info('Copying image to worker cache')
+        try:
+            shutil.copyfile(image_new, cached)
+            open('%s.done' % cached, 'w').close()
+        except Exception as err:
+            logging.error('Unable to copy image to worker cache: %s', err)
 
     return 0, False, checksum
 
@@ -1434,7 +1470,32 @@ def download_udocker(image, location, label, path, credential, job):
         checksum = calculate_sha256('%s/image.tar' % location)
         logging.info('Calculated image checksum: %s', checksum)
 
+        # Copy to cache if necessary
+        cached = '%s/images/%s' % (get_image_cache(), checksum)
+        if not os.path.exists(cached):
+            logging.info('Copying image to worker cache')
+            try:
+                shutil.copyfile('%s/image.tar' % location, cached)
+                open('%s.done' % cached, 'w').close()
+            except Exception as err:
+                logging.error('Unable to copy image to worker cache: %s', err)
+            
+
     (udocker_path, additional_envs) = generate_envs()
+
+    if image.startswith('%s/images' % get_image_cache()):
+        # Handle image cached on worker
+        logging.info('Using image cached on worker')
+
+        try:
+            os.symlink(image, '%s/image.tar' % location)
+        except Exception as err:
+            logging.error('Unable to create symlink to container image from source location on attached storage due to "%s"', err)
+            return 1, False, checksum
+
+        # Generate checksum
+        checksum = calculate_sha256(image)
+        logging.info('Calculated image checksum: %s', checksum)
 
     if image.startswith('/') and image.endswith('.tar'):
         # Handle image stored on attached POSIX-like storage
@@ -1450,7 +1511,17 @@ def download_udocker(image, location, label, path, credential, job):
         checksum = calculate_sha256('%s/image.tar' % location)
         logging.info('Calculated image checksum: %s', checksum)
 
-    if re.match(r'^http', image) or (image.startswith('/') and image.endswith('.tar')):
+        # Copy to cache if necessary
+        cached = '%s/images/%s' % (get_image_cache(), checksum)
+        if not os.path.exists(cached):
+            logging.info('Copying image to worker cache')
+            try:
+                shutil.copyfile('%s/image.tar' % location, cached)
+                open('%s.done' % cached, 'w').close()
+            except Exception as err:
+                logging.error('Unable to copy image to worker cache: %s', err)
+
+    if re.match(r'^http', image) or (image.startswith('/') and image.endswith('.tar')) or image.startswith('%s/images' % get_image_cache()):
         logging.info('Loading udocker image')
         # Load image
         process = subprocess.Popen('udocker load -i %s/image.tar' % location,
@@ -1842,6 +1913,14 @@ def run_tasks(job, path, node_num, main_node):
                 logging.info('Will use cached image from task %d for this task', image_count)
                 break
             image_count += 1
+
+        # Check if image is cached from another job
+        if 'imageSha256' in task:
+            cached = '%s/images/%s' % (get_image_cache(), task['imageSha256'])
+            if os.path.exists(cached):
+                if os.path.exists('%s.done' % cached):
+                    image = cached
+                    found_image = False
 
         if task['runtime'] == 'udocker':
             used_udocker = True
