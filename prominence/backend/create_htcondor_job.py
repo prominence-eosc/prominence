@@ -90,7 +90,7 @@ def _create_htcondor_job(self, username, groups, email, uid, jjob, job_path, wor
                         return (1, {"error":"Image %s does not exist" % image}, cjob)
 
                     # Add checksum to task if we know it
-                    (_, checksum) = self.get_object_size(task['image'])
+                    (_, checksum) = self.get_object(task['image'])
                     if checksum:
                         task['imageSha256'] = checksum
 
