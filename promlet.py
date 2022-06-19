@@ -1277,7 +1277,7 @@ def download_singularity(image, image_new, location, path, credential, job):
         try:
             os.symlink(image, image_new)
         except Exception as err:
-            logging.error('Unable to create symlink to container image from source location on attached storage due to "%s"', err)
+            logging.error('Unable to create symlink to container image in worker cache: %s', err)
             return 1, False, checksum
 
         # Generate checksum
@@ -1919,8 +1919,10 @@ def run_tasks(job, path, node_num, main_node):
             cached = '%s/images/%s' % (get_image_cache(), task['imageSha256'])
             if os.path.exists(cached):
                 if os.path.exists('%s.done' % cached):
-                    image = cached
-                    found_image = False
+                    # Check the the checksum of the cached image is correct, just in case
+                    if task['imageSha256'] == calculate_sha256(cached):
+                        image = cached
+                        found_image = False
 
         if task['runtime'] == 'udocker':
             used_udocker = True
