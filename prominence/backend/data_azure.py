@@ -2,9 +2,9 @@ from datetime import datetime, timedelta
 import time
 from azure.storage.blob import ContainerClient, generate_blob_sas, BlobSasPermissions, BlobServiceClient
 
-def get_object_size(self, object_name):
+def get_object(self, object_name):
     """
-    Get the size of an object
+    Get the size & checksum of an object
     """
     try:
         blob_service_client = BlobServiceClient(account_url=self._config['AZURE_ACCOUNT_NAME'],
@@ -15,7 +15,7 @@ def get_object_size(self, object_name):
 
         properties = blob_client.get_blob_properties()
     except:
-        return None
+        return None, None
 
     return properties.size, None
 

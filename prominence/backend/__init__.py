@@ -21,7 +21,7 @@ class ProminenceBackend(object):
     from .get_stderr import get_stderr
     from .execute_command import execute_command
     from .snapshots import create_snapshot, get_snapshot_url, validate_snapshot_path
-    from .data import create_presigned_url, list_objects, delete_object, get_object_size
+    from .data import create_presigned_url, list_objects, delete_object, get_object
     from .get_job_unique_id import get_job_unique_id
     from .create_htcondor_job import _create_htcondor_job
     from .health import get_health

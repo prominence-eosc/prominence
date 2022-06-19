@@ -1,8 +1,8 @@
 import boto3
 
-def get_object_size(self, object_name):
+def get_object(self, object_name):
     """
-    Get the size of an object
+    Get the size & checksum of an object
     """
     s3_client = boto3.client('s3',
                              verify=False,
@@ -13,7 +13,7 @@ def get_object_size(self, object_name):
     try:
         response = s3_client.head_object(Bucket=self._config['S3_BUCKET'], Key=object_name)
     except Exception:
-        return None
+        return None, None
 
     content_length = None
     if 'ContentLength' in response:
