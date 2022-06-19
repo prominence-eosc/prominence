@@ -15,12 +15,18 @@ def get_object_size(self, object_name):
     except Exception:
         return None
 
+    content_length = None
     if 'ContentLength' in response:
-        return response['ContentLength']
+        content_length = response['ContentLength']
 
-    return None
+    checksum = None
+    if 'Metadata' in response:
+        if 'prominence_sha256' in response['Metadata']:
+            checksum = response['Metadata']['prominence_sha256']
 
-def create_presigned_url(self, method, object_name, duration_in_seconds=600):
+    return content_length, checksum
+
+def create_presigned_url(self, method, object_name, duration_in_seconds=600, checksum=None):
     """
     Create presigned S3 URL
     """
@@ -36,12 +42,24 @@ def create_presigned_url(self, method, object_name, duration_in_seconds=600):
                                                         ExpiresIn=duration_in_seconds)
         except Exception:
             return None
-    else:
+    elif not checksum:
         try:
             response = s3_client.generate_presigned_url('put_object',
                                                         Params={'Bucket': self._config['S3_BUCKET'], 'Key':object_name},
                                                         ExpiresIn=duration_in_seconds,
                                                         HttpMethod='PUT')
+        except Exception:
+            return None
+    else:
+        fields = {'x-amz-meta-prominence_sha256': checksum}
+        conditions = [{'x-amz-meta-prominence_sha256': checksum}]
+ 
+        try:
+           response = s3_client.generate_presigned_post(self._config['S3_BUCKET'],
+                                                        object_name,
+                                                        Fields=fields,
+                                                        Conditions=conditions,
+                                                        ExpiresIn=duration_in_seconds) 
         except Exception:
             return None
 

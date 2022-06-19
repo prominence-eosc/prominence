@@ -17,9 +17,9 @@ def get_object_size(self, object_name):
     except:
         return None
 
-    return properties.size
+    return properties.size, None
 
-def create_presigned_url(self, method, object_name, duration_in_seconds=600):
+def create_presigned_url(self, method, object_name, duration_in_seconds=600, checksum=None):
     """
     Create presigned URL
     """
