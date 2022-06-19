@@ -82,6 +82,12 @@ def upload_file(username, group, email):
     else:
         return jsonify({'error':'An object name must be specified'}), 400
 
+    checksum = None
+    if 'checksum' in request.args:
+        checksum = request.args.get('checksum')
+    elif 'checksum' in request.get_json():
+        checksum = request.get_json()['checksum']
+
     if '/' in object_name:
         pieces = object_name.split('/')
         object_name_only = pieces[len(pieces) - 1]
@@ -89,10 +95,14 @@ def upload_file(username, group, email):
         file_group = '/'.join(pieces)
         if file_group not in group:
             return jsonify({'error':'Not authorized to access upload with this path'}), 403
-        url = backend.create_presigned_url('put', 'uploads/%s' % object_name)
+        data = backend.create_presigned_url('put', 'uploads/%s' % object_name, checksum=checksum)
     else:
-        url = backend.create_presigned_url('put', 'uploads/%s/%s' % (username, object_name))
-    return jsonify({'url':url}), 201
+        data = backend.create_presigned_url('put', 'uploads/%s/%s' % (username, object_name), checksum=checksum)
+
+        if 'url' in data and 'fields' in data:
+            return jsonify(data), 201
+
+    return jsonify({'url':data}), 201
 
 
 @data.route("/prominence/v1/data/output", methods=['POST'])
