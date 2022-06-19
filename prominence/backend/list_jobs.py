@@ -587,7 +587,7 @@ def list_jobs(self, job_ids, identity, active, completed, status, workflow, num,
                                 url = self.create_presigned_url('get',
                                                                 'scratch/%s/%s' % (fid, filename),
                                                                 7*24*60*60)
-                                size = self.get_object_size('scratch/%s/%s' % (fid, filename))
+                                (size, _) = self.get_object_size('scratch/%s/%s' % (fid, filename))
 
                     file_map = {'name':output_file, 'url':url}
                     if size:
@@ -619,7 +619,7 @@ def list_jobs(self, job_ids, identity, active, completed, status, workflow, num,
                                 url = self.create_presigned_url('get',
                                                                 'scratch/%s/%s.tgz' % (fid, dirname_base),
                                                                 7*24*60*60)
-                                size = self.get_object_size('scratch/%s/%s.tgz' % (fid, dirname_base))
+                                (size, _) = self.get_object_size('scratch/%s/%s.tgz' % (fid, dirname_base))
                     file_map = {'name':output_dir, 'url':url}
                     if size:
                         file_map['size'] = size
