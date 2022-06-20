@@ -26,6 +26,7 @@ RequestDisk = %(reqdisk)s
 +ProminenceEmail = %(email)s
 +ProminenceMaxIdleTime = %(maxidle)s
 +ProminenceMaxTimeInQueue = %(maxtimeinqueue)s
++ProminenceMaxRunTime = %(maxruntime)s
 +ProminenceWantMPI = %(wantmpi)s
 +ProminenceType = "job"
 +ProminenceJobToken = %(jobtoken)s
@@ -47,6 +48,7 @@ def write_htcondor_job(cjob, filename):
             '+JobPrio',
             '+ProminenceDynamicMPI',
             '+WantParallelSchedulingGroups',
+            '+ProminenceAutoScalingType',
             'machine_count',
             'max_retries']
     extras = "\n"
@@ -66,6 +68,7 @@ def write_htcondor_job(cjob, filename):
     info['maxidle'] = 0
     info['maxtimeinqueue'] = cjob['+ProminenceMaxTimeInQueue']
     info['extras'] = extras
+    info['maxruntime'] = cjob['+ProminenceMaxRunTime']
     info['email'] = cjob['+ProminenceEmail']
     if 'extra_args' in cjob:
         info['extra_args'] = cjob['extra_args']
