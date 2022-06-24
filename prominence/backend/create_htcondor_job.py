@@ -192,7 +192,7 @@ def _create_htcondor_job(self, username, groups, email, uid, jjob, job_path, wor
     # CPUs required
     if 'cpus' in jjob['resources']:
         cjob['RequestCpus'] = str(jjob['resources']['cpus'])
-    elif 'cpusRange' in jjob['resources']:
+    elif 'cpusRange' in jjob['resources'] and 'totalCpusRange' not in jjob['resources']:
         cjob['Requirements'] = "%s && Cpus >= %d && (PartitionableSlot || Cpus <= %d)" % (cjob['Requirements'], jjob['resources']['cpusRange'][0], jjob['resources']['cpusRange'][1])
         cjob['RequestCpus'] = "ifThenElse(Cpus > %d, %d, Cpus)" % (jjob['resources']['cpusRange'][1], jjob['resources']['cpusRange'][1])
         cjob['Rank'] = "Cpus"
@@ -201,7 +201,7 @@ def _create_htcondor_job(self, username, groups, email, uid, jjob, job_path, wor
             cjob['RequestMemory'] = "%d*ifThenElse(Cpus > %d, %d, Cpus)" % (int(1024*jjob['resources']['memoryPerCpu']),
                                                                             jjob['resources']['cpusRange'][1],
                                                                             jjob['resources']['cpusRange'][1])
-    elif 'cpusOptions' in jjob['resources']:
+    elif 'cpusOptions' in jjob['resources'] and 'totalCpusRange' not in jjob['resources']:
         cjob['Rank'] = "Cpus"
         cjob['RequestCpus'] = "ifThenElse(%d > Cpus, %d, %d)" % (jjob['resources']['cpusOptions'][1],
                                                                  jjob['resources']['cpusOptions'][0],
