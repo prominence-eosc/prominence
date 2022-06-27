@@ -99,8 +99,8 @@ def upload_file(username, group, email):
     else:
         data = backend.create_presigned_url('put', 'uploads/%s/%s' % (username, object_name), checksum=checksum)
 
-        if 'url' in data and 'fields' in data:
-            return jsonify(data), 201
+    if 'url' in data and 'fields' in data:
+        return jsonify(data), 201
 
     return jsonify({'url':data}), 201
 
