@@ -1915,7 +1915,7 @@ def run_tasks(job, path, node_num, main_node):
             image_count += 1
 
         # Check if image is cached from another job
-        if 'imageSha256' in task:
+        if 'imageSha256' in task and not found_image:
             cached = '%s/images/%s' % (get_image_cache(), task['imageSha256'])
             if os.path.exists(cached):
                 if os.path.exists('%s.done' % cached):
