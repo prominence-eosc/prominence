@@ -155,10 +155,12 @@ def _create_htcondor_job(self, username, groups, email, uid, jjob, job_path, wor
 
     # Username
     cjob['+ProminenceIdentity'] = condor_str(username)
+    cjob['accounting_group_user'] = username.replace('@', '-') # Accounting group user names can't contain @
 
     # Group
     if groups:
         cjob['+ProminenceGroup'] = condor_str(groups)
+        cjob['accounting_group'] = groups
     else:
         cjob['+ProminenceGroup'] = condor_str('')
 
