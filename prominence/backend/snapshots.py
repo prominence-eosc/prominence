@@ -4,6 +4,19 @@ import threading
 
 from .utilities import get_routed_job_id, kill_proc
 
+def _create_and_upload(self, job_id_routed, cwd, path, snapshot_url):
+    """
+    Create a tarball & upload to S3
+    """
+    cmd = 'condor_ssh_to_job %s "%s tar czf ../snapshot.tgz %s && curl --upload-file ../snapshot.tgz \\\"%s\\\""' % (job_id_routed, cwd, path, str(snapshot_url))
+    process = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+    timeout = {"value": False}
+    timer = threading.Timer(int(self._config['EXEC_TIMEOUT']), kill_proc, [process, timeout])
+    timer.start()
+    output = process.communicate()[0]
+    timer.cancel()
+    return output
+
 def get_snapshot_url(self, uid):
     """
     Return a pre-signed URL to retrieve a snapshot
@@ -28,13 +41,10 @@ def create_snapshot(self, uid, job_id, path, userhome):
     cwd = 'cd userhome &&'
 
     # Create a tarball & upload to S3
-    cmd = 'condor_ssh_to_job %d "%s tar czf ../snapshot.tgz %s && curl --upload-file ../snapshot.tgz \\\"%s\\\""' % (job_id_routed, cwd, path, str(snapshot_url))
-    process = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
-    timeout = {"value": False}
-    timer = threading.Timer(int(self._config['EXEC_TIMEOUT']), kill_proc, [process, timeout])
-    timer.start()
-    output = process.communicate()[0]
-    timer.cancel()
+    output = self._create_and_upload('%d' % job_id_routed, cwd, path, str(snapshot_url))
+
+    if 'This is a parallel job.  Please specify job' in str(output):
+        output = self._create_and_upload('%d.0.0' % job_id_routed, cwd, path, str(snapshot_url))
 
     return 0
 
