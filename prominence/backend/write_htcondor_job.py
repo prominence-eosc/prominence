@@ -18,6 +18,7 @@ stream_error = true
 RequestCpus = %(cpus)s
 RequestMemory = %(reqmemory)s
 RequestDisk = %(reqdisk)s
+accounting_group_user = %(username)s
 +ProminenceAPI = %(apivers)s
 +ProminenceJobUniqueIdentifier = %(uuid)s
 +ProminenceIdentity = %(username)s
@@ -50,7 +51,8 @@ def write_htcondor_job(cjob, filename):
             '+WantParallelSchedulingGroups',
             '+ProminenceAutoScalingType',
             'machine_count',
-            'max_retries']
+            'max_retries',
+            'accounting_group']
     extras = "\n"
     for key in keys:
         if key in cjob:
