@@ -15,6 +15,7 @@ import shlex
 import shutil
 import signal
 from string import Template
+import sys
 import subprocess
 import tarfile
 import time
@@ -807,22 +808,31 @@ def kill_proc(proc, timeout):
     timeout["value"] = True
     proc.kill()
 
-def run_with_timeout(cmd, env, timeout_sec, capture_std=False):
+def run_with_timeout(cmd, env, timeout_sec, capture_std=False, stdout_file=None):
     """
     Run a process with a timeout
     """
-    if capture_std:
-        proc = subprocess.Popen(shlex.split(cmd), env=env, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
-    else:
-        proc = subprocess.Popen(shlex.split(cmd), env=env)
+    proc = subprocess.Popen(shlex.split(cmd), env=env, shell=False, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, bufsize=1)
 
     timeout = {"value": False}
     timer = Timer(timeout_sec, kill_proc, [proc, timeout])
     timer.start()
     CURRENT_SUBPROCS.add(proc)
-    proc.wait()
+    if capture_std:
+        proc.wait()
+    elif not stdout_file:
+        for line in proc.stdout:
+            sys.stdout.buffer.write(line)
+    else:
+        with open(stdout_file, 'ab') as fh:
+            for line in proc.stdout:
+                sys.stdout.buffer.write(line)
+                fh.write(line)
     CURRENT_SUBPROCS.remove(proc)
     timer.cancel()
+
+    if not capture_std:
+        proc.wait()
 
     return proc.returncode, timeout["value"], proc.stdout
 
@@ -1141,7 +1151,7 @@ def mount_storage(job, path):
             return_code = -1
             stdout = None
             while count < 3 and return_code != 0:
-                return_code, timed_out, stdout = run_with_timeout(cmd, os.environ, 60, True)
+                return_code, timed_out, stdout = run_with_timeout(cmd, os.environ, 60, capture_std=True)
                 if timed_out:
                     logging.error('Timeout running oneclient')
                 count = count + 1
@@ -1579,7 +1589,7 @@ def download_udocker(image, location, label, path, credential, job):
 
     return 0, False, checksum
 
-def run_udocker(image, cmd, workdir, env, path, mpi, mpi_processes, mpi_procs_per_node, artifacts, walltime_limit, job):
+def run_udocker(image, cmd, workdir, env, path, mpi, mpi_processes, mpi_procs_per_node, artifacts, walltime_limit, job, stdout_file):
     """
     Execute a task using udocker
     """
@@ -1655,13 +1665,14 @@ def run_udocker(image, cmd, workdir, env, path, mpi, mpi_processes, mpi_procs_pe
     return_code, timed_out, _ = run_with_timeout(run_command,
                                                  dict(PATH=udocker_path,
                                                       UDOCKER_DIR='%s/.udocker' % udocker_location),
-                                                 walltime_limit)
+                                                 walltime_limit,
+                                                 stdout_file=stdout_file)
 
     logging.info('Task had exit code %d', return_code)
 
     return return_code, timed_out, None
 
-def run_singularity(image, cmd, workdir, env, path, mpi, mpi_processes, mpi_procs_per_node, artifacts, walltime_limit, job):
+def run_singularity(image, cmd, workdir, env, path, mpi, mpi_processes, mpi_procs_per_node, artifacts, walltime_limit, job, stdout_file):
     """
     Execute a task using Singularity
     """
@@ -1723,7 +1734,7 @@ def run_singularity(image, cmd, workdir, env, path, mpi, mpi_processes, mpi_proc
         env_vars['I_MPI_JOB_STARTUP_TIMEOUT'] = '120'
         env_vars['I_MPI_HYDRA_BRANCH_COUNT'] = '0'
 
-    return_code, timed_out, _ = run_with_timeout(run_command, env_vars, walltime_limit)
+    return_code, timed_out, _ = run_with_timeout(run_command, env_vars, walltime_limit, stdout_file=stdout_file)
 
     logging.info('Task had exit code %d', return_code)
 
@@ -1838,6 +1849,12 @@ def run_tasks(job, path, node_num, main_node):
             workdir = '/home/user'
         elif not workdir.startswith('/'):
             workdir = '/home/user/' + workdir
+
+        stdout_file = None
+        if 'stdout' in task:
+            stdout_file = task['stdout']
+            if not stdout_file.startswith('/'):
+                stdout_file = '%s/userhome/%s' % (path, stdout_file)
 
         (job_id, workflow_id) = get_job_ids(path)
         if job_id:
@@ -1975,7 +1992,8 @@ def run_tasks(job, path, node_num, main_node):
                                                             procs_per_node,
                                                             artifacts,
                                                             100*24*60*60,
-                                                            job))
+                                                            job,
+                                                            stdout_file))
                     sidecar.daemon = True
                     sidecar.start()
                     count = count + 1
@@ -1997,7 +2015,8 @@ def run_tasks(job, path, node_num, main_node):
                                            procs_per_node,
                                            artifacts,
                                            task_time_limit,
-                                           job)
+                                           job,
+                                           stdout_file)
                     retry_count += 1
         else:
             used_singularity = True
@@ -2053,7 +2072,8 @@ def run_tasks(job, path, node_num, main_node):
                                                             procs_per_node,
                                                             artifacts,
                                                             100*24*60*60,
-                                                            job))
+                                                            job,
+                                                            stdout_file))
                     sidecar.daemon = True
                     sidecar.start()
                     count = count + 1
@@ -2074,7 +2094,8 @@ def run_tasks(job, path, node_num, main_node):
                                            procs_per_node,
                                            artifacts,
                                            task_time_limit,
-                                           job)
+                                           job,
+                                           stdout_file)
                     retry_count += 1
 
         task_u = {}
