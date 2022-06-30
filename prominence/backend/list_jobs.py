@@ -65,6 +65,9 @@ def list_jobs(self, job_ids, identity, active, completed, status, workflow, num,
                       'CpusProvisioned',
                       'MemoryProvisioned',
                       'DiskProvisioned',
+                      'MachineAttrCpus0',
+                      'MachineAttrDisk0',
+                      'MachineAttrMemory0',
                       'AllRemoteHosts',
                       'MachineAttrProminenceCloud0',
                       'ProminenceAPI']
@@ -522,6 +525,11 @@ def list_jobs(self, job_ids, identity, active, completed, status, workflow, num,
                 execution['provisionedResources'] = {'cpus': int(job['CpusProvisioned']),
                                                      'memory': int(job['MemoryProvisioned']/1024.0),
                                                      'disk': math.ceil(job['DiskProvisioned']/1000.0/1000.0),
+                                                     'nodes': nodes_provisioned}
+            elif 'MachineAttrCpus0' in job and 'MachineAttrMemory0' in job and 'MachineAttrDisk0' in job:
+                execution['provisionedResources'] = {'cpus': int(job['MachineAttrCpus0']),
+                                                     'memory': int(job['MachineAttrMemory0']/1024.0),
+                                                     'disk': math.ceil(job['MachineAttrDisk0']/1000.0/1000.0),
                                                      'nodes': nodes_provisioned}
             elif 'memory' in job_u and 'cpus' in job_u and 'disk' in job_u:
                 if job_u['cpus'] and job_u['memory'] and job_u['disk']:
