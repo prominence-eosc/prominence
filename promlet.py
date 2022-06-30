@@ -1865,8 +1865,8 @@ def run_tasks(job, path, node_num, main_node):
                     if stdout_file.startswith(artifacts[artifact]):
                         stdout_file = stdout_file.replace(artifacts[artifact], artifact)
                         break
-                stdout_file = '%s/userhome/%s' % (path, stdout_file)
-                logging.info('Writing stdout to file %s', stdout_file)
+            stdout_file = '%s/userhome/%s' % (path, stdout_file)
+            logging.info('Writing stdout to file %s', stdout_file)
 
         (job_id, workflow_id) = get_job_ids(path)
         if job_id:
