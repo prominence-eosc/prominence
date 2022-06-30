@@ -812,26 +812,33 @@ def run_with_timeout(cmd, env, timeout_sec, capture_std=False, stdout_file=None)
     """
     Run a process with a timeout
     """
-    proc = subprocess.Popen(shlex.split(cmd), env=env, shell=False, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, bufsize=1)
+    if capture_std or stdout_file:
+        proc = subprocess.Popen(shlex.split(cmd), env=env, shell=False, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+    else:
+        proc = subprocess.Popen(shlex.split(cmd), env=env, shell=False)
 
+    CURRENT_SUBPROCS.add(proc)
     timeout = {"value": False}
     timer = Timer(timeout_sec, kill_proc, [proc, timeout])
     timer.start()
-    CURRENT_SUBPROCS.add(proc)
-    if capture_std:
-        proc.wait()
-    elif not stdout_file:
-        for line in proc.stdout:
-            sys.stdout.buffer.write(line)
-    else:
+    if stdout_file:
         with open(stdout_file, 'ab') as fh:
-            for line in proc.stdout:
-                sys.stdout.buffer.write(line)
-                fh.write(line)
+            while True:
+                byte = proc.stdout.read(1)
+                if byte:
+                    sys.stdout.buffer.write(byte)
+                    sys.stdout.flush()
+                    fh.write(byte)
+                    fh.flush()
+                else:
+                    break
+    else:
+        proc.wait()
+
     CURRENT_SUBPROCS.remove(proc)
     timer.cancel()
 
-    if not capture_std:
+    if stdout_file:
         proc.wait()
 
     return proc.returncode, timeout["value"], proc.stdout
