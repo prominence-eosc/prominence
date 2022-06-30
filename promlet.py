@@ -1860,8 +1860,13 @@ def run_tasks(job, path, node_num, main_node):
         stdout_file = None
         if 'stdout' in task:
             stdout_file = task['stdout']
-            if not stdout_file.startswith('/'):
+            if stdout_file.startswith('/'):
+                for artifact in artifacts:
+                    if stdout_file.startswith(artifacts[artifact]):
+                        stdout_file = stdout_file.replace(artifacts[artifact], artifact)
+                        break
                 stdout_file = '%s/userhome/%s' % (path, stdout_file)
+                logging.info('Writing stdout to file %s', stdout_file)
 
         (job_id, workflow_id) = get_job_ids(path)
         if job_id:
