@@ -107,6 +107,12 @@ def list_jobs(self, job_ids, identity, active, completed, status, workflow, num,
         jobs_active = schedd.xquery('RoutedBy =?= undefined && ProminenceType == "job" && ProminenceName =!= undefined && %s' % constraintc, required_attrs)
         jobs_condor.extend(jobs_active)
 
+    if completed and active and len(jobs_condor) == 0:
+        jobs_completed = schedd.history('RoutedBy =?= undefined && ProminenceType == "job" && ProminenceName =!= undefined && %s' % constraintc, required_attrs, int(num))
+        jobs_condor.extend(jobs_completed)
+        jobs_active = schedd.xquery('RoutedBy =?= undefined && ProminenceType == "job" && ProminenceName =!= undefined && %s' % constraintc, required_attrs)
+        jobs_condor.extend(jobs_active)
+
     # Get only jobs in specific state
     if status == 'idle' or status == 'running':
         if status == 'idle':
