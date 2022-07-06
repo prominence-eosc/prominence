@@ -18,7 +18,7 @@ stream_error = true
 RequestCpus = %(cpus)s
 RequestMemory = %(reqmemory)s
 RequestDisk = %(reqdisk)s
-accounting_group_user = %(username)s
+accounting_group_user = %(accounting_group_user)s
 +ProminenceAPI = %(apivers)s
 +ProminenceJobUniqueIdentifier = %(uuid)s
 +ProminenceIdentity = %(username)s
@@ -63,6 +63,7 @@ def write_htcondor_job(cjob, filename):
     info['uuid'] = cjob['+ProminenceJobUniqueIdentifier']
     info['username'] = cjob['+ProminenceIdentity']
     info['group'] = cjob['+ProminenceGroup']
+    info['accounting_group_user'] = cjob['accounting_group_user']
     info['reqmemory'] = cjob['RequestMemory']
     info['reqdisk'] = cjob['RequestDisk']
     info['cpus'] = cjob['RequestCpus']

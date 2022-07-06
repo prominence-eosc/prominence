@@ -70,7 +70,11 @@ def _create_mapped_json(self, path, job_index, mapping, job_name):
                     artifact_name = pieces[len(pieces)-1]
                     return False, {"error":"Artifact %s does not exist" % artifact_name}
 
-                new_artifacts.append({'url': new_url})
+                new_artifact = {'url': new_url}
+                if 'mountpoint' in artifact:
+                    new_artifact['mountpoint'] = artifact['mountpoint']
+
+                new_artifacts.append(new_artifact)
         new_job_json['artifacts'] = new_artifacts
 
     # Update output file URLs

@@ -23,16 +23,11 @@ def modify_exec_command(iwd, command):
 
     return command
 
-def execute_command(self, job_id, iwd, command):
+def _execute_command(self, job_id, iwd, command):
     """
     Execute a command inside a job
     """
-    # Use the routed job id, but if there isn't one use the original job id
-    job_id_routed = get_routed_job_id(job_id)
-    if not job_id_routed:
-        job_id_routed = job_id
-
-    args = ['condor_ssh_to_job', '%d' % job_id_routed]
+    args = ['condor_ssh_to_job', '%s' % job_id]
     args.extend(modify_exec_command(iwd, command))
 
     process = subprocess.Popen(args, shell=False, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
@@ -42,6 +37,23 @@ def execute_command(self, job_id, iwd, command):
     output = process.communicate()[0]
     timer.cancel()
 
-    if process.returncode == 0:
+    return process.returncode, output
+
+def execute_command(self, job_id, iwd, command):
+    """
+    Execute a command inside a job
+    """
+    # Use the routed job id, but if there isn't one use the original job id
+    job_id_routed = get_routed_job_id(job_id)
+    if not job_id_routed:
+        job_id_routed = job_id
+
+    returncode, output = self._execute_command('%d' % job_id_routed, iwd, command)
+
+    if 'This is a parallel job.  Please specify job' in str(output):
+        returncode, output = self._execute_command('%d.0.0' % job_id_routed, iwd, command)
+
+    if returncode == 0:
         return output
+
     return None

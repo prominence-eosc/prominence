@@ -317,7 +317,8 @@ def validate_job(job):
                    'type',
                    'runtime',
                    'imagePullCredential',
-                   'imageSha256']
+                   'imageSha256',
+                   'stdout']
 
     resources_valids = ['nodes',
                         'cpus',
