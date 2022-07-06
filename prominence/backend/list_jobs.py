@@ -375,7 +375,7 @@ def list_jobs(self, job_ids, identity, active, completed, status, workflow, num,
 
             # Handle job using too much memory
             if 'LastHoldReason' in job:
-                if 'Job has gone over memory limit' in job['LastHoldReason'] or 'Job has encountered an out-of-memory event' in job['LastHoldReason']:
+                if 'Job has gone over memory limit' in job['LastHoldReason'] or 'Job has encountered an out-of-memory event' in job['LastHoldReason'] or 'Docker job has gone over memory limit' in job['LastHoldReason']:
                     jobj['status'] = 'killed'
                     reason = 'Job used too much memory'
 
