@@ -53,6 +53,11 @@ def _create_mapped_json(self, path, job_index, mapping, job_name):
                 # Exctract object name from presigned URL
                 name = unquote(artifact['url'].split(self._config['S3_BUCKET'])[1].split('?AWSAccessKeyId')[0][1:])
 
+                # Check if a parameter is in the artifact
+                template_needed = False
+                if '$' in name:
+                    template_needed = True
+
                 # Apply template
                 for key in mapping:
                     value = mapping[key]
@@ -64,11 +69,12 @@ def _create_mapped_json(self, path, job_index, mapping, job_name):
                                                     864000)
 
                 # Validate
-                url_exists = validate_presigned_url(new_url)
-                if not url_exists:
-                    pieces = name.split('/')
-                    artifact_name = pieces[len(pieces)-1]
-                    return False, {"error":"Artifact %s does not exist" % artifact_name}
+                if template_needed:
+                    url_exists = validate_presigned_url(new_url)
+                    if not url_exists:
+                        pieces = name.split('/')
+                        artifact_name = pieces[len(pieces)-1]
+                        return False, {"error":"Artifact %s does not exist" % artifact_name}
 
                 new_artifact = {'url': new_url}
                 if 'mountpoint' in artifact:
