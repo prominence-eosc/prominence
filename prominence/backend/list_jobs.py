@@ -139,7 +139,7 @@ def list_jobs(self, job_ids, identity, active, completed, status, workflow, num,
 
         api_version = 0.0
         if 'ProminenceAPI' in job:
-            api_version = job['ProminenceAPI']
+            api_version = float(job['ProminenceAPI'])
 
         # Use provided storage if necessary
         use_default_object_storage = True
@@ -635,10 +635,12 @@ def list_jobs(self, job_ids, identity, active, completed, status, workflow, num,
                                 continue
                             if directory['name'] == output_dir and directory['status'] == 'success' and use_default_object_storage:
                                 actual_name = 'scratch/%s/%s.tgz' % (fid, dirname_base)
-                                if directory['name'] == jobj['name'] and api_version == 1.0:
-                                    actual_name = 'scratch/%s/' % fid
+                                job_name_pieces = jobj['name'].split('/')
+                                if len(job_name_pieces) == 3:
+                                    if directory['name'] == job_name_pieces[1] and api_version < 1.1:
+                                        actual_name = 'scratch/%s/' % fid
                                 url = self.create_presigned_url('get', actual_name, 7*24*60*60)
-                                (size, _) = self.get_object('scratch/%s/%s.tgz' % actual_name)
+                                (size, _) = self.get_object(actual_name)
                     file_map = {'name':output_dir, 'url':url}
                     if size:
                         file_map['size'] = size
