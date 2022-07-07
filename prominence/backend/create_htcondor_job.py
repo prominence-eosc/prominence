@@ -107,7 +107,7 @@ def _create_htcondor_job(self, username, groups, email, uid, jjob, job_path, wor
         input_files.append(os.path.join(job_path, '.job.mapped.json'))
 
     # API version
-    cjob['+ProminenceAPI'] = 1.0
+    cjob['+ProminenceAPI'] = 1.1
 
     # Standard defaults
     cjob['universe'] = 'vanilla'
