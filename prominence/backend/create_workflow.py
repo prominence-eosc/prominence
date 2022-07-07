@@ -90,7 +90,7 @@ def _create_mapped_json(self, path, job_index, mapping, job_name):
             if 'url' in output:
                 # Exctract object name from presigned URL
                 name = unquote(output['url'].split(self._config['S3_BUCKET'])[1].split('?AWSAccessKeyId')[0][1:])
-                name_pieces = name.split(job_name)
+                name_pieces = name.split(job_name, 1)
                 name = '%s%s/%d%s' % (name_pieces[0], job_name, job_index, name_pieces[1])
 
                 # Apply template
@@ -112,7 +112,7 @@ def _create_mapped_json(self, path, job_index, mapping, job_name):
             if 'url' in output:
                 # Exctract object name from presigned URL
                 name = unquote(output['url'].split(self._config['S3_BUCKET'])[1].split('?AWSAccessKeyId')[0][1:])
-                name_pieces = name.split(job_name)
+                name_pieces = name.split(job_name, 1)
                 name = '%s%s/%d%s' % (name_pieces[0], job_name, job_index, name_pieces[1])
 
                 # Apply template
