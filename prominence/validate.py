@@ -498,6 +498,12 @@ def validate_job(job):
                     if 'cmd' in task:
                         if task['cmd'].startswith('mpirun -n'):
                             return (False, 'it is not necessary to include mpirun in the cmd if an MPI flavour has been specified')
+                    else:
+                        if 'cmd' not in task:
+                            return (False, 'A command to execute must be specified for MPI jobs')
+                        else:
+                            if task['cmd'] == '':
+                                return (False, 'A command to execute must be specified for MPI jobs')
             else:
                 found_standard_task = True
 
