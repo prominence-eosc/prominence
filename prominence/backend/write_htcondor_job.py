@@ -19,6 +19,8 @@ RequestCpus = %(cpus)s
 RequestMemory = %(reqmemory)s
 RequestDisk = %(reqdisk)s
 accounting_group_user = %(accounting_group_user)s
+leave_in_queue = %(leave_in_queue)s
++ProminenceRemoveFromQueue = %(remove_from_queue)s
 +ProminenceAPI = %(apivers)s
 +ProminenceJobUniqueIdentifier = %(uuid)s
 +ProminenceIdentity = %(username)s
@@ -82,6 +84,8 @@ def write_htcondor_job(cjob, filename):
     info['joburl'] = cjob['+ProminenceURL']
     info['universe'] = cjob['universe']
     info['apivers'] = cjob['+ProminenceAPI']
+    info['leave_in_queue'] = cjob['leave_in_queue']
+    info['remove_from_queue'] = cjob['+ProminenceRemoveFromQueue']
 
     # Add any labels
     extras_metadata = ''
