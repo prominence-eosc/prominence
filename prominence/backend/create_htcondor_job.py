@@ -241,7 +241,7 @@ def _create_htcondor_job(self, username, groups, email, uid, jjob, job_path, wor
 
     if 'policies' in jjob:
         if 'leaveInQueue' in jjob['policies']:
-            if jjob['policies']['leaveInQueue']:
+            if jjob['policies']['leaveInQueue'] and not workflowuid:
                 cjob['+ProminenceRemoveFromQueue'] = 'False'
  
     cjob['leave_in_queue'] = '(JobStatus == 4 || JobStatus == 3) && ProminenceRemoveFromQueue =?= False'
