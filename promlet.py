@@ -387,7 +387,7 @@ def create_directories(token, base_url, directory, job_id, workflow_id):
         check = '%s%s/' % (base_url, combined)
         if count > 0:
             try:
-                resp = requests.get(check, headers=headers, verify=False)
+                resp = requests.get(check, headers=headers)
             except Exception as err:
                 logging.info('Got exception trying to check for dirctory existence: %s', err)
                 return None
@@ -395,7 +395,7 @@ def create_directories(token, base_url, directory, job_id, workflow_id):
                 logging.info('Directory %s doesnt exist, creating it...', check)
                 # Create directory
                 try:
-                    resp_dir = requests.put(check, headers=headers, verify=False)
+                    resp_dir = requests.put(check, headers=headers)
                 except Exception as err:
                     logging.error('Got exception trying to create directory: %s', err)
                     return None
@@ -639,7 +639,7 @@ def download_from_url(url, filename, token=None):
         headers['X-Auth-Token'] = token
 
     try:
-        response = requests.get(url, allow_redirects=True, stream=True, headers=headers, timeout=DOWNLOAD_CONN_TIMEOUT, verify=False)
+        response = requests.get(url, allow_redirects=True, stream=True, headers=headers, timeout=DOWNLOAD_CONN_TIMEOUT)
         if response.status_code == 200:
             with open(filename, 'wb') as tar_file:
                 for chunk in response.iter_content(chunk_size=1024*1024):
@@ -858,7 +858,7 @@ def upload(filename, url, token=None):
 
     try:
         with open(filename, 'rb') as file_obj:
-            response = requests.put(url, data=file_obj, timeout=120, headers=headers, verify=False)
+            response = requests.put(url, data=file_obj, timeout=120, headers=headers)
     except requests.exceptions.RequestException as err:
         logging.warning('RequestException when trying to upload file %s: %s', filename, err)
         return None
