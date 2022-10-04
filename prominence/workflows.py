@@ -101,8 +101,11 @@ def get_stdout_wf(username, group, email, workflow_id, job):
         return no_such_workflow()
     if username != identity:
         return not_auth_workflow()
+    offset = 0
+    if 'offset' in request.args:
+        offset = int(request.args.get('offset'))
 
-    stdout = backend.get_stdout(uid, iwd, None, None, -1, job, -1)
+    stdout = backend.get_stdout(uid, iwd, None, None, -1, job, -1, offset=offset)
     if stdout is None:
         return no_stdout()
     else:
@@ -124,8 +127,11 @@ def get_stderr_wf(username, group, email, workflow_id, job):
         return no_such_workflow()
     if username != identity:
         return not_auth_workflow()
+    offset = 0
+    if 'offset' in request.args:
+        offset = int(request.args.get('offset'))
 
-    stderr = backend.get_stderr(uid, iwd, None, None, -1, job, -1)
+    stderr = backend.get_stderr(uid, iwd, None, None, -1, job, -1, offset=offset)
     if stderr is None:
         return no_stderr()
     else:
@@ -145,8 +151,11 @@ def get_stdout_wf_jf(username, group, email, workflow_id, job, instance_id):
         return no_such_workflow()
     if username != identity:
         return not_auth_workflow()
+    offset = 0
+    if 'offset' in request.args:
+        offset = int(request.args.get('offset'))
 
-    stdout = backend.get_stdout(uid, iwd, None, None, workflow_id, None, instance_id)
+    stdout = backend.get_stdout(uid, iwd, None, None, workflow_id, None, instance_id, offset=offset)
     if stdout is None:
         return no_stdout()
     else:
@@ -166,8 +175,11 @@ def get_stderr_wf_jf(username, group, email, workflow_id, job, instance_id):
         return no_such_workflow()
     if username != identity:
         return not_auth_workflow()
+    offset = 0
+    if 'offset' in request.args:
+        offset = int(request.args.get('offset'))
 
-    stderr = backend.get_stderr(uid, iwd, None, None, workflow_id, None, instance_id)
+    stderr = backend.get_stderr(uid, iwd, None, None, workflow_id, None, instance_id, offset=offset)
     if stderr is None:
         return no_stderr()
     else:
