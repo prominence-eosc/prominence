@@ -1,6 +1,6 @@
 import os
 
-def get_stderr(self, uid, iwd, out, err, job_id, job_name=None, instance_id=-1, node=0):
+def get_stderr(self, uid, iwd, out, err, job_id, job_name=None, instance_id=-1, node=0, offset=0):
     """
     Return the stdout from the specified job
     """
