@@ -99,3 +99,11 @@ def validate_presigned_url(url):
     if response.status_code != 200:
         return False
     return True
+
+def readfile(filename, offset=0):
+    """
+    Read lines from a file
+    """
+    with open(filename, 'rb') as fd:
+        fd.seek(offset)
+        return fd.read()
