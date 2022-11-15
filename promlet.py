@@ -1679,13 +1679,15 @@ def run_udocker(image, cmd, workdir, env, path, mpi, mpi_processes, mpi_procs_pe
 
     return return_code, timed_out, None
 
-def run_singularity(image, cmd, workdir, env, path, mpi, mpi_processes, mpi_procs_per_node, artifacts, walltime_limit, job, stdout_file):
+def run_singularity(image, cmd, app, workdir, env, path, mpi, mpi_processes, mpi_procs_per_node, artifacts, walltime_limit, job, stdout_file):
     """
     Execute a task using Singularity
     """
     command = 'exec'
     if cmd is None:
         cmd = ''
+        command = 'run'
+    if app:
         command = 'run'
 
     # Get storage mountpoint
@@ -1702,11 +1704,16 @@ def run_singularity(image, cmd, workdir, env, path, mpi, mpi_processes, mpi_proc
     # Set source directory for /tmp in container
     user_tmp_dir = path + '/usertmp'
 
-    run_command = ("singularity %s"
+    # Handle Singularity apps
+    app_handler = ''
+    if app:
+        app_handler = ' --app %s ' % app
+
+    run_command = ("singularity %s %s"
                    " --home %s/userhome:/home/user"
                    " --bind %s:/tmp"
                    " %s"
-                   " --pwd %s %s %s") % (command, path, user_tmp_dir, mounts, workdir, image, cmd)
+                   " --pwd %s %s %s") % (command, app_handler, path, user_tmp_dir, mounts, workdir, image, cmd)
 
     job_cpus = -1
     job_memory = -1
@@ -1847,6 +1854,10 @@ def run_tasks(job, path, node_num, main_node):
         cmd = None
         if 'cmd' in task:
             cmd = task['cmd']
+
+        app = None
+        if 'app' in task:
+            app = task['app']
 
         workdir = None
         if 'workdir' in task:
@@ -2076,6 +2087,7 @@ def run_tasks(job, path, node_num, main_node):
                     sidecar = multiprocessing.Process(target=run_singularity,
                                                       args=(image_new,
                                                             cmd,
+                                                            app,
                                                             workdir,
                                                             env,
                                                             path,
@@ -2098,6 +2110,7 @@ def run_tasks(job, path, node_num, main_node):
                     metrics_task = monitor(run_singularity,
                                            image_new,
                                            cmd,
+                                           app,
                                            workdir,
                                            env,
                                            path,
