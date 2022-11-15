@@ -312,6 +312,7 @@ def validate_job(job):
     task_valids = ['image',
                    'cmd',
                    'env',
+                   'app',
                    'workdir',
                    'procsPerNode',
                    'type',
@@ -473,6 +474,13 @@ def validate_job(job):
             if 'env' in task:
                 if not isinstance(task['env'], dict):
                     return (False, 'environment variables must be defined as a dict')
+
+            if 'app' in task:
+                if task['runtime'] == 'udocker':
+                    return (False, 'app is only supported by Singularity')
+
+                if not isinstance(task['app'], str):
+                    return (False, 'app must be a string')
 
             if 'procsPerNode' in task:
                 if not str(task['procsPerNode']).isdigit():
